@@ -1,0 +1,16 @@
+# 환경 (localdev | development | production)
+export NODE_ENV=localdev
+
+# DB
+export POSTGRES_DB_HOST=localhost
+export POSTGRES_DB_USERNAME=root
+export POSTGRES_DB_PASSWORD=root1234
+export POSTGRES_DB_NAME=church-web
+
+# JWT
+export JWT_CMS_ACCESS_SECRET_KEY=local-dev-access-secret-change-in-production
+export JWT_CMS_REFRESH_SECRET_KEY=local-dev-refresh-secret-change-in-production
+
+# Google OAuth
+export GOOGLE_CLIENT_ID=your-google-client-id
+export GOOGLE_CLIENT_SECRET=your-google-client-secret
