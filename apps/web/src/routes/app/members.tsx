@@ -1,5 +1,16 @@
-import { Phone, Plus, Search, UserPlus } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Phone, Plus, Search, UserPlus, X } from 'lucide-react'
+import { useState } from 'react'
 
+import {
+  createMember,
+  LIFECYCLE_STAGES,
+  listMembers,
+  STAGE_LABEL,
+  type LifecycleStage,
+  type Member,
+  type StageCounts,
+} from '@/api/members'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -7,103 +18,40 @@ import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/page-header'
 import { cn } from '@/lib/utils'
 
-type LifecycleStage =
-  | '방문'
-  | '새가족'
-  | '정식'
-  | '이명'
-  | '별세'
-  | '장기결석'
-  | '익명'
-
-const STAGE_TONE: Record<
-  LifecycleStage,
-  'neutral' | 'muted' | 'success' | 'warn' | 'danger' | 'accent'
-> = {
-  방문: 'muted',
-  새가족: 'warn',
-  정식: 'success',
-  이명: 'muted',
-  별세: 'neutral',
-  장기결석: 'danger',
-  익명: 'neutral',
+const STAGE_TONE: Record<LifecycleStage, 'neutral' | 'muted' | 'success' | 'warn' | 'danger'> = {
+  visitor: 'muted',
+  new: 'warn',
+  regular: 'success',
+  transferred: 'muted',
+  deceased: 'neutral',
+  absent: 'danger',
+  anonymous: 'neutral',
 }
 
-type Member = {
-  id: string
-  name: string
-  phone: string
-  stage: LifecycleStage
-  department?: string
-  initials: string
-  hue: number
-}
-
-const FILTERS: { label: string; stage?: LifecycleStage; count: number }[] = [
-  { label: '전체', count: 248 },
-  { label: '정식', stage: '정식', count: 186 },
-  { label: '새가족', stage: '새가족', count: 14 },
-  { label: '방문', stage: '방문', count: 22 },
-  { label: '장기결석', stage: '장기결석', count: 7 },
-]
-
-const MEMBERS: Member[] = [
-  {
-    id: '1',
-    name: '김민서',
-    phone: '010-1234-5678',
-    stage: '정식',
-    department: '청년부',
-    initials: '김민',
-    hue: 220,
-  },
-  {
-    id: '2',
-    name: '이지훈',
-    phone: '010-2233-4455',
-    stage: '새가족',
-    department: '장년부',
-    initials: '이지',
-    hue: 30,
-  },
-  {
-    id: '3',
-    name: '박서연',
-    phone: '010-9988-7766',
-    stage: '정식',
-    department: '중고등부',
-    initials: '박서',
-    hue: 280,
-  },
-  {
-    id: '4',
-    name: '최도윤',
-    phone: '010-5544-3322',
-    stage: '방문',
-    initials: '최도',
-    hue: 160,
-  },
-  {
-    id: '5',
-    name: '정유나',
-    phone: '010-7788-9900',
-    stage: '정식',
-    department: '찬양팀',
-    initials: '정유',
-    hue: 340,
-  },
-  {
-    id: '6',
-    name: '한지호',
-    phone: '010-1122-3344',
-    stage: '장기결석',
-    department: '장년부',
-    initials: '한지',
-    hue: 10,
-  },
+const FILTER_ORDER: (LifecycleStage | 'all')[] = [
+  'all',
+  'regular',
+  'new',
+  'visitor',
+  'absent',
 ]
 
 export function MembersPage() {
+  const [q, setQ] = useState('')
+  const [stage, setStage] = useState<LifecycleStage | 'all'>('all')
+  const [showCreate, setShowCreate] = useState(false)
+
+  const queryClient = useQueryClient()
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['members', { q, stage }],
+    queryFn: () =>
+      listMembers({
+        q: q || undefined,
+        stage: stage === 'all' ? undefined : [stage],
+      }),
+  })
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -111,16 +59,10 @@ export function MembersPage() {
         title="성도 명부"
         description="등록된 성도와 새가족을 관리합니다."
         actions={
-          <>
-            <Button variant="outline">
-              <UserPlus />
-              새가족 등록
-            </Button>
-            <Button>
-              <Plus />
-              성도 추가
-            </Button>
-          </>
+          <Button onClick={() => setShowCreate(true)}>
+            <Plus />
+            성도 추가
+          </Button>
         }
       />
 
@@ -128,92 +70,301 @@ export function MembersPage() {
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
           <Input
-            placeholder="이름·전화번호·소속으로 검색"
+            placeholder="이름·전화번호·이전교회로 검색"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
             className="pl-10"
           />
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {FILTERS.map((f, i) => (
-          <FilterChip key={f.label} label={f.label} count={f.count} active={i === 0} />
-        ))}
-      </div>
+      <FilterChips
+        active={stage}
+        onChange={setStage}
+        counts={data?.counts}
+      />
 
-      <Card className="overflow-hidden">
-        <ul className="divide-y divide-[var(--color-border)]">
-          {MEMBERS.map((m) => (
-            <li
-              key={m.id}
-              className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-[var(--color-muted)]"
-            >
-              <Avatar initials={m.initials} hue={m.hue} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-sm font-semibold">
-                    {m.name}
-                  </span>
-                  <Badge tone={STAGE_TONE[m.stage]}>{m.stage}</Badge>
-                </div>
-                <div className="mt-0.5 flex items-center gap-3 text-xs text-[var(--color-muted-foreground)]">
+      <MemberList
+        members={data?.items ?? []}
+        total={data?.total ?? 0}
+        loading={isLoading}
+      />
+
+      {showCreate && (
+        <CreateMemberModal
+          onClose={() => setShowCreate(false)}
+          onCreated={() => {
+            void queryClient.invalidateQueries({ queryKey: ['members'] })
+            setShowCreate(false)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function FilterChips({
+  active,
+  onChange,
+  counts,
+}: {
+  active: LifecycleStage | 'all'
+  onChange: (s: LifecycleStage | 'all') => void
+  counts?: StageCounts
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {FILTER_ORDER.map((key) => {
+        const label = key === 'all' ? '전체' : STAGE_LABEL[key]
+        const count = counts ? counts[key] : undefined
+        const isActive = active === key
+        return (
+          <button
+            key={key}
+            onClick={() => onChange(key)}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+              isActive
+                ? 'border-transparent bg-[var(--color-foreground)] text-[var(--color-background)]'
+                : 'border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]',
+            )}
+          >
+            {label}
+            {count !== undefined && (
+              <span
+                className={cn(
+                  'rounded-full px-1.5 text-[10px] tabular-nums',
+                  isActive
+                    ? 'bg-white/15 text-current'
+                    : 'bg-[var(--color-muted)] text-[var(--color-muted-foreground)]',
+                )}
+              >
+                {count}
+              </span>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function MemberList({
+  members,
+  total,
+  loading,
+}: {
+  members: Member[]
+  total: number
+  loading: boolean
+}) {
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">
+          불러오는 중…
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (members.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
+          <UserPlus className="size-6 text-[var(--color-muted-foreground)]" />
+          <p className="text-sm font-medium">아직 등록된 성도가 없어요</p>
+          <p className="text-xs text-[var(--color-muted-foreground)]">
+            우측 상단 "성도 추가" 버튼으로 시작하세요.
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="overflow-hidden">
+      <ul className="divide-y divide-[var(--color-border)]">
+        {members.map((m) => (
+          <li
+            key={m.id}
+            className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-[var(--color-muted)]"
+          >
+            <Avatar name={m.name} />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="truncate text-sm font-semibold">{m.name}</span>
+                <Badge tone={STAGE_TONE[m.lifecycleStage]}>
+                  {STAGE_LABEL[m.lifecycleStage]}
+                </Badge>
+              </div>
+              <div className="mt-0.5 flex items-center gap-3 text-xs text-[var(--color-muted-foreground)]">
+                {m.phone && (
                   <span className="inline-flex items-center gap-1">
                     <Phone className="size-3" />
                     {m.phone}
                   </span>
-                  {m.department && <span>· {m.department}</span>}
-                </div>
+                )}
+                {m.previousChurch && <span>· 이전: {m.previousChurch}</span>}
               </div>
-            </li>
-          ))}
-        </ul>
-        <CardContent className="flex items-center justify-between border-t border-[var(--color-border)] py-3 text-xs text-[var(--color-muted-foreground)]">
-          <span>총 248명 중 6명 표시</span>
-          <Button variant="ghost" size="sm">
-            더 보기
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <CardContent className="border-t border-[var(--color-border)] py-3 text-xs text-[var(--color-muted-foreground)]">
+        총 {total}명
+      </CardContent>
+    </Card>
   )
 }
 
-function FilterChip({
-  label,
-  count,
-  active,
-}: {
-  label: string
-  count: number
-  active?: boolean
-}) {
-  return (
-    <button
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
-        active
-          ? 'border-transparent bg-[var(--color-foreground)] text-[var(--color-background)]'
-          : 'border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]',
-      )}
-    >
-      {label}
-      <span
-        className={cn(
-          'rounded-full px-1.5 text-[10px] tabular-nums',
-          active
-            ? 'bg-white/15 text-current'
-            : 'bg-[var(--color-muted)] text-[var(--color-muted-foreground)]',
-        )}
-      >
-        {count}
-      </span>
-    </button>
-  )
-}
-
-function Avatar({ initials }: { initials: string; hue?: number }) {
+function Avatar({ name }: { name: string }) {
+  const initials = name.slice(0, 2)
   return (
     <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-muted)] text-xs font-semibold text-[var(--color-foreground)]">
       {initials}
     </div>
+  )
+}
+
+function CreateMemberModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void
+  onCreated: () => void
+}) {
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [stage, setStage] = useState<LifecycleStage>('visitor')
+  const [error, setError] = useState<string | null>(null)
+
+  const mutation = useMutation({
+    mutationFn: createMember,
+    onSuccess: () => onCreated(),
+    onError: (err: Error) => setError(err.message),
+  })
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    mutation.mutate({
+      name,
+      phone: phone || undefined,
+      lifecycleStage: stage,
+    })
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl bg-[var(--color-background)] p-6 shadow-md"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold tracking-tight">성도 추가</h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            aria-label="닫기"
+          >
+            <X />
+          </Button>
+        </div>
+
+        <form onSubmit={submit} className="space-y-4">
+          <Field label="이름" required>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              maxLength={40}
+              placeholder="예: 김민서"
+            />
+          </Field>
+
+          <Field label="전화번호" hint="선택">
+            <Input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="010-1234-5678"
+            />
+          </Field>
+
+          <Field label="단계">
+            <div className="flex flex-wrap gap-1.5">
+              {LIFECYCLE_STAGES.map((s) => (
+                <button
+                  type="button"
+                  key={s}
+                  onClick={() => setStage(s)}
+                  className={cn(
+                    'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+                    stage === s
+                      ? 'border-transparent bg-[var(--color-foreground)] text-[var(--color-background)]'
+                      : 'border-[var(--color-border)] text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]',
+                  )}
+                >
+                  {STAGE_LABEL[s]}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          {error && (
+            <p className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">
+              {error}
+            </p>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={onClose}>
+              취소
+            </Button>
+            <Button
+              type="submit"
+              disabled={!name || mutation.isPending}
+            >
+              {mutation.isPending ? '추가 중…' : '추가하기'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function Field({
+  label,
+  hint,
+  required,
+  children,
+}: {
+  label: string
+  hint?: string
+  required?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <label className="block space-y-1.5">
+      <div className="flex items-baseline justify-between">
+        <span className="text-sm font-medium">
+          {label}
+          {required && (
+            <span className="ml-0.5 text-[var(--color-primary)]">*</span>
+          )}
+        </span>
+        {hint && (
+          <span className="text-xs text-[var(--color-muted-foreground)]">
+            {hint}
+          </span>
+        )}
+      </div>
+      {children}
+    </label>
   )
 }
