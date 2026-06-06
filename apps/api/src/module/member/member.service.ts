@@ -3,6 +3,7 @@ import { Brackets } from 'typeorm';
 import { DataSources } from '@src/database/data-sources';
 import { LifecycleStage, MemberEntity } from '@src/database/entities/member.entity';
 import { AffiliationService } from '@src/module/affiliation/affiliation.service';
+import { MemberPositionService } from '@src/module/position/member-position.service';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { ListMemberQueryDto } from './dto/list-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
@@ -11,7 +12,10 @@ export type StageCount = Record<LifecycleStage | 'all', number>;
 
 @Injectable()
 export class MemberService {
-  constructor(private readonly affiliations: AffiliationService) {}
+  constructor(
+    private readonly affiliations: AffiliationService,
+    private readonly positions: MemberPositionService
+  ) {}
 
   private repo() {
     return DataSources.instance.getRepository(MemberEntity);
@@ -59,8 +63,11 @@ export class MemberService {
   async findById(churchId: number, id: number) {
     const member = await this.repo().findOne({ where: { id, churchId } });
     if (!member) throw new NotFoundException('Member not found');
-    const affiliations = await this.affiliations.listForMember(churchId, id);
-    return { ...member, affiliations };
+    const [affiliations, position] = await Promise.all([
+      this.affiliations.listForMember(churchId, id),
+      this.positions.history(churchId, id),
+    ]);
+    return { ...member, affiliations, position };
   }
 
   async update(churchId: number, id: number, dto: UpdateMemberDto) {

@@ -7,6 +7,7 @@ import {
   Users2,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
+import { Link } from 'react-router'
 
 import { Card, CardContent } from '@/components/ui/card'
 import { PageHeader } from '@/components/page-header'
@@ -16,6 +17,7 @@ type SettingSection = {
   title: string
   description: string
   hint: string
+  to?: string
 }
 
 const SECTIONS: SettingSection[] = [
@@ -35,7 +37,8 @@ const SECTIONS: SettingSection[] = [
     icon: FolderTree,
     title: '부서·사역팀·목장',
     description: '연령 부서, 사역 단위, 생활 소그룹을 관리합니다.',
-    hint: '12개 활성',
+    hint: '교회별 사용자 정의',
+    to: '/app/settings/references',
   },
   {
     icon: CalendarRange,
@@ -63,11 +66,8 @@ export function SettingsPage() {
       <div className="grid gap-3">
         {SECTIONS.map((s) => {
           const Icon = s.icon
-          return (
-            <Card
-              key={s.title}
-              className="transition-colors hover:bg-[var(--color-muted)]/60"
-            >
+          const card = (
+            <Card className="transition-colors hover:bg-[var(--color-muted)]/60">
               <CardContent className="flex items-center gap-4 p-5">
                 <div
                   className="flex size-11 shrink-0 items-center justify-center rounded-2xl"
@@ -93,6 +93,13 @@ export function SettingsPage() {
                 <ChevronRight className="size-4 text-[var(--color-muted-foreground)]" />
               </CardContent>
             </Card>
+          )
+          return s.to ? (
+            <Link key={s.title} to={s.to} className="block">
+              {card}
+            </Link>
+          ) : (
+            <div key={s.title}>{card}</div>
           )
         })}
       </div>

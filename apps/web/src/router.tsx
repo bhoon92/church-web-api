@@ -8,6 +8,7 @@ import { DashboardPage } from '@/routes/app/dashboard'
 import { FinancePage } from '@/routes/app/finance'
 import { MembersPage } from '@/routes/app/members'
 import { SettingsPage } from '@/routes/app/settings'
+import { ReferencesPage } from '@/routes/app/settings/references'
 import { HomePage } from '@/routes/home'
 import { LoginPage } from '@/routes/login'
 import { OnboardingPage } from '@/routes/onboarding'
@@ -29,6 +30,7 @@ export const router = createBrowserRouter([
           { path: 'finance', element: <FinancePage /> },
           { path: 'calendar', element: <CalendarPage /> },
           { path: 'settings', element: <SettingsPage /> },
+          { path: 'settings/references', element: <ReferencesPage /> },
         ],
       },
     ],

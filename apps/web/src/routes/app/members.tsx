@@ -11,6 +11,7 @@ import {
   type Member,
   type StageCounts,
 } from '@/api/members'
+import { MemberDetailModal } from '@/routes/app/member-detail-modal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -40,6 +41,7 @@ export function MembersPage() {
   const [q, setQ] = useState('')
   const [stage, setStage] = useState<LifecycleStage | 'all'>('all')
   const [showCreate, setShowCreate] = useState(false)
+  const [openMemberId, setOpenMemberId] = useState<number | null>(null)
 
   const queryClient = useQueryClient()
 
@@ -88,6 +90,7 @@ export function MembersPage() {
         members={data?.items ?? []}
         total={data?.total ?? 0}
         loading={isLoading}
+        onSelect={setOpenMemberId}
       />
 
       {showCreate && (
@@ -97,6 +100,13 @@ export function MembersPage() {
             void queryClient.invalidateQueries({ queryKey: ['members'] })
             setShowCreate(false)
           }}
+        />
+      )}
+
+      {openMemberId !== null && (
+        <MemberDetailModal
+          memberId={openMemberId}
+          onClose={() => setOpenMemberId(null)}
         />
       )}
     </div>
@@ -153,10 +163,12 @@ function MemberList({
   members,
   total,
   loading,
+  onSelect,
 }: {
   members: Member[]
   total: number
   loading: boolean
+  onSelect: (id: number) => void
 }) {
   if (loading) {
     return (
@@ -186,28 +198,30 @@ function MemberList({
     <Card className="overflow-hidden">
       <ul className="divide-y divide-[var(--color-border)]">
         {members.map((m) => (
-          <li
-            key={m.id}
-            className="flex items-center gap-4 px-5 py-4 transition-colors hover:bg-[var(--color-muted)]"
-          >
-            <Avatar name={m.name} />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="truncate text-sm font-semibold">{m.name}</span>
-                <Badge tone={STAGE_TONE[m.lifecycleStage]}>
-                  {STAGE_LABEL[m.lifecycleStage]}
-                </Badge>
+          <li key={m.id}>
+            <button
+              onClick={() => onSelect(m.id)}
+              className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[var(--color-muted)]"
+            >
+              <Avatar name={m.name} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-sm font-semibold">{m.name}</span>
+                  <Badge tone={STAGE_TONE[m.lifecycleStage]}>
+                    {STAGE_LABEL[m.lifecycleStage]}
+                  </Badge>
+                </div>
+                <div className="mt-0.5 flex items-center gap-3 text-xs text-[var(--color-muted-foreground)]">
+                  {m.phone && (
+                    <span className="inline-flex items-center gap-1">
+                      <Phone className="size-3" />
+                      {m.phone}
+                    </span>
+                  )}
+                  {m.previousChurch && <span>· 이전: {m.previousChurch}</span>}
+                </div>
               </div>
-              <div className="mt-0.5 flex items-center gap-3 text-xs text-[var(--color-muted-foreground)]">
-                {m.phone && (
-                  <span className="inline-flex items-center gap-1">
-                    <Phone className="size-3" />
-                    {m.phone}
-                  </span>
-                )}
-                {m.previousChurch && <span>· 이전: {m.previousChurch}</span>}
-              </div>
-            </div>
+            </button>
           </li>
         ))}
       </ul>

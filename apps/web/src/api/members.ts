@@ -96,3 +96,40 @@ export async function deleteMember(id: number): Promise<void> {
   });
   if (!res.ok) throw new Error(`delete member ${res.status}`);
 }
+
+export type MemberDetail = Member & {
+  affiliations: {
+    departments: AffiliationSummary[];
+    ministries: AffiliationSummary[];
+    smallGroups: AffiliationSummary[];
+  };
+  position: {
+    current: PositionHistoryEntry | null;
+    history: PositionHistoryEntry[];
+  };
+};
+
+export type PositionHistoryEntry = {
+  id: number;
+  positionId: number;
+  positionName: string | null;
+  startDate: string;
+  endDate: string | null;
+  note: string | null;
+  isCurrent: boolean;
+};
+
+export type AffiliationSummary = {
+  id: number;
+  refId: number;
+  refName: string | null;
+  startDate: string;
+  isLeader: boolean;
+  roleLabel: string | null;
+};
+
+export async function fetchMember(id: number): Promise<MemberDetail> {
+  const res = await fetch(`/api/members/${id}`, { credentials: 'include' });
+  if (!res.ok) throw new Error(`fetch member ${res.status}`);
+  return res.json();
+}
