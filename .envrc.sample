@@ -5,7 +5,7 @@ export NODE_ENV=localdev
 export POSTGRES_DB_HOST=localhost
 export POSTGRES_DB_USERNAME=root
 export POSTGRES_DB_PASSWORD=root1234
-export POSTGRES_DB_NAME=church-web
+export POSTGRES_DB_NAME=yakirim
 
 # JWT
 export JWT_CMS_ACCESS_SECRET_KEY=local-dev-access-secret-change-in-production
@@ -14,3 +14,7 @@ export JWT_CMS_REFRESH_SECRET_KEY=local-dev-refresh-secret-change-in-production
 # Google OAuth
 export GOOGLE_CLIENT_ID=your-google-client-id
 export GOOGLE_CLIENT_SECRET=your-google-client-secret
+export GOOGLE_REDIRECT_URI=http://localhost:5173/api/auth/google/callback
+
+# Web
+export WEB_BASE_URL=http://localhost:5173

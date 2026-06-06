@@ -9,7 +9,7 @@ module.exports = {
     password: process.env.POSTGRES_DB_PASSWORD,
     database: process.env.POSTGRES_DB_NAME,
     migrationsRun: true,
-    entities: ['dist/src/database/entity/*.entity.js', 'dist/src/module/**/*.entity.js'],
+    entities: ['dist/src/database/entities/*.entity.js', 'dist/src/module/**/*.entity.js'],
     migrations: ['dist/src/database/migration/*.js'],
   },
   jwt: {
@@ -26,15 +26,18 @@ module.exports = {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      redirectUri: '/google/callback',
+      redirectUri: process.env.GOOGLE_REDIRECT_URI || 'http://localhost:5173/api/auth/google/callback',
     },
   },
+  web: {
+    baseUrl: process.env.WEB_BASE_URL || 'http://localhost:5173',
+  },
   cors: {
-    origin: [/^[^\s.]+\.hyper-cloud\.kr$/, /^[^\s.]+\.hars\.kr$/, /([^\s.]+\.)?baraon\.kr$/, /^https:\/\/baraon\.kr$/],
+    origin: ['http://localhost:5173'],
   },
   cookie: {
-    isSecure: true,
-    domain: ['.hyper-cloud.kr', '.hars.kr', '.baraon.kr', 'baraon.kr'],
+    isSecure: false,
+    domain: [],
     prefix: '',
   },
   participation: {

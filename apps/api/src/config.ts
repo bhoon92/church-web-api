@@ -35,6 +35,9 @@ export const ConfigProvider = {
   auth: {
     google: config.get<{ clientId: string; clientSecret: string; redirectUri: string }>('auth.google'),
   },
+  web: {
+    baseUrl: config.get<string>('web.baseUrl'),
+  },
   cors: {
     origin: config.get<StaticOrigin | CustomOrigin>('cors.origin'),
   },

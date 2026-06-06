@@ -1,8 +1,11 @@
-# Nestjs specific
-/dist
-/node_modules
-/build
+# build output / deps (root + workspaces)
+dist
+node_modules
+build
 /tmp
+
+# vite
+apps/web/dist
 
 # Logs
 logs
@@ -15,8 +18,12 @@ lerna-debug.log*
 
 # environment variable files
 .envrc
+.env
 
 # temp directory
 .temp
 .tmp
 .pnpm-store
+
+.claude
+.vscode

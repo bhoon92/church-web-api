@@ -9,7 +9,7 @@ module.exports = {
     password: process.env.POSTGRES_DB_PASSWORD,
     database: process.env.POSTGRES_DB_NAME,
     migrationsRun: true,
-    entities: ['dist/src/database/entity/*.entity.js', 'dist/src/module/**/*.entity.js'],
+    entities: ['dist/src/database/entities/*.entity.js', 'dist/src/module/**/*.entity.js'],
     migrations: ['dist/src/database/migration/*.js'],
   },
   jwt: {
@@ -26,8 +26,11 @@ module.exports = {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      redirectUri: '/google/callback',
+      redirectUri: process.env.GOOGLE_REDIRECT_URI || '',
     },
+  },
+  web: {
+    baseUrl: process.env.WEB_BASE_URL || '',
   },
   cors: {
     origin: [/^[^\s.]+\.hyper-cloud\.kr$/, /^[^\s.]+\.hars\.kr$/, /([^\s.]+\.)?baraon\.kr$/, /^https:\/\/baraon\.kr$/],
