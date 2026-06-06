@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Brackets } from 'typeorm';
 import { DataSources } from '@src/database/data-sources';
 import { LifecycleStage, MemberEntity } from '@src/database/entities/member.entity';
+import { AffiliationService } from '@src/module/affiliation/affiliation.service';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { ListMemberQueryDto } from './dto/list-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
@@ -10,6 +11,8 @@ export type StageCount = Record<LifecycleStage | 'all', number>;
 
 @Injectable()
 export class MemberService {
+  constructor(private readonly affiliations: AffiliationService) {}
+
   private repo() {
     return DataSources.instance.getRepository(MemberEntity);
   }
@@ -53,13 +56,14 @@ export class MemberService {
     return { items, total, page, pageSize, counts };
   }
 
-  async findById(churchId: number, id: number): Promise<MemberEntity> {
+  async findById(churchId: number, id: number) {
     const member = await this.repo().findOne({ where: { id, churchId } });
     if (!member) throw new NotFoundException('Member not found');
-    return member;
+    const affiliations = await this.affiliations.listForMember(churchId, id);
+    return { ...member, affiliations };
   }
 
-  async update(churchId: number, id: number, dto: UpdateMemberDto): Promise<MemberEntity> {
+  async update(churchId: number, id: number, dto: UpdateMemberDto) {
     await this.findById(churchId, id);
     await this.repo().update({ id, churchId }, dto);
     return this.findById(churchId, id);
