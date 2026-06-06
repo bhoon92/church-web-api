@@ -1,0 +1,73 @@
+@import 'tailwindcss';
+@import 'pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css';
+
+@theme {
+  --font-sans:
+    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+    system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo',
+    'Noto Sans KR', 'Malgun Gothic', sans-serif;
+
+  /* 모노톤 — 순수 뉴트럴(채도 0) + 거의-블랙 primary */
+  --color-background: oklch(0.99 0 0);
+  --color-foreground: oklch(0.14 0 0);
+  --color-muted: oklch(0.965 0 0);
+  --color-muted-foreground: oklch(0.5 0 0);
+  --color-border: oklch(0.91 0 0);
+  --color-input: oklch(0.955 0 0);
+  --color-ring: oklch(0.14 0 0);
+
+  --color-card: oklch(1 0 0);
+  --color-card-foreground: oklch(0.14 0 0);
+
+  /* 거의-블랙 — Yakirim 시그니처 (true black 대신 살짝 들어간 톤) */
+  --color-primary: oklch(0.18 0 0);
+  --color-primary-foreground: oklch(0.99 0 0);
+
+  --color-secondary: oklch(0.955 0 0);
+  --color-secondary-foreground: oklch(0.2 0 0);
+
+  --color-accent: oklch(0.935 0 0);
+  --color-accent-foreground: oklch(0.2 0 0);
+
+  --color-destructive: oklch(0.55 0.18 25);
+  --color-destructive-foreground: oklch(0.99 0 0);
+
+  /* Radius — 세련을 위해 살짝 조이기 (2xl 남용 줄임) */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.125rem;
+  --radius-2xl: 1.375rem;
+
+  /* Shadows — 더 정교하고 얕게 */
+  --shadow-xs: 0 1px 2px 0 oklch(0.16 0.015 170 / 0.04);
+  --shadow-sm:
+    0 1px 2px 0 oklch(0.16 0.015 170 / 0.04),
+    0 1px 3px 0 oklch(0.16 0.015 170 / 0.04);
+  --shadow-md:
+    0 2px 6px -1px oklch(0.16 0.015 170 / 0.05),
+    0 4px 12px -2px oklch(0.16 0.015 170 / 0.05);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: 'ss06', 'cv11';
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  *,
+  *::before,
+  *::after {
+    border-color: var(--color-border);
+  }
+}
