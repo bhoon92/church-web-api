@@ -32,6 +32,12 @@ module.exports = {
   web: {
     baseUrl: process.env.WEB_BASE_URL || 'http://localhost:5173',
   },
+  s3: {
+    region: process.env.AWS_REGION || 'ap-northeast-2',
+    bucket: process.env.AWS_S3_BUCKET || 'yakirim-photos',
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  },
   cors: {
     origin: ['http://localhost:5173'],
   },

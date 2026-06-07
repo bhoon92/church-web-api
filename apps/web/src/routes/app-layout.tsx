@@ -1,6 +1,7 @@
 import {
   CalendarCheck,
   CalendarDays,
+  Images,
   LayoutDashboard,
   LogOut,
   Settings,
@@ -33,9 +34,11 @@ const NAV: NavItem[] = [
   { to: '/app/attendance', label: '출석', icon: CalendarCheck },
   { to: '/app/finance', label: '재정', icon: Wallet },
   { to: '/app/calendar', label: '달력', icon: CalendarDays },
+  { to: '/app/gallery', label: '갤러리', icon: Images },
 ]
 
-const MOBILE_TABS = NAV
+// 모바일 하단 탭은 5개로 제한 (갤러리는 데스크탑 사이드바에서)
+const MOBILE_TABS = NAV.slice(0, 5)
 
 export function AppLayout() {
   return (

@@ -154,3 +154,33 @@ export const createAccountCategory = (name: string) => postJson<Category>('/api/
 export function formatKRW(amount: number): string {
   return `₩ ${amount.toLocaleString()}`;
 }
+
+// ── 연말정산 기부금영수증 PDF ──────────────
+/** 영수증 PDF 다운로드. 실패 시 서버 메시지로 throw. */
+export async function downloadReceipt(memberId: number, year: number): Promise<void> {
+  const res = await fetch(`/api/finance/offerings/receipt/${memberId}/${year}`, {
+    credentials: 'include',
+  });
+  if (!res.ok) {
+    let message = `영수증 발급 실패 (${res.status})`;
+    try {
+      const body = await res.json();
+      if (body?.message) {
+        const raw = Array.isArray(body.message) ? body.message.join(', ') : body.message;
+        message = String(raw).replace(/^\w*Exception:\s*/, '');
+      }
+    } catch {
+      // ignore
+    }
+    throw new Error(message);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `donation-receipt-${year}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}

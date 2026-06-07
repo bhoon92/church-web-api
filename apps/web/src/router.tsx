@@ -6,6 +6,7 @@ import { AttendancePage } from '@/routes/app/attendance'
 import { CalendarPage } from '@/routes/app/calendar'
 import { DashboardPage } from '@/routes/app/dashboard'
 import { FinancePage } from '@/routes/app/finance'
+import { GalleryPage } from '@/routes/app/gallery'
 import { MembersPage } from '@/routes/app/members'
 import { SettingsPage } from '@/routes/app/settings'
 import { ReferencesPage } from '@/routes/app/settings/references'
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
           { path: 'attendance', element: <AttendancePage /> },
           { path: 'finance', element: <FinancePage /> },
           { path: 'calendar', element: <CalendarPage /> },
+          { path: 'gallery', element: <GalleryPage /> },
           { path: 'settings', element: <SettingsPage /> },
           { path: 'settings/references', element: <ReferencesPage /> },
         ],

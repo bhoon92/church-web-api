@@ -38,6 +38,12 @@ export const ConfigProvider = {
   web: {
     baseUrl: config.get<string>('web.baseUrl'),
   },
+  s3: {
+    region: config.get<string>('s3.region'),
+    bucket: config.get<string>('s3.bucket'),
+    accessKeyId: config.get<string>('s3.accessKeyId'),
+    secretAccessKey: config.get<string>('s3.secretAccessKey'),
+  },
   cors: {
     origin: config.get<StaticOrigin | CustomOrigin>('cors.origin'),
   },

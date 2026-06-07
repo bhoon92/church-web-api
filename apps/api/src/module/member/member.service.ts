@@ -60,6 +60,11 @@ export class MemberService {
     return { items, total, page, pageSize, counts };
   }
 
+  /** 엑셀 내보내기용 — 전체 재적 (이름 오름차순). */
+  listAll(churchId: number): Promise<MemberEntity[]> {
+    return this.repo().find({ where: { churchId }, order: { name: 'ASC', id: 'ASC' } });
+  }
+
   async findById(churchId: number, id: number) {
     const member = await this.repo().findOne({ where: { id, churchId } });
     if (!member) throw new NotFoundException('Member not found');

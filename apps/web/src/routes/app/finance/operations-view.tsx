@@ -11,9 +11,11 @@ import {
   listTransactions,
   type TransactionFlow,
 } from '@/api/finance'
+import { exportTransactions } from '@/api/exports'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CategorySelect } from './category-select'
 
@@ -37,6 +39,13 @@ export function OperationsView() {
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button size="sm" variant="outline" onClick={() => void exportTransactions()}>
+          <Download className="size-3.5" />
+          엑셀 내보내기
+        </Button>
+      </div>
+
       <Card>
         <CardContent className="p-5">
           <TransactionForm onCreated={invalidate} />

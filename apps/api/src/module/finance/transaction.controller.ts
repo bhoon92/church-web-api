@@ -12,7 +12,7 @@ export class TransactionController {
 
   @Get()
   list(@RequireChurch() auth: AuthContext & { churchId: number }) {
-    return this.transactions.list(auth.churchId);
+    return this.transactions.list(auth.churchId, 100);
   }
 
   @Post()

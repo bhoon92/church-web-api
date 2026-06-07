@@ -85,6 +85,18 @@ export class OfferingService {
     return { year, total, byCategory };
   }
 
+  /** 엑셀 내보내기용 — 기간 내 전체 헌금 (날짜 오름차순), 이름/카테고리 enrich. */
+  async listByDateRange(churchId: number, start: string, end: string): Promise<OfferingItem[]> {
+    const rows = await this.repo()
+      .createQueryBuilder('o')
+      .where('o.churchId = :churchId', { churchId })
+      .andWhere('o.date BETWEEN :start AND :end', { start, end })
+      .orderBy('o.date', 'ASC')
+      .addOrderBy('o.id', 'ASC')
+      .getMany();
+    return this.enrich(churchId, rows);
+  }
+
   /** 대시보드용 — 기간 합계. */
   async sumBetween(churchId: number, start: string, end: string): Promise<number> {
     const raw = (await this.repo()

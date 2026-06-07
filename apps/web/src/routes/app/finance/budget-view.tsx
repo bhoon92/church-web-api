@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Trash2 } from 'lucide-react'
+import { Download, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
 import {
@@ -14,6 +14,7 @@ import {
   type BudgetTargetKind,
   type FiscalYear,
 } from '@/api/finance'
+import { exportBudgets } from '@/api/exports'
 import { listReferences, type ReferenceKind } from '@/api/references'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -117,6 +118,15 @@ function FiscalYearBar({ fiscalYears, current }: { fiscalYears: FiscalYear[]; cu
           {fy.name}
         </button>
       ))}
+      <Button
+        size="sm"
+        variant="outline"
+        className="ml-auto"
+        onClick={() => void exportBudgets(current.id)}
+      >
+        <Download className="size-3.5" />
+        엑셀
+      </Button>
     </div>
   )
 }

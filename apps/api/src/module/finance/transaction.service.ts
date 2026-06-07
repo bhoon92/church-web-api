@@ -38,11 +38,11 @@ export class TransactionService {
     return this.repo().save(row);
   }
 
-  async list(churchId: number, limit = 50): Promise<TransactionItem[]> {
+  async list(churchId: number, limit?: number): Promise<TransactionItem[]> {
     const rows = await this.repo().find({
       where: { churchId },
       order: { date: 'DESC', id: 'DESC' },
-      take: limit,
+      ...(limit ? { take: limit } : {}),
     });
     if (rows.length === 0) return [];
 

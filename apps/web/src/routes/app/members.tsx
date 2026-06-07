@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Phone, Plus, Search, UserPlus, X } from 'lucide-react'
+import { Download, Phone, Plus, Search, UserPlus, X } from 'lucide-react'
 import { useState } from 'react'
 
 import {
@@ -11,6 +11,7 @@ import {
   type Member,
   type StageCounts,
 } from '@/api/members'
+import { exportMembers } from '@/api/exports'
 import { MemberDetailModal } from '@/routes/app/member-detail-modal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -61,10 +62,16 @@ export function MembersPage() {
         title="성도 명부"
         description="등록된 성도와 새가족을 관리합니다."
         actions={
-          <Button onClick={() => setShowCreate(true)}>
-            <Plus />
-            성도 추가
-          </Button>
+          <>
+            <Button variant="outline" onClick={() => void exportMembers()}>
+              <Download />
+              내보내기
+            </Button>
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus />
+              성도 추가
+            </Button>
+          </>
         }
       />
 

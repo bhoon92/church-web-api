@@ -8,10 +8,12 @@ import {
   listOfferingCategories,
   listOfferings,
 } from '@/api/finance'
+import { exportOfferings } from '@/api/exports'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Download } from 'lucide-react'
 import { CategorySelect } from './category-select'
 import { MemberPicker } from './member-picker'
 
@@ -34,7 +36,7 @@ export function OfferingsView() {
     <div className="space-y-4">
       <Card>
         <CardContent className="space-y-4 p-5">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm font-medium">입력 날짜</span>
             <Input
               type="date"
@@ -43,6 +45,15 @@ export function OfferingsView() {
               className="w-44"
             />
             <Badge tone="accent">빠른 입력</Badge>
+            <Button
+              size="sm"
+              variant="outline"
+              className="ml-auto"
+              onClick={() => void exportOfferings(Number(date.slice(0, 4)))}
+            >
+              <Download className="size-3.5" />
+              {date.slice(0, 4)}년 엑셀
+            </Button>
           </div>
           <OfferingForm date={date} onCreated={invalidate} />
         </CardContent>

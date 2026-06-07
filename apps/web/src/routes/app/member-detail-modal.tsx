@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { PastoralRecordSection } from './pastoral-record-section'
+import { ReceiptSection } from './receipt-section'
 
 const STAGE_TONE: Record<LifecycleStage, 'neutral' | 'muted' | 'success' | 'warn' | 'danger'> = {
   visitor: 'muted',
@@ -104,6 +105,10 @@ export function MemberDetailModal({
 
               <div className="border-t border-[var(--color-border)] pt-5">
                 <PastoralRecordSection memberId={memberId} />
+              </div>
+
+              <div className="border-t border-[var(--color-border)] pt-5">
+                <ReceiptSection memberId={memberId} />
               </div>
             </>
           )}
