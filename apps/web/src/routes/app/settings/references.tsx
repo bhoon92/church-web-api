@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/page-header'
 import { cn } from '@/lib/utils'
 
-const TABS: ReferenceKind[] = ['department', 'ministry', 'smallGroup', 'position']
+const TABS: ReferenceKind[] = ['department', 'ministry', 'smallGroup', 'position', 'worshipService']
 
 export function ReferencesPage() {
   const [tab, setTab] = useState<ReferenceKind>('department')
@@ -38,7 +38,7 @@ export function ReferencesPage() {
 
       <PageHeader
         eyebrow="설정"
-        title="부서·사역팀·목장·직분"
+        title="부서·사역팀·목장·직분·예배"
         description="교회마다 다른 명칭과 구성을 자유롭게 관리합니다."
       />
 
@@ -263,5 +263,7 @@ function exampleFor(kind: ReferenceKind): string {
       return '1구역 / 행복목장'
     case 'position':
       return '성도 / 집사 / 안수집사 / 장로'
+    case 'worshipService':
+      return '주일 1부 / 주일 2부 / 수요예배 / 새벽기도'
   }
 }

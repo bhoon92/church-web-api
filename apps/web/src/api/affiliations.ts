@@ -40,3 +40,20 @@ export async function endAffiliation(memberId: number, kind: AffiliationKind, re
   });
   if (!res.ok) throw new Error(`end ${kind} ${res.status}`);
 }
+
+export async function setAffiliationLeader(
+  memberId: number,
+  kind: AffiliationKind,
+  refId: number,
+  isLeader: boolean,
+  roleLabel?: string
+): Promise<unknown> {
+  const res = await fetch(`/api/members/${memberId}/${REF_PATH[kind]}/${refId}/leader`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ isLeader, roleLabel }),
+  });
+  if (!res.ok) throw new Error(`set leader ${kind} ${res.status}`);
+  return res.json();
+}

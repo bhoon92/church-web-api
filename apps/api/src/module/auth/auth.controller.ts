@@ -4,6 +4,7 @@ import { ConfigProvider } from '@src/config';
 import { ACCESS_TOKEN_COOKIE } from './auth.constants';
 import { AuthService, SessionResult } from './auth.service';
 import { CurrentAuth } from './decorators/current-auth.decorator';
+import { SelectChurchDto } from './dto/select-church.dto';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import type { GoogleProfile } from './strategies/google.strategy';
@@ -42,7 +43,7 @@ export class AuthController {
 
   @Post('select-church')
   @UseGuards(JwtAuthGuard)
-  async selectChurch(@CurrentAuth() auth: AuthContext, @Body() body: { churchId: number }, @Res() res: Response) {
+  async selectChurch(@CurrentAuth() auth: AuthContext, @Body() body: SelectChurchDto, @Res() res: Response) {
     const result = await this.auth.selectChurch(auth.accountId, body.churchId);
     this.setSessionCookie(res, result.token);
     res.json({ churchId: body.churchId, role: result.role });

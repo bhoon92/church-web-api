@@ -85,12 +85,24 @@ export class AuthService {
 
     const memberships = await membershipRepo.find({ where: { accountId: auth.accountId } });
 
+    // 다교회 선택 UI 를 위해 멤버십에 교회 이름 enrich
+    const churchIds = memberships.map(m => m.churchId);
+    const churches = churchIds.length > 0 ? await churchRepo.find({ where: churchIds.map(id => ({ id })) }) : [];
+    const churchNameMap = new Map(churches.map(c => [c.id, c.name]));
+    const enrichedMemberships = memberships.map(m => ({
+      id: m.id,
+      accountId: m.accountId,
+      churchId: m.churchId,
+      role: m.role,
+      churchName: churchNameMap.get(m.churchId) ?? null,
+    }));
+
     let currentChurch: ChurchEntity | null = null;
     if (auth.churchId) {
       currentChurch = await churchRepo.findOne({ where: { id: auth.churchId } });
     }
 
-    return { account, memberships, currentChurch, role: auth.role };
+    return { account, memberships: enrichedMemberships, currentChurch, role: auth.role };
   }
 
   private signToken(payload: JwtPayload): Promise<string> {

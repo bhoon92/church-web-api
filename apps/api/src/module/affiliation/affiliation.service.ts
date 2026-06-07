@@ -99,6 +99,33 @@ export class AffiliationService {
     await joinRepo.update(existing.id, { endDate: this.today() } as never);
   }
 
+  /** 활성 소속의 리더 여부/호칭 토글. */
+  async setLeader(
+    kind: AffiliationKind,
+    churchId: number,
+    memberId: number,
+    refId: number,
+    isLeader: boolean,
+    roleLabel?: string
+  ): Promise<JoinRow> {
+    const config = CONFIGS[kind] as Config<JoinRow, ObjectLiteral>;
+    const joinRepo = DataSources.instance.getRepository(config.joinEntity) as Repository<JoinRow>;
+
+    const existing = await joinRepo.findOne({
+      where: {
+        churchId,
+        memberId,
+        [config.refKey]: refId,
+        endDate: IsNull(),
+      } as never,
+    });
+    if (!existing) {
+      throw new NotFoundException('활성 소속을 찾을 수 없습니다.');
+    }
+    await joinRepo.update(existing.id, { isLeader, roleLabel: isLeader ? roleLabel : null } as never);
+    return (await joinRepo.findOne({ where: { id: existing.id } as never }))!;
+  }
+
   async listForMember(churchId: number, memberId: number) {
     const [departments, ministries, smallGroups] = await Promise.all([
       this.currentJoins('department', churchId, memberId),

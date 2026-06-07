@@ -1,7 +1,7 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { BaseDateEntityWithDeletedAt } from './base-date.entity';
 
-@Entity('member_small_groups')
+@Entity('member_small_group')
 @Index(['churchId'])
 @Index(['memberId'])
 @Index(['smallGroupId'])

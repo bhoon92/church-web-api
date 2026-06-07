@@ -7,7 +7,7 @@ export enum ChurchStatus {
   SUSPENDED = 'suspended',
 }
 
-@Entity('churches')
+@Entity('church')
 @Index(['slug'], { unique: true, where: 'deleted_at IS NULL' })
 export class ChurchEntity extends BaseDateEntityWithDeletedAt {
   @PrimaryGeneratedColumn()

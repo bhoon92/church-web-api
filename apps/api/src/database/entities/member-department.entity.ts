@@ -6,7 +6,7 @@ import { BaseDateEntityWithDeletedAt } from './base-date.entity';
  * 현재 소속: end_date IS NULL.
  * 변경 이력: 동일 (member, department) 에 대해 endDate 가 채워진 과거 row + endDate IS NULL 인 현재 row 동시 존재 가능.
  */
-@Entity('member_departments')
+@Entity('member_department')
 @Index(['churchId'])
 @Index(['memberId'])
 @Index(['departmentId'])

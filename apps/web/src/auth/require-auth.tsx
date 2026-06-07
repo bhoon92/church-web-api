@@ -18,9 +18,9 @@ export function RequireAuth() {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 
-  // 로그인됐는데 활성 교회 없음 → 온보딩
+  // 로그인됐는데 활성 교회 없음 → 소속 교회가 있으면 선택, 없으면 온보딩
   if (!state.currentChurch) {
-    return <Navigate to="/onboarding" replace />
+    return <Navigate to={state.memberships.length > 0 ? '/church-select' : '/onboarding'} replace />
   }
 
   return <Outlet />

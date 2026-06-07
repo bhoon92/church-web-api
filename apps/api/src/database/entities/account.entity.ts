@@ -6,7 +6,7 @@ import { BaseDateEntityWithDeletedAt } from './base-date.entity';
  * Account는 N개 Church에 Membership으로 연결 가능 (동일인 다교회 OK).
  * Church/Member entity와 별개 — Member는 교회 안의 성도 row.
  */
-@Entity('accounts')
+@Entity('account')
 @Index(['googleId'], { unique: true, where: 'deleted_at IS NULL' })
 @Index(['email'], { unique: true, where: 'deleted_at IS NULL' })
 export class AccountEntity extends BaseDateEntityWithDeletedAt {

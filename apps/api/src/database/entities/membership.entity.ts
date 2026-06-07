@@ -8,7 +8,7 @@ export enum MembershipRole {
   VIEWER = 'viewer',
 }
 
-@Entity('memberships')
+@Entity('membership')
 @Index(['accountId', 'churchId'], { unique: true, where: 'deleted_at IS NULL' })
 @Index(['churchId'])
 export class MembershipEntity extends BaseDateEntityWithDeletedAt {

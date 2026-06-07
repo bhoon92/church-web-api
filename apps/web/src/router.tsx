@@ -9,6 +9,7 @@ import { FinancePage } from '@/routes/app/finance'
 import { MembersPage } from '@/routes/app/members'
 import { SettingsPage } from '@/routes/app/settings'
 import { ReferencesPage } from '@/routes/app/settings/references'
+import { ChurchSelectPage } from '@/routes/church-select'
 import { HomePage } from '@/routes/home'
 import { LoginPage } from '@/routes/login'
 import { OnboardingPage } from '@/routes/onboarding'
@@ -17,6 +18,7 @@ export const router = createBrowserRouter([
   { path: '/', element: <HomePage /> },
   { path: '/login', element: <LoginPage /> },
   { path: '/onboarding', element: <OnboardingPage /> },
+  { path: '/church-select', element: <ChurchSelectPage /> },
   {
     element: <RequireAuth />,
     children: [

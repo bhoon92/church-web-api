@@ -1,10 +1,11 @@
-export type ReferenceKind = 'department' | 'ministry' | 'smallGroup' | 'position';
+export type ReferenceKind = 'department' | 'ministry' | 'smallGroup' | 'position' | 'worshipService';
 
 export const REF_PATH: Record<ReferenceKind, string> = {
   department: 'departments',
   ministry: 'ministries',
   smallGroup: 'small-groups',
   position: 'positions',
+  worshipService: 'worship-services',
 };
 
 export const REF_LABEL: Record<ReferenceKind, string> = {
@@ -12,6 +13,7 @@ export const REF_LABEL: Record<ReferenceKind, string> = {
   ministry: '사역팀',
   smallGroup: '목장',
   position: '직분',
+  worshipService: '예배',
 };
 
 export type Reference = {

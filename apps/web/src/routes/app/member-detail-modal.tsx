@@ -6,6 +6,7 @@ import {
   assignAffiliation,
   type AffiliationKind,
   endAffiliation,
+  setAffiliationLeader,
 } from '@/api/affiliations'
 import {
   fetchMember,
@@ -18,6 +19,7 @@ import { STAGE_LABEL, type LifecycleStage } from '@/api/members'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { PastoralRecordSection } from './pastoral-record-section'
 
 const STAGE_TONE: Record<LifecycleStage, 'neutral' | 'muted' | 'success' | 'warn' | 'danger'> = {
   visitor: 'muted',
@@ -99,6 +101,10 @@ export function MemberDetailModal({
                   items={affiliationsByKind(member.affiliations, kind)}
                 />
               ))}
+
+              <div className="border-t border-[var(--color-border)] pt-5">
+                <PastoralRecordSection memberId={memberId} />
+              </div>
             </>
           )}
         </div>
@@ -160,6 +166,15 @@ function AffiliationSection({
     },
   })
 
+  const leaderMut = useMutation({
+    mutationFn: ({ refId, isLeader }: { refId: number; isLeader: boolean }) =>
+      setAffiliationLeader(memberId, kind, refId, isLeader),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['member', memberId] })
+      queryClient.invalidateQueries({ queryKey: ['members'] })
+    },
+  })
+
   const assignedIds = new Set(items.map((i) => i.refId))
   const available = refs.filter((r: Reference) => !assignedIds.has(r.id))
 
@@ -188,6 +203,7 @@ function AffiliationSection({
             key={a.id}
             label={a.refName ?? '(이름 없음)'}
             leader={a.isLeader}
+            onToggleLeader={() => leaderMut.mutate({ refId: a.refId, isLeader: !a.isLeader })}
             onRemove={() => endMut.mutate(a.refId)}
           />
         ))}
@@ -226,10 +242,12 @@ function AffiliationSection({
 function AffiliationChip({
   label,
   leader,
+  onToggleLeader,
   onRemove,
 }: {
   label: string
   leader: boolean
+  onToggleLeader: () => void
   onRemove: () => void
 }) {
   return (
@@ -241,7 +259,17 @@ function AffiliationChip({
           : 'border-[var(--color-border)] bg-[var(--color-background)]',
       )}
     >
-      {leader && <span className="text-[10px]">★</span>}
+      <button
+        onClick={onToggleLeader}
+        aria-label={leader ? '리더 해제' : '리더 지정'}
+        title={leader ? '리더 해제' : '리더 지정'}
+        className={cn(
+          'text-[10px] leading-none transition-opacity',
+          leader ? 'opacity-100' : 'opacity-40 hover:opacity-100',
+        )}
+      >
+        ★
+      </button>
       {label}
       <button
         onClick={onRemove}

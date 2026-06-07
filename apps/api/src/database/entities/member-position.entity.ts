@@ -6,7 +6,7 @@ import { BaseDateEntityWithDeletedAt } from './base-date.entity';
  * 승직 시: 기존 row endDate 설정 + 새 row 생성 (트랜잭션).
  * partial unique 로 동시 2개 활성 방지.
  */
-@Entity('member_positions')
+@Entity('member_position')
 @Index(['churchId'])
 @Index(['memberId'])
 @Index(['positionId'])

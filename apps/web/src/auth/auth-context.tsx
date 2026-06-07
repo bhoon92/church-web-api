@@ -20,6 +20,7 @@ export type Membership = {
   accountId: number
   churchId: number
   role: 'owner' | 'admin' | 'staff' | 'viewer'
+  churchName: string | null
 }
 
 export type CurrentChurch = {
@@ -43,6 +44,7 @@ type AuthContextValue = {
   state: AuthState
   loginWithGoogle: () => void
   devLogin: (email: string, name?: string) => Promise<void>
+  selectChurch: (churchId: number) => Promise<void>
   logout: () => Promise<void>
   refresh: () => Promise<void>
 }
@@ -93,6 +95,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [queryClient],
   )
 
+  const selectChurch = useCallback(
+    async (churchId: number) => {
+      const res = await fetch('/api/auth/select-church', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ churchId }),
+      })
+      if (!res.ok) throw new Error('select-church failed')
+      await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+    },
+    [queryClient],
+  )
+
   const logout = useCallback(async () => {
     await fetch('/api/auth/logout', {
       method: 'POST',
@@ -108,8 +124,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [queryClient])
 
   const value = useMemo<AuthContextValue>(
-    () => ({ state, loginWithGoogle, devLogin, logout, refresh }),
-    [state, loginWithGoogle, devLogin, logout, refresh],
+    () => ({ state, loginWithGoogle, devLogin, selectChurch, logout, refresh }),
+    [state, loginWithGoogle, devLogin, selectChurch, logout, refresh],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

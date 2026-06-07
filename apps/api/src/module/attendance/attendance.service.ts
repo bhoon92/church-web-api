@@ -1,0 +1,102 @@
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { DataSources } from '@src/database/data-sources';
+import { AttendanceEntity } from '@src/database/entities/attendance.entity';
+import { LifecycleStage, MemberEntity } from '@src/database/entities/member.entity';
+import { WorshipServiceEntity } from '@src/database/entities/worship-service.entity';
+import { MarkAttendanceDto } from './dto/mark-attendance.dto';
+
+/** 출석 명단에서 제외할 lifecycle stage (별세/이명/익명). */
+const EXCLUDED_STAGES: LifecycleStage[] = [LifecycleStage.DECEASED, LifecycleStage.TRANSFERRED, LifecycleStage.ANONYMOUS];
+
+export type RosterItem = {
+  memberId: number;
+  name: string;
+  lifecycleStage: LifecycleStage;
+  present: boolean;
+};
+
+export type Roster = {
+  worshipServiceId: number;
+  date: string;
+  items: RosterItem[];
+  present: number;
+  total: number;
+  rate: number;
+};
+
+@Injectable()
+export class AttendanceService {
+  private repo() {
+    return DataSources.instance.getRepository(AttendanceEntity);
+  }
+
+  /** 한 예배·날짜의 출석 명단 + 출석률. */
+  async roster(churchId: number, worshipServiceId: number, date: string): Promise<Roster> {
+    await this.assertWorshipService(churchId, worshipServiceId);
+
+    const members = await DataSources.instance.getRepository(MemberEntity).find({
+      where: { churchId },
+      order: { name: 'ASC', id: 'ASC' },
+    });
+    const roster = members.filter(m => !EXCLUDED_STAGES.includes(m.lifecycleStage));
+
+    const rows = await this.repo().find({ where: { churchId, worshipServiceId, date } });
+    const presentSet = new Set(rows.map(r => r.memberId));
+
+    const items: RosterItem[] = roster.map(m => ({
+      memberId: m.id,
+      name: m.name,
+      lifecycleStage: m.lifecycleStage,
+      present: presentSet.has(m.id),
+    }));
+
+    const present = items.filter(i => i.present).length;
+    const total = items.length;
+    return {
+      worshipServiceId,
+      date,
+      items,
+      present,
+      total,
+      rate: total === 0 ? 0 : Math.round((present / total) * 100),
+    };
+  }
+
+  /** 출석 토글 — present=true 면 row 생성(없을 때만), false 면 활성 row soft delete. */
+  async mark(churchId: number, dto: MarkAttendanceDto): Promise<{ present: boolean }> {
+    await this.assertWorshipService(churchId, dto.worshipServiceId);
+    await this.assertMember(churchId, dto.memberId);
+
+    const repo = this.repo();
+    const existing = await repo.findOne({
+      where: { churchId, worshipServiceId: dto.worshipServiceId, memberId: dto.memberId, date: dto.date },
+    });
+
+    if (dto.present) {
+      if (!existing) {
+        await repo.save(repo.create({ churchId, worshipServiceId: dto.worshipServiceId, memberId: dto.memberId, date: dto.date }));
+      }
+      return { present: true };
+    }
+
+    if (existing) {
+      await repo.softDelete(existing.id);
+    }
+    return { present: false };
+  }
+
+  /** 한 성도의 누적 출석 횟수 (member 상세용). soft-delete 는 자동 제외. */
+  async countForMember(churchId: number, memberId: number): Promise<number> {
+    return this.repo().count({ where: { churchId, memberId } });
+  }
+
+  private async assertWorshipService(churchId: number, worshipServiceId: number): Promise<void> {
+    const s = await DataSources.instance.getRepository(WorshipServiceEntity).findOne({ where: { id: worshipServiceId, churchId } });
+    if (!s) throw new BadRequestException('예배를 찾을 수 없습니다.');
+  }
+
+  private async assertMember(churchId: number, memberId: number): Promise<void> {
+    const m = await DataSources.instance.getRepository(MemberEntity).findOne({ where: { id: memberId, churchId } });
+    if (!m) throw new NotFoundException('Member not found');
+  }
+}

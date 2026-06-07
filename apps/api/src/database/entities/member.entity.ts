@@ -18,7 +18,7 @@ export enum LifecycleStage {
   ANONYMOUS = 'anonymous', // 익명 (무명 헌금 묶음용)
 }
 
-@Entity('members')
+@Entity('member')
 @Index(['churchId'])
 @Index(['churchId', 'lifecycleStage'])
 export class MemberEntity extends BaseDateEntityWithDeletedAt {

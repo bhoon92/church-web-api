@@ -6,7 +6,7 @@ import { BaseDateEntityWithDeletedAt } from './base-date.entity';
  * per-church reference table. 교회마다 직제 자유 정의.
  * 변경 이력은 MemberPositionEntity 로 추적.
  */
-@Entity('positions')
+@Entity('position')
 @Index(['churchId'])
 @Index(['churchId', 'name'], { unique: true, where: 'deleted_at IS NULL' })
 export class PositionEntity extends BaseDateEntityWithDeletedAt {
