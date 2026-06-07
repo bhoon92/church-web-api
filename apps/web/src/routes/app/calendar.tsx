@@ -1,73 +1,93 @@
-import { ChevronLeft, ChevronRight, Plus, Share2 } from 'lucide-react'
-import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Check, ChevronLeft, ChevronRight, Copy, Plus, RefreshCw, Share2, X } from 'lucide-react'
+import { useMemo, useState } from 'react'
 
+import {
+  createCalendar,
+  createEvent,
+  deleteEvent,
+  feedUrl,
+  getSubscription,
+  listCalendars,
+  listEvents,
+  regenerateSubscription,
+  updateSubscription,
+  type Calendar,
+  type CalendarEvent,
+} from '@/api/calendar'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/page-header'
 import { cn } from '@/lib/utils'
 
-type LayerKind = '공지' | '전체' | '부서' | '사역팀' | '목장' | '개인'
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 
-type CalendarLayer = {
-  id: string
-  name: string
-  kind: LayerKind
-  color: string
-  on: boolean
+function ymd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-const INITIAL_LAYERS: CalendarLayer[] = [
-  { id: 'notice', name: '공지사항', kind: '공지', color: 'oklch(0.65 0.18 25)', on: true },
-  { id: 'church', name: '전체 / 절기', kind: '전체', color: 'oklch(0.55 0.14 250)', on: true },
-  { id: 'youth', name: '청년부', kind: '부서', color: 'oklch(0.62 0.15 160)', on: true },
-  { id: 'middle', name: '중고등부', kind: '부서', color: 'oklch(0.6 0.16 300)', on: false },
-  { id: 'praise', name: '찬양팀', kind: '사역팀', color: 'oklch(0.65 0.15 50)', on: true },
-  { id: 'cell', name: '1구역', kind: '목장', color: 'oklch(0.6 0.14 200)', on: false },
-  { id: 'me', name: '내 일정', kind: '개인', color: 'oklch(0.55 0.04 240)', on: true },
-]
-
-type Event = {
-  day: number
-  title: string
-  layerId: string
-  time?: string
+/** 표시 월의 그리드(앞뒤 주 포함) Date 배열. */
+function buildMatrix(year: number, month: number): Date[] {
+  const first = new Date(year, month, 1)
+  const start = new Date(first)
+  start.setDate(1 - first.getDay())
+  const cells: Date[] = []
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(start)
+    d.setDate(start.getDate() + i)
+    cells.push(d)
+  }
+  return cells
 }
-
-const EVENTS: Event[] = [
-  { day: 2, title: '주일예배', layerId: 'church', time: '11:00' },
-  { day: 2, title: '청년 모임', layerId: 'youth', time: '14:00' },
-  { day: 5, title: '수요예배', layerId: 'church', time: '19:30' },
-  { day: 7, title: '여름수련회 공지', layerId: 'notice' },
-  { day: 9, title: '주일예배', layerId: 'church', time: '11:00' },
-  { day: 9, title: '찬양 연습', layerId: 'praise', time: '15:00' },
-  { day: 12, title: '수요예배', layerId: 'church', time: '19:30' },
-  { day: 13, title: '심방 — 김민서', layerId: 'me', time: '10:00' },
-  { day: 16, title: '주일예배', layerId: 'church', time: '11:00' },
-  { day: 17, title: '여름수련회', layerId: 'youth' },
-  { day: 18, title: '여름수련회', layerId: 'youth' },
-  { day: 19, title: '여름수련회', layerId: 'youth' },
-  { day: 23, title: '주일예배', layerId: 'church', time: '11:00' },
-]
 
 export function CalendarPage() {
-  const [layers, setLayers] = useState(INITIAL_LAYERS)
+  const today = new Date()
+  const [year, setYear] = useState(today.getFullYear())
+  const [month, setMonth] = useState(today.getMonth())
+  const [hidden, setHidden] = useState<Set<number>>(new Set())
+  const [addFor, setAddFor] = useState<string | null>(null)
+  const [showSub, setShowSub] = useState(false)
 
-  const visibleLayerIds = new Set(layers.filter((l) => l.on).map((l) => l.id))
-  const layerById = new Map(layers.map((l) => [l.id, l]))
+  const matrix = useMemo(() => buildMatrix(year, month), [year, month])
+  const rangeFrom = matrix[0]
+  const rangeTo = new Date(matrix[41])
+  rangeTo.setHours(23, 59, 59)
+
+  const { data: calendars = [] } = useQuery({ queryKey: ['calendars'], queryFn: listCalendars })
+  const { data: events = [] } = useQuery({
+    queryKey: ['calendar-events', ymd(rangeFrom), ymd(rangeTo)],
+    queryFn: () => listEvents(rangeFrom.toISOString(), rangeTo.toISOString()),
+  })
+
+  const calById = new Map(calendars.map((c) => [c.id, c]))
+  const visibleEvents = events.filter((e) => !hidden.has(e.calendarId))
+  const byDay = new Map<string, CalendarEvent[]>()
+  for (const e of visibleEvents) {
+    const key = ymd(new Date(e.startAt))
+    if (!byDay.has(key)) byDay.set(key, [])
+    byDay.get(key)!.push(e)
+  }
+
+  const go = (delta: number) => {
+    const d = new Date(year, month + delta, 1)
+    setYear(d.getFullYear())
+    setMonth(d.getMonth())
+  }
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="달력"
-        title="2026년 6월"
+        title={`${year}년 ${month + 1}월`}
         description="공지·부서·개인 일정을 한 화면에서 확인합니다."
         actions={
           <>
-            <Button variant="outline">
+            <Button variant="outline" onClick={() => setShowSub(true)}>
               <Share2 />
-              구독 링크
+              구독
             </Button>
-            <Button>
+            <Button onClick={() => setAddFor(ymd(today))}>
               <Plus />
               일정 추가
             </Button>
@@ -76,89 +96,47 @@ export function CalendarPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-[16rem_1fr]">
-        <Card className="h-fit">
-          <CardContent className="space-y-1 p-3">
-            <div className="px-2 py-1.5 text-xs font-medium text-[var(--color-muted-foreground)]">
-              내 캘린더
-            </div>
-            <ul className="space-y-0.5">
-              {layers.map((l) => (
-                <li key={l.id}>
-                  <button
-                    onClick={() =>
-                      setLayers((prev) =>
-                        prev.map((p) =>
-                          p.id === l.id ? { ...p, on: !p.on } : p,
-                        ),
-                      )
-                    }
-                    className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-[var(--color-muted)]"
-                  >
-                    <span
-                      className={cn(
-                        'flex size-4 items-center justify-center rounded-[5px] border transition-all',
-                        l.on
-                          ? 'border-transparent'
-                          : 'border-[var(--color-border)] bg-transparent',
-                      )}
-                      style={l.on ? { backgroundColor: l.color } : undefined}
-                    >
-                      {l.on && (
-                        <svg
-                          viewBox="0 0 12 12"
-                          className="size-3 text-white"
-                          aria-hidden
-                        >
-                          <path
-                            d="M2.5 6.5 5 9l4.5-5"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            fill="none"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      )}
-                    </span>
-                    <span
-                      className={cn(
-                        'flex-1 truncate',
-                        l.on
-                          ? 'text-[var(--color-foreground)]'
-                          : 'text-[var(--color-muted-foreground)]',
-                      )}
-                    >
-                      {l.name}
-                    </span>
-                    <span className="text-[10px] text-[var(--color-muted-foreground)]">
-                      {l.kind}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+        <CalendarSidebar
+          calendars={calendars}
+          hidden={hidden}
+          onToggle={(id) =>
+            setHidden((prev) => {
+              const next = new Set(prev)
+              if (next.has(id)) next.delete(id)
+              else next.add(id)
+              return next
+            })
+          }
+        />
 
         <Card>
           <CardContent className="p-4">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <Button variant="ghost" size="icon" aria-label="이전 달">
+                <Button variant="ghost" size="icon" aria-label="이전 달" onClick={() => go(-1)}>
                   <ChevronLeft />
                 </Button>
-                <div className="px-2 text-sm font-semibold">2026년 6월</div>
-                <Button variant="ghost" size="icon" aria-label="다음 달">
+                <div className="px-2 text-sm font-semibold">
+                  {year}년 {month + 1}월
+                </div>
+                <Button variant="ghost" size="icon" aria-label="다음 달" onClick={() => go(1)}>
                   <ChevronRight />
                 </Button>
               </div>
-              <Button variant="ghost" size="sm">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setYear(today.getFullYear())
+                  setMonth(today.getMonth())
+                }}
+              >
                 오늘
               </Button>
             </div>
 
             <div className="grid grid-cols-7 border-t border-l border-[var(--color-border)]">
-              {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
+              {WEEKDAYS.map((d, i) => (
                 <div
                   key={d}
                   className={cn(
@@ -170,82 +148,374 @@ export function CalendarPage() {
                   {d}
                 </div>
               ))}
-              {buildMonthGrid().map((cell, i) => {
-                const events = cell
-                  ? EVENTS.filter(
-                      (e) =>
-                        e.day === cell &&
-                        visibleLayerIds.has(e.layerId),
-                    )
-                  : []
-                const isToday = cell === 6
+              {matrix.map((d, i) => {
+                const key = ymd(d)
+                const inMonth = d.getMonth() === month
+                const isToday = key === ymd(today)
+                const dayEvents = byDay.get(key) ?? []
                 return (
-                  <div
+                  <button
                     key={i}
+                    onClick={() => setAddFor(key)}
                     className={cn(
-                      'min-h-24 border-r border-b border-[var(--color-border)] p-1.5',
-                      !cell && 'bg-[var(--color-muted)]/40',
+                      'min-h-24 border-r border-b border-[var(--color-border)] p-1.5 text-left transition-colors hover:bg-[var(--color-muted)]/50',
+                      !inMonth && 'bg-[var(--color-muted)]/40',
                     )}
                   >
-                    {cell && (
-                      <>
-                        <div
-                          className={cn(
-                            'mb-1 inline-flex size-6 items-center justify-center text-xs font-medium tabular-nums',
-                            isToday &&
-                              'rounded-full bg-[var(--color-primary)] text-[var(--color-primary-foreground)]',
-                          )}
-                        >
-                          {cell}
+                    <div
+                      className={cn(
+                        'mb-1 inline-flex size-6 items-center justify-center text-xs font-medium tabular-nums',
+                        isToday && 'rounded-full bg-[var(--color-primary)] text-[var(--color-primary-foreground)]',
+                        !inMonth && !isToday && 'text-[var(--color-muted-foreground)]',
+                      )}
+                    >
+                      {d.getDate()}
+                    </div>
+                    <div className="space-y-1">
+                      {dayEvents.slice(0, 3).map((e) => (
+                        <EventPill key={e.id} event={e} color={calById.get(e.calendarId)?.color} />
+                      ))}
+                      {dayEvents.length > 3 && (
+                        <div className="px-1.5 text-[10px] text-[var(--color-muted-foreground)]">
+                          +{dayEvents.length - 3}
                         </div>
-                        <div className="space-y-1">
-                          {events.slice(0, 3).map((e, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[10px]"
-                              style={{
-                                backgroundColor: `color-mix(in oklch, ${layerById.get(e.layerId)?.color} 14%, transparent)`,
-                                color: layerById.get(e.layerId)?.color,
-                              }}
-                            >
-                              <span
-                                className="inline-block size-1.5 shrink-0 rounded-full"
-                                style={{
-                                  backgroundColor:
-                                    layerById.get(e.layerId)?.color,
-                                }}
-                              />
-                              <span className="truncate font-medium">
-                                {e.title}
-                              </span>
-                            </div>
-                          ))}
-                          {events.length > 3 && (
-                            <div className="px-1.5 text-[10px] text-[var(--color-muted-foreground)]">
-                              +{events.length - 3}
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  </button>
                 )
               })}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {addFor && <EventModal date={addFor} calendars={calendars} onClose={() => setAddFor(null)} />}
+      {showSub && <SubscriptionModal calendars={calendars} onClose={() => setShowSub(false)} />}
     </div>
   )
 }
 
-function buildMonthGrid(): (number | null)[] {
-  // June 2026: starts on Monday (day index 1), 30 days
-  const startWeekday = 1
-  const daysInMonth = 30
-  const cells: (number | null)[] = []
-  for (let i = 0; i < startWeekday; i++) cells.push(null)
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
-  while (cells.length % 7 !== 0) cells.push(null)
-  return cells
+function EventPill({ event, color }: { event: CalendarEvent; color?: string }) {
+  const queryClient = useQueryClient()
+  const deleteMut = useMutation({
+    mutationFn: () => deleteEvent(event.id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['calendar-events'] }),
+  })
+  const time = event.allDay
+    ? null
+    : new Date(event.startAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
+
+  return (
+    <div
+      onClick={(e) => {
+        e.stopPropagation()
+        if (window.confirm(`"${event.title}" 일정을 삭제할까요?`)) deleteMut.mutate()
+      }}
+      className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px]"
+      style={{
+        backgroundColor: color ? `color-mix(in oklch, ${color} 14%, transparent)` : 'var(--color-muted)',
+        color: color ?? 'inherit',
+      }}
+    >
+      <span className="inline-block size-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+      {time && <span className="shrink-0 tabular-nums opacity-80">{time}</span>}
+      <span className="truncate font-medium">{event.title}</span>
+    </div>
+  )
+}
+
+function CalendarSidebar({
+  calendars,
+  hidden,
+  onToggle,
+}: {
+  calendars: Calendar[]
+  hidden: Set<number>
+  onToggle: (id: number) => void
+}) {
+  const queryClient = useQueryClient()
+  const [adding, setAdding] = useState(false)
+  const [name, setName] = useState('')
+
+  const createMut = useMutation({
+    mutationFn: () => createCalendar({ name: name.trim() }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['calendars'] })
+      setName('')
+      setAdding(false)
+    },
+  })
+
+  return (
+    <Card className="h-fit">
+      <CardContent className="space-y-1 p-3">
+        <div className="flex items-center justify-between px-2 py-1.5">
+          <span className="text-xs font-medium text-[var(--color-muted-foreground)]">내 캘린더</span>
+          <button
+            onClick={() => setAdding(!adding)}
+            className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+            aria-label="달력 추가"
+          >
+            <Plus className="size-4" />
+          </button>
+        </div>
+
+        {adding && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (name.trim()) createMut.mutate()
+            }}
+            className="px-1 pb-2"
+          >
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="새 달력 이름"
+              autoFocus
+              maxLength={40}
+              className="h-8"
+            />
+          </form>
+        )}
+
+        <ul className="space-y-0.5">
+          {calendars.map((c) => {
+            const on = !hidden.has(c.id)
+            return (
+              <li key={c.id}>
+                <button
+                  onClick={() => onToggle(c.id)}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-[var(--color-muted)]"
+                >
+                  <span
+                    className={cn(
+                      'flex size-4 items-center justify-center rounded-[5px] border transition-all',
+                      on ? 'border-transparent' : 'border-[var(--color-border)]',
+                    )}
+                    style={on ? { backgroundColor: c.color } : undefined}
+                  >
+                    {on && <Check className="size-3 text-white" strokeWidth={3} />}
+                  </span>
+                  <span
+                    className={cn(
+                      'flex-1 truncate',
+                      on ? 'text-[var(--color-foreground)]' : 'text-[var(--color-muted-foreground)]',
+                    )}
+                  >
+                    {c.name}
+                  </span>
+                </button>
+              </li>
+            )
+          })}
+          {calendars.length === 0 && !adding && (
+            <li className="px-2 py-3 text-xs text-[var(--color-muted-foreground)]">
+              달력이 없습니다. + 로 추가하세요.
+            </li>
+          )}
+        </ul>
+      </CardContent>
+    </Card>
+  )
+}
+
+function EventModal({
+  date,
+  calendars,
+  onClose,
+}: {
+  date: string
+  calendars: Calendar[]
+  onClose: () => void
+}) {
+  const queryClient = useQueryClient()
+  const [title, setTitle] = useState('')
+  const [calendarId, setCalendarId] = useState<number | null>(calendars[0]?.id ?? null)
+  const [allDay, setAllDay] = useState(false)
+  const [startTime, setStartTime] = useState('11:00')
+  const [endTime, setEndTime] = useState('12:00')
+  const [location, setLocation] = useState('')
+
+  const createMut = useMutation({
+    mutationFn: () => {
+      const startAt = allDay ? new Date(`${date}T00:00:00`) : new Date(`${date}T${startTime}`)
+      const endAt = allDay ? undefined : new Date(`${date}T${endTime}`)
+      return createEvent({
+        calendarId: calendarId!,
+        title: title.trim(),
+        location: location.trim() || undefined,
+        allDay,
+        startAt: startAt.toISOString(),
+        endAt: endAt?.toISOString(),
+      })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] })
+      onClose()
+    },
+  })
+
+  return (
+    <ModalShell title={`일정 추가 · ${date}`} onClose={onClose}>
+      <div className="space-y-3">
+        <Input placeholder="일정 제목" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+
+        <div className="flex flex-wrap gap-1.5">
+          {calendars.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setCalendarId(c.id)}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                calendarId === c.id
+                  ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
+                  : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]',
+              )}
+            >
+              <span className="size-2 rounded-full" style={{ backgroundColor: c.color }} />
+              {c.name}
+            </button>
+          ))}
+        </div>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} />
+          종일
+        </label>
+
+        {!allDay && (
+          <div className="flex items-center gap-2">
+            <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-32" />
+            <span className="text-[var(--color-muted-foreground)]">~</span>
+            <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-32" />
+          </div>
+        )}
+
+        <Input placeholder="장소 (선택)" value={location} onChange={(e) => setLocation(e.target.value)} />
+
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="ghost" onClick={onClose}>
+            취소
+          </Button>
+          <Button onClick={() => createMut.mutate()} disabled={!title.trim() || !calendarId || createMut.isPending}>
+            추가
+          </Button>
+        </div>
+      </div>
+    </ModalShell>
+  )
+}
+
+function SubscriptionModal({ calendars, onClose }: { calendars: Calendar[]; onClose: () => void }) {
+  const queryClient = useQueryClient()
+  const [copied, setCopied] = useState(false)
+
+  const { data: sub } = useQuery({ queryKey: ['calendar-subscription'], queryFn: getSubscription })
+
+  const updateMut = useMutation({
+    mutationFn: (calendarIds: number[]) => updateSubscription(calendarIds),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['calendar-subscription'] }),
+  })
+  const regenMut = useMutation({
+    mutationFn: regenerateSubscription,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['calendar-subscription'] }),
+  })
+
+  const url = sub ? feedUrl(sub) : ''
+  const included = new Set(sub?.calendarIds ?? [])
+
+  const toggle = (id: number) => {
+    if (!sub) return
+    const next = new Set(included)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    updateMut.mutate(Array.from(next))
+  }
+
+  return (
+    <ModalShell title="iCal 구독" onClose={onClose}>
+      <div className="space-y-4">
+        <p className="text-xs text-[var(--color-muted-foreground)]">
+          아래 URL 을 Google/Apple 캘린더에 “URL로 구독” 하면 일정이 자동 동기화됩니다.
+        </p>
+
+        <div className="flex gap-2">
+          <Input readOnly value={url} className="text-xs" onFocus={(e) => e.currentTarget.select()} />
+          <Button
+            variant="outline"
+            onClick={async () => {
+              await navigator.clipboard.writeText(url)
+              setCopied(true)
+              setTimeout(() => setCopied(false), 1500)
+            }}
+          >
+            {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+          </Button>
+        </div>
+
+        <div>
+          <div className="mb-2 text-xs font-medium text-[var(--color-muted-foreground)]">피드에 포함할 달력</div>
+          <ul className="space-y-1">
+            {calendars.map((c) => (
+              <li key={c.id}>
+                <label className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm hover:bg-[var(--color-muted)]">
+                  <input
+                    type="checkbox"
+                    checked={included.has(c.id)}
+                    onChange={() => toggle(c.id)}
+                    disabled={updateMut.isPending}
+                  />
+                  <span className="size-2.5 rounded-full" style={{ backgroundColor: c.color }} />
+                  {c.name}
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="flex items-center justify-between border-t border-[var(--color-border)] pt-3">
+          <span className="text-xs text-[var(--color-muted-foreground)]">URL 유출 시 재발급하세요</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              if (window.confirm('기존 구독 URL 이 무효화됩니다. 계속할까요?')) regenMut.mutate()
+            }}
+            disabled={regenMut.isPending}
+          >
+            <RefreshCw className="size-3.5" />
+            토큰 재발급
+          </Button>
+        </div>
+      </div>
+    </ModalShell>
+  )
+}
+
+function ModalShell({
+  title,
+  onClose,
+  children,
+}: {
+  title: string
+  onClose: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-2xl bg-[var(--color-background)] shadow-md"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-3.5">
+          <h2 className="text-base font-semibold">{title}</h2>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="닫기">
+            <X />
+          </Button>
+        </div>
+        <div className="p-5">{children}</div>
+      </div>
+    </div>
+  )
 }

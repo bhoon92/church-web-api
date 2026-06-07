@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { AffiliationModule } from './module/affiliation/affiliation.module';
 import { AttendanceModule } from './module/attendance/attendance.module';
 import { AuthModule } from './module/auth/auth.module';
+import { CalendarModule } from './module/calendar/calendar.module';
 import { ChurchModule } from './module/church/church.module';
 import { ExportModule } from './module/export/export.module';
 import { FinanceModule } from './module/finance/finance.module';
@@ -26,6 +27,7 @@ import { ReferenceModule } from './module/reference/reference.module';
     FinanceModule,
     ExportModule,
     GalleryModule,
+    CalendarModule,
   ],
   controllers: [AppController],
   providers: [AppService],
