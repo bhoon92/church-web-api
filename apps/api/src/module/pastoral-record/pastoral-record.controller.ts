@@ -1,22 +1,26 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { RequireChurch } from '@src/module/auth/decorators/current-auth.decorator';
 import { JwtAuthGuard } from '@src/module/auth/guards/jwt-auth.guard';
+import { Permissions } from '@src/module/auth/decorators/permissions.decorator';
+import { PermissionsGuard } from '@src/module/auth/guards/permissions.guard';
 import type { AuthContext } from '@src/module/auth/types/auth-context';
 import { CreatePastoralRecordDto } from './dto/create-pastoral-record.dto';
 import { UpdatePastoralRecordDto } from './dto/update-pastoral-record.dto';
 import { PastoralRecordService } from './pastoral-record.service';
 
 @Controller('members/:memberId/pastoral-records')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class PastoralRecordController {
   constructor(private readonly records: PastoralRecordService) {}
 
   @Get()
+  @Permissions('pastoral:read')
   list(@RequireChurch() auth: AuthContext & { churchId: number }, @Param('memberId', ParseIntPipe) memberId: number) {
     return this.records.listForMember(auth.churchId, memberId);
   }
 
   @Post()
+  @Permissions('pastoral:write')
   create(
     @RequireChurch() auth: AuthContext & { churchId: number },
     @Param('memberId', ParseIntPipe) memberId: number,
@@ -26,6 +30,7 @@ export class PastoralRecordController {
   }
 
   @Patch(':id')
+  @Permissions('pastoral:write')
   update(
     @RequireChurch() auth: AuthContext & { churchId: number },
     @Param('memberId', ParseIntPipe) memberId: number,
@@ -36,6 +41,7 @@ export class PastoralRecordController {
   }
 
   @Delete(':id')
+  @Permissions('pastoral:write')
   @HttpCode(204)
   remove(
     @RequireChurch() auth: AuthContext & { churchId: number },

@@ -16,9 +16,12 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/page-header'
 import { cn } from '@/lib/utils'
+import { usePermissions } from '@/lib/permissions'
 
 export function GalleryPage() {
   const [selected, setSelected] = useState<ChurchEvent | null>(null)
+  const { can } = usePermissions()
+  const canWrite = can('gallery:write')
 
   return (
     <div className="space-y-6">
@@ -28,15 +31,15 @@ export function GalleryPage() {
         description="수련회·행사 사진을 행사별 폴더로 관리합니다."
       />
       {selected ? (
-        <EventDetail event={selected} onBack={() => setSelected(null)} />
+        <EventDetail event={selected} canWrite={canWrite} onBack={() => setSelected(null)} />
       ) : (
-        <EventList onOpen={setSelected} />
+        <EventList onOpen={setSelected} canWrite={canWrite} />
       )}
     </div>
   )
 }
 
-function EventList({ onOpen }: { onOpen: (e: ChurchEvent) => void }) {
+function EventList({ onOpen, canWrite }: { onOpen: (e: ChurchEvent) => void; canWrite: boolean }) {
   const queryClient = useQueryClient()
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
@@ -64,12 +67,14 @@ function EventList({ onOpen }: { onOpen: (e: ChurchEvent) => void }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button size="sm" onClick={() => setCreating(!creating)}>
-          <Plus className="size-3.5" />
-          행사 추가
-        </Button>
-      </div>
+      {canWrite && (
+        <div className="flex justify-end">
+          <Button size="sm" onClick={() => setCreating(!creating)}>
+            <Plus className="size-3.5" />
+            행사 추가
+          </Button>
+        </div>
+      )}
 
       {creating && (
         <Card>
@@ -114,16 +119,18 @@ function EventList({ onOpen }: { onOpen: (e: ChurchEvent) => void }) {
                       <div className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">{e.date}</div>
                     )}
                   </div>
-                  <button
-                    onClick={(ev) => {
-                      ev.stopPropagation()
-                      if (window.confirm(`"${e.name}" 행사와 사진을 모두 삭제할까요?`)) deleteMut.mutate(e.id)
-                    }}
-                    className="rounded-full p-1 text-[var(--color-muted-foreground)] opacity-0 transition-opacity hover:bg-[var(--color-muted)] group-hover:opacity-100"
-                    aria-label="삭제"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
+                  {canWrite && (
+                    <button
+                      onClick={(ev) => {
+                        ev.stopPropagation()
+                        if (window.confirm(`"${e.name}" 행사와 사진을 모두 삭제할까요?`)) deleteMut.mutate(e.id)
+                      }}
+                      className="rounded-full p-1 text-[var(--color-muted-foreground)] opacity-0 transition-opacity hover:bg-[var(--color-muted)] group-hover:opacity-100"
+                      aria-label="삭제"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  )}
                 </div>
                 <div className="mt-4 text-xs text-[var(--color-muted-foreground)]">사진 {e.photoCount}장</div>
               </CardContent>
@@ -135,7 +142,7 @@ function EventList({ onOpen }: { onOpen: (e: ChurchEvent) => void }) {
   )
 }
 
-function EventDetail({ event, onBack }: { event: ChurchEvent; onBack: () => void }) {
+function EventDetail({ event, canWrite, onBack }: { event: ChurchEvent; canWrite: boolean; onBack: () => void }) {
   const queryClient = useQueryClient()
   const fileInput = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -188,10 +195,12 @@ function EventDetail({ event, onBack }: { event: ChurchEvent; onBack: () => void
             hidden
             onChange={(e) => void onFiles(e.target.files)}
           />
-          <Button size="sm" onClick={() => fileInput.current?.click()} disabled={uploading}>
-            <Upload className="size-3.5" />
-            {uploading ? '업로드 중…' : '사진 업로드'}
-          </Button>
+          {canWrite && (
+            <Button size="sm" onClick={() => fileInput.current?.click()} disabled={uploading}>
+              <Upload className="size-3.5" />
+              {uploading ? '업로드 중…' : '사진 업로드'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -224,18 +233,20 @@ function EventDetail({ event, onBack }: { event: ChurchEvent; onBack: () => void
                 loading="lazy"
                 className="size-full object-cover"
               />
-              <button
-                onClick={() => {
-                  if (window.confirm('이 사진을 삭제할까요?')) deleteMut.mutate(p.id)
-                }}
-                className={cn(
-                  'absolute top-1.5 right-1.5 rounded-full bg-black/50 p-1.5 text-white opacity-0 transition-opacity',
-                  'hover:bg-black/70 group-hover:opacity-100',
-                )}
-                aria-label="삭제"
-              >
-                <Trash2 className="size-3.5" />
-              </button>
+              {canWrite && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('이 사진을 삭제할까요?')) deleteMut.mutate(p.id)
+                  }}
+                  className={cn(
+                    'absolute top-1.5 right-1.5 rounded-full bg-black/50 p-1.5 text-white opacity-0 transition-opacity',
+                    'hover:bg-black/70 group-hover:opacity-100',
+                  )}
+                  aria-label="삭제"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              )}
             </div>
           ))}
         </div>

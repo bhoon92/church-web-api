@@ -29,9 +29,10 @@ const SECTIONS: SettingSection[] = [
   },
   {
     icon: Users2,
-    title: '역할 (Role)',
-    description: '교회 직제에 맞춰 역할을 자유롭게 정의하고 권한을 부여합니다.',
-    hint: '5개 활성',
+    title: '팀원 / 권한',
+    description: '이메일로 팀원을 초대하고 역할(소유자/관리자/실무자/조회)을 부여합니다.',
+    hint: 'OWNER·ADMIN 전용',
+    to: '/app/settings/team',
   },
   {
     icon: FolderTree,

@@ -1,13 +1,14 @@
 import { Body, Controller, Get, Post, Put, UseGuards } from '@nestjs/common';
 import { RequireChurch } from '@src/module/auth/decorators/current-auth.decorator';
 import { JwtAuthGuard } from '@src/module/auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '@src/module/auth/guards/permissions.guard';
 import type { AuthContext } from '@src/module/auth/types/auth-context';
 import { CalendarSubscriptionEntity } from '@src/database/entities/calendar-subscription.entity';
 import { UpdateSubscriptionDto } from './dto/subscription.dto';
 import { SubscriptionService } from './subscription.service';
 
 @Controller('calendar/subscription')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class SubscriptionController {
   constructor(private readonly subscriptions: SubscriptionService) {}
 

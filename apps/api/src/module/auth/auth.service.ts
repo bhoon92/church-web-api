@@ -25,6 +25,21 @@ export class AuthService {
     const membershipRepo = DataSources.instance.getRepository(MembershipEntity);
 
     let account = await accountRepo.findOne({ where: { googleId: profile.googleId } });
+
+    // 초대로 미리 만들어진 pending 계정(googleId 미연결)을 이메일로 클레임
+    if (!account) {
+      const byEmail = await accountRepo.findOne({ where: { email: profile.email } });
+      if (byEmail) {
+        await accountRepo.update(byEmail.id, {
+          googleId: profile.googleId,
+          name: profile.name,
+          pictureUrl: profile.pictureUrl,
+          lastLoginAt: new Date(),
+        });
+        account = (await accountRepo.findOne({ where: { id: byEmail.id } }))!;
+      }
+    }
+
     if (!account) {
       account = await accountRepo.save(
         accountRepo.create({

@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { usePermissions } from '@/lib/permissions'
 
 const TYPE_TONE: Record<PastoralRecordType, 'neutral' | 'muted' | 'success' | 'warn'> = {
   visit: 'success',
@@ -25,6 +26,8 @@ const TYPE_TONE: Record<PastoralRecordType, 'neutral' | 'muted' | 'success' | 'w
 
 export function PastoralRecordSection({ memberId }: { memberId: number }) {
   const queryClient = useQueryClient()
+  const { can } = usePermissions()
+  const canWrite = can('pastoral:write')
   const [adding, setAdding] = useState(false)
 
   const { data: records = [], isLoading } = useQuery({
@@ -44,10 +47,12 @@ export function PastoralRecordSection({ memberId }: { memberId: number }) {
     <div>
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-semibold">사역 기록</h3>
-        <Button size="sm" variant="ghost" onClick={() => setAdding(!adding)}>
-          <Plus className="size-3.5" />
-          기록
-        </Button>
+        {canWrite && (
+          <Button size="sm" variant="ghost" onClick={() => setAdding(!adding)}>
+            <Plus className="size-3.5" />
+            기록
+          </Button>
+        )}
       </div>
 
       {adding && (
@@ -86,15 +91,17 @@ export function PastoralRecordSection({ memberId }: { memberId: number }) {
                     </span>
                   )}
                 </div>
-                <button
-                  onClick={() => {
-                    if (window.confirm('이 기록을 삭제할까요?')) deleteMut.mutate(r.id)
-                  }}
-                  className="rounded-full p-0.5 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)]"
-                  aria-label="삭제"
-                >
-                  <X className="size-3.5" />
-                </button>
+                {canWrite && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm('이 기록을 삭제할까요?')) deleteMut.mutate(r.id)
+                    }}
+                    className="rounded-full p-0.5 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)]"
+                    aria-label="삭제"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                )}
               </div>
 
               <p className="mt-2 whitespace-pre-wrap text-sm">{r.content}</p>

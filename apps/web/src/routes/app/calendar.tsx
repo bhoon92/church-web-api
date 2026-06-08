@@ -20,6 +20,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/page-header'
 import { cn } from '@/lib/utils'
+import { usePermissions } from '@/lib/permissions'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -48,6 +49,8 @@ export function CalendarPage() {
   const [hidden, setHidden] = useState<Set<number>>(new Set())
   const [addFor, setAddFor] = useState<string | null>(null)
   const [showSub, setShowSub] = useState(false)
+  const { can } = usePermissions()
+  const canWrite = can('calendar:write')
 
   const matrix = useMemo(() => buildMatrix(year, month), [year, month])
   const rangeFrom = matrix[0]
@@ -87,10 +90,12 @@ export function CalendarPage() {
               <Share2 />
               구독
             </Button>
-            <Button onClick={() => setAddFor(ymd(today))}>
-              <Plus />
-              일정 추가
-            </Button>
+            {canWrite && (
+              <Button onClick={() => setAddFor(ymd(today))}>
+                <Plus />
+                일정 추가
+              </Button>
+            )}
           </>
         }
       />
@@ -99,6 +104,7 @@ export function CalendarPage() {
         <CalendarSidebar
           calendars={calendars}
           hidden={hidden}
+          canWrite={canWrite}
           onToggle={(id) =>
             setHidden((prev) => {
               const next = new Set(prev)
@@ -156,9 +162,10 @@ export function CalendarPage() {
                 return (
                   <button
                     key={i}
-                    onClick={() => setAddFor(key)}
+                    onClick={() => canWrite && setAddFor(key)}
                     className={cn(
-                      'min-h-24 border-r border-b border-[var(--color-border)] p-1.5 text-left transition-colors hover:bg-[var(--color-muted)]/50',
+                      'min-h-24 border-r border-b border-[var(--color-border)] p-1.5 text-left transition-colors',
+                      canWrite && 'hover:bg-[var(--color-muted)]/50',
                       !inMonth && 'bg-[var(--color-muted)]/40',
                     )}
                   >
@@ -173,7 +180,7 @@ export function CalendarPage() {
                     </div>
                     <div className="space-y-1">
                       {dayEvents.slice(0, 3).map((e) => (
-                        <EventPill key={e.id} event={e} color={calById.get(e.calendarId)?.color} />
+                        <EventPill key={e.id} event={e} color={calById.get(e.calendarId)?.color} canWrite={canWrite} />
                       ))}
                       {dayEvents.length > 3 && (
                         <div className="px-1.5 text-[10px] text-[var(--color-muted-foreground)]">
@@ -195,7 +202,7 @@ export function CalendarPage() {
   )
 }
 
-function EventPill({ event, color }: { event: CalendarEvent; color?: string }) {
+function EventPill({ event, color, canWrite }: { event: CalendarEvent; color?: string; canWrite: boolean }) {
   const queryClient = useQueryClient()
   const deleteMut = useMutation({
     mutationFn: () => deleteEvent(event.id),
@@ -209,7 +216,7 @@ function EventPill({ event, color }: { event: CalendarEvent; color?: string }) {
     <div
       onClick={(e) => {
         e.stopPropagation()
-        if (window.confirm(`"${event.title}" 일정을 삭제할까요?`)) deleteMut.mutate()
+        if (canWrite && window.confirm(`"${event.title}" 일정을 삭제할까요?`)) deleteMut.mutate()
       }}
       className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px]"
       style={{
@@ -227,10 +234,12 @@ function EventPill({ event, color }: { event: CalendarEvent; color?: string }) {
 function CalendarSidebar({
   calendars,
   hidden,
+  canWrite,
   onToggle,
 }: {
   calendars: Calendar[]
   hidden: Set<number>
+  canWrite: boolean
   onToggle: (id: number) => void
 }) {
   const queryClient = useQueryClient()
@@ -251,13 +260,15 @@ function CalendarSidebar({
       <CardContent className="space-y-1 p-3">
         <div className="flex items-center justify-between px-2 py-1.5">
           <span className="text-xs font-medium text-[var(--color-muted-foreground)]">내 캘린더</span>
-          <button
-            onClick={() => setAdding(!adding)}
-            className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
-            aria-label="달력 추가"
-          >
-            <Plus className="size-4" />
-          </button>
+          {canWrite && (
+            <button
+              onClick={() => setAdding(!adding)}
+              className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+              aria-label="달력 추가"
+            >
+              <Plus className="size-4" />
+            </button>
+          )}
         </div>
 
         {adding && (

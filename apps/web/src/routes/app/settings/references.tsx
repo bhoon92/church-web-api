@@ -18,6 +18,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/page-header'
 import { cn } from '@/lib/utils'
+import { usePermissions } from '@/lib/permissions'
 
 const TABS: ReferenceKind[] = ['department', 'ministry', 'smallGroup', 'position', 'worshipService']
 
@@ -68,6 +69,8 @@ export function ReferencesPage() {
 
 function ReferenceTab({ kind }: { kind: ReferenceKind }) {
   const queryClient = useQueryClient()
+  const { can } = usePermissions()
+  const canWrite = can('settings:write')
   const queryKey = ['references', kind]
 
   const { data, isLoading } = useQuery({
@@ -90,11 +93,13 @@ function ReferenceTab({ kind }: { kind: ReferenceKind }) {
   return (
     <Card>
       <CardContent className="p-0">
-        <CreateRow
-          onSubmit={(name) => createMut.mutate({ name })}
-          pending={createMut.isPending}
-          placeholder={`예: ${exampleFor(kind)}`}
-        />
+        {canWrite && (
+          <CreateRow
+            onSubmit={(name) => createMut.mutate({ name })}
+            pending={createMut.isPending}
+            placeholder={`예: ${exampleFor(kind)}`}
+          />
+        )}
 
         {isLoading ? (
           <div className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">
@@ -111,6 +116,7 @@ function ReferenceTab({ kind }: { kind: ReferenceKind }) {
                 key={it.id}
                 kind={kind}
                 item={it}
+                canWrite={canWrite}
                 onDelete={() => deleteMut.mutate(it.id)}
                 onRenamed={() => queryClient.invalidateQueries({ queryKey })}
               />
@@ -161,11 +167,13 @@ function CreateRow({
 function ReferenceRow({
   kind,
   item,
+  canWrite,
   onDelete,
   onRenamed,
 }: {
   kind: ReferenceKind
   item: Reference
+  canWrite: boolean
   onDelete: () => void
   onRenamed: () => void
 }) {
@@ -231,22 +239,28 @@ function ReferenceRow({
       ) : (
         <>
           <button
-            onClick={() => setEditing(true)}
-            className="flex-1 truncate text-left text-sm font-medium hover:underline"
+            onClick={() => canWrite && setEditing(true)}
+            disabled={!canWrite}
+            className={cn(
+              'flex-1 truncate text-left text-sm font-medium',
+              canWrite && 'hover:underline',
+            )}
           >
             {item.name}
           </button>
           {!item.isActive && <Badge tone="muted">비활성</Badge>}
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={() => {
-              if (window.confirm(`"${item.name}" 을(를) 삭제할까요?`)) onDelete()
-            }}
-            aria-label="삭제"
-          >
-            <Trash2 className="size-4" />
-          </Button>
+          {canWrite && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => {
+                if (window.confirm(`"${item.name}" 을(를) 삭제할까요?`)) onDelete()
+              }}
+              aria-label="삭제"
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          )}
         </>
       )}
     </li>

@@ -19,6 +19,7 @@ import { STAGE_LABEL, type LifecycleStage } from '@/api/members'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { usePermissions } from '@/lib/permissions'
 import { PastoralRecordSection } from './pastoral-record-section'
 import { ReceiptSection } from './receipt-section'
 
@@ -146,6 +147,8 @@ function AffiliationSection({
   items: AffiliationSummary[]
 }) {
   const queryClient = useQueryClient()
+  const { can } = usePermissions()
+  const canWrite = can('member:write')
   const [adding, setAdding] = useState(false)
 
   const { data: refs = [] } = useQuery({
@@ -187,14 +190,16 @@ function AffiliationSection({
     <div>
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-semibold">{REF_LABEL[kind]}</h3>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => setAdding(!adding)}
-        >
-          <Plus className="size-3.5" />
-          추가
-        </Button>
+        {canWrite && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setAdding(!adding)}
+          >
+            <Plus className="size-3.5" />
+            추가
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -208,6 +213,7 @@ function AffiliationSection({
             key={a.id}
             label={a.refName ?? '(이름 없음)'}
             leader={a.isLeader}
+            canWrite={canWrite}
             onToggleLeader={() => leaderMut.mutate({ refId: a.refId, isLeader: !a.isLeader })}
             onRemove={() => endMut.mutate(a.refId)}
           />
@@ -247,11 +253,13 @@ function AffiliationSection({
 function AffiliationChip({
   label,
   leader,
+  canWrite,
   onToggleLeader,
   onRemove,
 }: {
   label: string
   leader: boolean
+  canWrite: boolean
   onToggleLeader: () => void
   onRemove: () => void
 }) {
@@ -264,30 +272,34 @@ function AffiliationChip({
           : 'border-[var(--color-border)] bg-[var(--color-background)]',
       )}
     >
-      <button
-        onClick={onToggleLeader}
-        aria-label={leader ? '리더 해제' : '리더 지정'}
-        title={leader ? '리더 해제' : '리더 지정'}
-        className={cn(
-          'text-[10px] leading-none transition-opacity',
-          leader ? 'opacity-100' : 'opacity-40 hover:opacity-100',
-        )}
-      >
-        ★
-      </button>
+      {canWrite ? (
+        <button
+          onClick={onToggleLeader}
+          aria-label={leader ? '리더 해제' : '리더 지정'}
+          title={leader ? '리더 해제' : '리더 지정'}
+          className={cn(
+            'text-[10px] leading-none transition-opacity',
+            leader ? 'opacity-100' : 'opacity-40 hover:opacity-100',
+          )}
+        >
+          ★
+        </button>
+      ) : (
+        leader && <span className="text-[10px] leading-none">★</span>
+      )}
       {label}
-      <button
-        onClick={onRemove}
-        className={cn(
-          'rounded-full p-0.5 transition-colors',
-          leader
-            ? 'hover:bg-white/15'
-            : 'hover:bg-[var(--color-muted)]',
-        )}
-        aria-label="종료"
-      >
-        <X className="size-3" />
-      </button>
+      {canWrite && (
+        <button
+          onClick={onRemove}
+          className={cn(
+            'rounded-full p-0.5 transition-colors',
+            leader ? 'hover:bg-white/15' : 'hover:bg-[var(--color-muted)]',
+          )}
+          aria-label="종료"
+        >
+          <X className="size-3" />
+        </button>
+      )}
     </span>
   )
 }
@@ -302,6 +314,8 @@ function PositionSection({
   history: PositionHistoryEntry[]
 }) {
   const queryClient = useQueryClient()
+  const { can } = usePermissions()
+  const canWrite = can('member:write')
   const [picking, setPicking] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
 
@@ -336,10 +350,12 @@ function PositionSection({
     <div>
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-semibold">직분</h3>
-        <Button size="sm" variant="ghost" onClick={() => setPicking(!picking)}>
-          <Plus className="size-3.5" />
-          {current ? '변경' : '임명'}
-        </Button>
+        {canWrite && (
+          <Button size="sm" variant="ghost" onClick={() => setPicking(!picking)}>
+            <Plus className="size-3.5" />
+            {current ? '변경' : '임명'}
+          </Button>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
@@ -353,16 +369,18 @@ function PositionSection({
             <span className="text-xs text-[var(--color-muted-foreground)]">
               {current.startDate} ~
             </span>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                if (window.confirm('현재 직분을 종료할까요?')) endMut.mutate()
-              }}
-              className="text-xs text-[var(--color-muted-foreground)]"
-            >
-              종료
-            </Button>
+            {canWrite && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  if (window.confirm('현재 직분을 종료할까요?')) endMut.mutate()
+                }}
+                className="text-xs text-[var(--color-muted-foreground)]"
+              >
+                종료
+              </Button>
+            )}
           </>
         ) : (
           <span className="text-xs text-[var(--color-muted-foreground)]">

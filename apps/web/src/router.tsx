@@ -10,6 +10,7 @@ import { GalleryPage } from '@/routes/app/gallery'
 import { MembersPage } from '@/routes/app/members'
 import { SettingsPage } from '@/routes/app/settings'
 import { ReferencesPage } from '@/routes/app/settings/references'
+import { TeamPage } from '@/routes/app/settings/team'
 import { ChurchSelectPage } from '@/routes/church-select'
 import { HomePage } from '@/routes/home'
 import { LoginPage } from '@/routes/login'
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
           { path: 'gallery', element: <GalleryPage /> },
           { path: 'settings', element: <SettingsPage /> },
           { path: 'settings/references', element: <ReferencesPage /> },
+          { path: 'settings/team', element: <TeamPage /> },
         ],
       },
     ],

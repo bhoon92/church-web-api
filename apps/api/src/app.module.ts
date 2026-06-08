@@ -13,6 +13,7 @@ import { MemberModule } from './module/member/member.module';
 import { PastoralRecordModule } from './module/pastoral-record/pastoral-record.module';
 import { MemberPositionModule } from './module/position/member-position.module';
 import { ReferenceModule } from './module/reference/reference.module';
+import { TeamModule } from './module/team/team.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ReferenceModule } from './module/reference/reference.module';
     ExportModule,
     GalleryModule,
     CalendarModule,
+    TeamModule,
   ],
   controllers: [AppController],
   providers: [AppService],

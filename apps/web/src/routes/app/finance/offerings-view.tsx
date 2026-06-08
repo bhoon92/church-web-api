@@ -14,11 +14,14 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Download } from 'lucide-react'
+import { usePermissions } from '@/lib/permissions'
 import { CategorySelect } from './category-select'
 import { MemberPicker } from './member-picker'
 
 export function OfferingsView() {
   const queryClient = useQueryClient()
+  const { can } = usePermissions()
+  const canWrite = can('finance:write')
   const today = new Date().toISOString().slice(0, 10)
   const [date, setDate] = useState(today)
 
@@ -44,7 +47,7 @@ export function OfferingsView() {
               onChange={(e) => setDate(e.target.value)}
               className="w-44"
             />
-            <Badge tone="accent">빠른 입력</Badge>
+            {canWrite && <Badge tone="accent">빠른 입력</Badge>}
             <Button
               size="sm"
               variant="outline"
@@ -55,7 +58,7 @@ export function OfferingsView() {
               {date.slice(0, 4)}년 엑셀
             </Button>
           </div>
-          <OfferingForm date={date} onCreated={invalidate} />
+          {canWrite && <OfferingForm date={date} onCreated={invalidate} />}
         </CardContent>
       </Card>
 

@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/page-header'
 import { cn } from '@/lib/utils'
+import { usePermissions } from '@/lib/permissions'
 
 function shiftDate(date: string, days: number): string {
   const d = new Date(`${date}T00:00:00`)
@@ -155,6 +156,8 @@ function AttendanceRow({
   date: string
 }) {
   const queryClient = useQueryClient()
+  const { can } = usePermissions()
+  const canWrite = can('attendance:write')
 
   const mut = useMutation({
     mutationFn: (present: boolean) =>
@@ -166,14 +169,15 @@ function AttendanceRow({
   return (
     <li className="flex items-center gap-3 py-2.5">
       <button
-        onClick={() => mut.mutate(!item.present)}
-        disabled={mut.isPending}
+        onClick={() => canWrite && mut.mutate(!item.present)}
+        disabled={mut.isPending || !canWrite}
         aria-label={item.present ? '출석 취소' : '출석'}
         className={cn(
           'flex size-6 items-center justify-center rounded-md border transition-colors disabled:opacity-50',
           item.present
             ? 'border-transparent bg-[var(--color-primary)] text-[var(--color-primary-foreground)]'
-            : 'border-[var(--color-border)] bg-[var(--color-background)] hover:border-[var(--color-foreground)]',
+            : 'border-[var(--color-border)] bg-[var(--color-background)]',
+          canWrite && !item.present && 'hover:border-[var(--color-foreground)]',
         )}
       >
         {item.present && <Check className="size-4" strokeWidth={3} />}

@@ -12,6 +12,7 @@ import {
   type StageCounts,
 } from '@/api/members'
 import { exportMembers } from '@/api/exports'
+import { usePermissions } from '@/lib/permissions'
 import { MemberDetailModal } from '@/routes/app/member-detail-modal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -44,6 +45,7 @@ export function MembersPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [openMemberId, setOpenMemberId] = useState<number | null>(null)
 
+  const { can } = usePermissions()
   const queryClient = useQueryClient()
 
   const { data, isLoading } = useQuery({
@@ -67,10 +69,12 @@ export function MembersPage() {
               <Download />
               내보내기
             </Button>
-            <Button onClick={() => setShowCreate(true)}>
-              <Plus />
-              성도 추가
-            </Button>
+            {can('member:write') && (
+              <Button onClick={() => setShowCreate(true)}>
+                <Plus />
+                성도 추가
+              </Button>
+            )}
           </>
         }
       />

@@ -17,10 +17,13 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { usePermissions } from '@/lib/permissions'
 import { CategorySelect } from './category-select'
 
 export function OperationsView() {
   const queryClient = useQueryClient()
+  const { can } = usePermissions()
+  const canWrite = can('finance:write')
 
   const { data: rows = [] } = useQuery({
     queryKey: ['finance', 'transactions'],
@@ -46,11 +49,13 @@ export function OperationsView() {
         </Button>
       </div>
 
-      <Card>
-        <CardContent className="p-5">
-          <TransactionForm onCreated={invalidate} />
-        </CardContent>
-      </Card>
+      {canWrite && (
+        <Card>
+          <CardContent className="p-5">
+            <TransactionForm onCreated={invalidate} />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="p-0">
@@ -82,15 +87,17 @@ export function OperationsView() {
                       {income ? '+' : '−'}
                       {formatKRW(r.amount)}
                     </div>
-                    <button
-                      onClick={() => {
-                        if (window.confirm('이 거래를 삭제할까요?')) deleteMut.mutate(r.id)
-                      }}
-                      className="rounded-full p-1 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)]"
-                      aria-label="삭제"
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
+                    {canWrite && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm('이 거래를 삭제할까요?')) deleteMut.mutate(r.id)
+                        }}
+                        className="rounded-full p-1 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)]"
+                        aria-label="삭제"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    )}
                   </li>
                 )
               })}

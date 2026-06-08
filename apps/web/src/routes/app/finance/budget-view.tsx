@@ -16,6 +16,7 @@ import {
 } from '@/api/finance'
 import { exportBudgets } from '@/api/exports'
 import { listReferences, type ReferenceKind } from '@/api/references'
+import { usePermissions } from '@/lib/permissions'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -29,6 +30,8 @@ const KIND_TO_REF: Record<BudgetTargetKind, ReferenceKind> = {
 }
 
 export function BudgetView() {
+  const { can } = usePermissions()
+  const canWrite = can('finance:write')
   const { data: fiscalYears = [], isLoading } = useQuery({
     queryKey: ['finance', 'fiscal-years'],
     queryFn: listFiscalYears,
@@ -41,14 +44,22 @@ export function BudgetView() {
   }
 
   if (fiscalYears.length === 0 || !current) {
-    return <FiscalYearSetup />
+    return canWrite ? (
+      <FiscalYearSetup />
+    ) : (
+      <Card>
+        <CardContent className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">
+          설정된 회계연도가 없습니다. 재정 담당자에게 문의하세요.
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
     <div className="space-y-4">
-      <FiscalYearBar fiscalYears={fiscalYears} current={current} />
-      <AllocationForm fiscalYearId={current.id} />
-      <BudgetCards fiscalYearId={current.id} />
+      <FiscalYearBar fiscalYears={fiscalYears} current={current} canWrite={canWrite} />
+      {canWrite && <AllocationForm fiscalYearId={current.id} />}
+      <BudgetCards fiscalYearId={current.id} canWrite={canWrite} />
     </div>
   )
 }
@@ -90,7 +101,15 @@ function FiscalYearSetup() {
   )
 }
 
-function FiscalYearBar({ fiscalYears, current }: { fiscalYears: FiscalYear[]; current: FiscalYear }) {
+function FiscalYearBar({
+  fiscalYears,
+  current,
+  canWrite,
+}: {
+  fiscalYears: FiscalYear[]
+  current: FiscalYear
+  canWrite: boolean
+}) {
   const queryClient = useQueryClient()
   const setCurrentMut = useMutation({
     mutationFn: setCurrentFiscalYear,
@@ -107,7 +126,8 @@ function FiscalYearBar({ fiscalYears, current }: { fiscalYears: FiscalYear[]; cu
       {fiscalYears.map((fy) => (
         <button
           key={fy.id}
-          onClick={() => fy.id !== current.id && setCurrentMut.mutate(fy.id)}
+          onClick={() => canWrite && fy.id !== current.id && setCurrentMut.mutate(fy.id)}
+          disabled={!canWrite}
           className={cn(
             'rounded-full px-3 py-1 text-xs font-medium transition-colors',
             fy.id === current.id
@@ -224,7 +244,7 @@ function AllocationForm({ fiscalYearId }: { fiscalYearId: number }) {
   )
 }
 
-function BudgetCards({ fiscalYearId }: { fiscalYearId: number }) {
+function BudgetCards({ fiscalYearId, canWrite }: { fiscalYearId: number; canWrite: boolean }) {
   const queryClient = useQueryClient()
   const { data: budgets = [] } = useQuery({
     queryKey: ['finance', 'budgets', fiscalYearId],
@@ -265,15 +285,17 @@ function BudgetCards({ fiscalYearId }: { fiscalYearId: number }) {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Badge tone={tone}>{b.rate}%</Badge>
-                  <button
-                    onClick={() => {
-                      if (window.confirm('이 예산 할당을 삭제할까요?')) deleteMut.mutate(b.id)
-                    }}
-                    className="rounded-full p-1 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)]"
-                    aria-label="삭제"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </button>
+                  {canWrite && (
+                    <button
+                      onClick={() => {
+                        if (window.confirm('이 예산 할당을 삭제할까요?')) deleteMut.mutate(b.id)
+                      }}
+                      className="rounded-full p-1 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)]"
+                      aria-label="삭제"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
               <div className="space-y-1.5">
