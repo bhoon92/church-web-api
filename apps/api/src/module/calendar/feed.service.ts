@@ -31,8 +31,8 @@ export class FeedService {
     const calendars = await DataSources.instance
       .getRepository(CalendarEntity)
       .find({ where: { id: In(calendarIds), churchId: sub.churchId } });
-    const calNameMap = new Map(calendars.map(c => [c.id, c.name]));
-    const validIds = calendars.map(c => c.id);
+    const calendarNameMap = new Map(calendars.map(calendar => [calendar.id, calendar.name]));
+    const validIds = calendars.map(calendar => calendar.id);
     if (validIds.length === 0) return cal.toString();
 
     // 과거 1년 ~ 미래 2년 일정 (피드 크기 제한)
@@ -45,19 +45,23 @@ export class FeedService {
       order: { startAt: 'ASC' },
     });
 
-    for (const e of events) {
-      if (e.startAt < from || e.startAt > to) continue;
-      const end = e.endAt ?? (e.allDay ? undefined : new Date(e.startAt.getTime() + 60 * 60 * 1000));
+    for (const calendarEvent of events) {
+      if (calendarEvent.startAt < from || calendarEvent.startAt > to) continue;
+      const end = calendarEvent.endAt ?? (calendarEvent.allDay ? undefined : new Date(calendarEvent.startAt.getTime() + 60 * 60 * 1000));
       cal.createEvent({
-        id: `event-${e.id}@yakirim`,
-        start: e.startAt,
+        id: `event-${calendarEvent.id}@yakirim`,
+        start: calendarEvent.startAt,
         end,
-        allDay: e.allDay,
-        summary: e.title,
-        location: e.location ?? undefined,
+        allDay: calendarEvent.allDay,
+        summary: calendarEvent.title,
+        location: calendarEvent.location ?? undefined,
         description:
-          [e.description, calNameMap.get(e.calendarId) ? `[${calNameMap.get(e.calendarId)}]` : null].filter(Boolean).join('\n') ||
-          undefined,
+          [
+            calendarEvent.description,
+            calendarNameMap.get(calendarEvent.calendarId) ? `[${calendarNameMap.get(calendarEvent.calendarId)}]` : null,
+          ]
+            .filter(Boolean)
+            .join('\n') || undefined,
       });
     }
 

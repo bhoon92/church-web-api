@@ -8,7 +8,9 @@ import { DashboardPage } from '@/routes/app/dashboard'
 import { FinancePage } from '@/routes/app/finance'
 import { GalleryPage } from '@/routes/app/gallery'
 import { MembersPage } from '@/routes/app/members'
+import { OrganizationChartPage } from '@/routes/app/organization-chart'
 import { SettingsPage } from '@/routes/app/settings'
+import { IntegrationsPage } from '@/routes/app/settings/integrations'
 import { ReferencesPage } from '@/routes/app/settings/references'
 import { TeamPage } from '@/routes/app/settings/team'
 import { ChurchSelectPage } from '@/routes/church-select'
@@ -30,6 +32,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <DashboardPage /> },
           { path: 'members', element: <MembersPage /> },
+          { path: 'organization-chart', element: <OrganizationChartPage /> },
           { path: 'attendance', element: <AttendancePage /> },
           { path: 'finance', element: <FinancePage /> },
           { path: 'calendar', element: <CalendarPage /> },
@@ -37,6 +40,7 @@ export const router = createBrowserRouter([
           { path: 'settings', element: <SettingsPage /> },
           { path: 'settings/references', element: <ReferencesPage /> },
           { path: 'settings/team', element: <TeamPage /> },
+          { path: 'settings/integrations', element: <IntegrationsPage /> },
         ],
       },
     ],

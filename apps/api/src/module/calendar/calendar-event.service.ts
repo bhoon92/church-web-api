@@ -3,10 +3,13 @@ import { Between } from 'typeorm';
 import { DataSources } from '@src/database/data-sources';
 import { CalendarEntity } from '@src/database/entities/calendar.entity';
 import { CalendarEventEntity } from '@src/database/entities/calendar-event.entity';
+import { GoogleCalendarSyncService } from '@src/module/google-calendar/sync.service';
 import { CreateCalendarEventDto, UpdateCalendarEventDto } from './dto/calendar-event.dto';
 
 @Injectable()
 export class CalendarEventService {
+  constructor(private readonly sync: GoogleCalendarSyncService) {}
+
   private repo() {
     return DataSources.instance.getRepository(CalendarEventEntity);
   }
@@ -31,7 +34,9 @@ export class CalendarEventService {
       startAt: new Date(dto.startAt),
       endAt: dto.endAt ? new Date(dto.endAt) : undefined,
     });
-    return this.repo().save(row);
+    const saved = await this.repo().save(row);
+    void this.sync.onEventCreated(saved); // best-effort, 비차단
+    return saved;
   }
 
   async update(churchId: number, id: number, dto: UpdateCalendarEventDto): Promise<CalendarEventEntity> {
@@ -46,12 +51,15 @@ export class CalendarEventService {
         endAt: dto.endAt ? new Date(dto.endAt) : undefined,
       }
     );
-    return (await this.repo().findOne({ where: { id, churchId } }))!;
+    const updated = (await this.repo().findOne({ where: { id, churchId } }))!;
+    void this.sync.onEventUpdated(updated); // best-effort, 비차단
+    return updated;
   }
 
   async remove(churchId: number, id: number): Promise<void> {
     const result = await this.repo().softDelete({ id, churchId });
     if (!result.affected) throw new NotFoundException('일정을 찾을 수 없습니다.');
+    void this.sync.onEventDeleted(churchId, id); // best-effort, 비차단
   }
 
   private async assertCalendar(churchId: number, calendarId: number): Promise<void> {

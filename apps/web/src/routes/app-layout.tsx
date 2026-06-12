@@ -4,6 +4,7 @@ import {
   Images,
   LayoutDashboard,
   LogOut,
+  Network,
   Settings,
   Users,
   Wallet,
@@ -35,6 +36,7 @@ const NAV: NavItem[] = [
   { to: '/app/finance', label: '재정', icon: Wallet },
   { to: '/app/calendar', label: '달력', icon: CalendarDays },
   { to: '/app/gallery', label: '갤러리', icon: Images },
+  { to: '/app/organization-chart', label: '조직도', icon: Network },
 ]
 
 // 모바일 하단 탭은 5개로 제한 (갤러리는 데스크탑 사이드바에서)

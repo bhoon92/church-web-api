@@ -21,7 +21,7 @@ export class SubscriptionService {
       churchId,
       accountId,
       feedToken: randomUUID(),
-      calendarIds: calendars.map(c => c.id),
+      calendarIds: calendars.map(calendar => calendar.id),
     });
     return this.repo().save(row);
   }
@@ -33,7 +33,7 @@ export class SubscriptionService {
       calendarIds.length > 0
         ? await DataSources.instance.getRepository(CalendarEntity).find({ where: { id: In(calendarIds), churchId } })
         : [];
-    sub.calendarIds = valid.map(c => c.id);
+    sub.calendarIds = valid.map(calendar => calendar.id);
     return this.repo().save(sub);
   }
 
