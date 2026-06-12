@@ -1,27 +1,18 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, ChevronRight, Phone, Plus, X } from 'lucide-react'
-import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ChevronDown, ChevronRight, Phone, Plus, X } from 'lucide-react';
+import { useState } from 'react';
 
-import {
-  assignAffiliation,
-  type AffiliationKind,
-  endAffiliation,
-  setAffiliationLeader,
-} from '@/api/affiliations'
-import {
-  fetchMember,
-  type AffiliationSummary,
-  type PositionHistoryEntry,
-} from '@/api/members'
-import { endCurrentPosition, promotePosition } from '@/api/positions'
-import { listReferences, REF_LABEL, type Reference } from '@/api/references'
-import { STAGE_LABEL, type LifecycleStage } from '@/api/members'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { usePermissions } from '@/lib/permissions'
-import { PastoralRecordSection } from './pastoral-record-section'
-import { ReceiptSection } from './receipt-section'
+import { assignAffiliation, type AffiliationKind, endAffiliation, setAffiliationLeader } from '@/api/affiliations';
+import { fetchMember, type AffiliationSummary, type PositionHistoryEntry } from '@/api/members';
+import { endCurrentPosition, promotePosition } from '@/api/positions';
+import { listReferences, REFERENCE_LABEL, type Reference } from '@/api/references';
+import { STAGE_LABEL, type LifecycleStage } from '@/api/members';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { usePermissions } from '@/lib/permissions';
+import { PastoralRecordSection } from './pastoral-record-section';
+import { ReceiptSection } from './receipt-section';
 
 const STAGE_TONE: Record<LifecycleStage, 'neutral' | 'muted' | 'success' | 'warn' | 'danger'> = {
   visitor: 'muted',
@@ -31,46 +22,31 @@ const STAGE_TONE: Record<LifecycleStage, 'neutral' | 'muted' | 'success' | 'warn
   deceased: 'neutral',
   absent: 'danger',
   anonymous: 'neutral',
-}
+};
 
-const KINDS: AffiliationKind[] = ['department', 'ministry', 'smallGroup']
+const KINDS: AffiliationKind[] = ['department', 'ministry', 'smallGroup'];
 
-export function MemberDetailModal({
-  memberId,
-  onClose,
-}: {
-  memberId: number
-  onClose: () => void
-}) {
+export function MemberDetailModal({ memberId, onClose }: { memberId: number; onClose: () => void }) {
   const { data: member, isLoading } = useQuery({
     queryKey: ['member', memberId],
     queryFn: () => fetchMember(memberId),
-  })
+  });
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
       <div
         className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl bg-[var(--color-background)] shadow-md"
-        onClick={(e) => e.stopPropagation()}
+        onClick={event => event.stopPropagation()}
       >
         <div className="flex items-start justify-between border-b border-[var(--color-border)] px-6 py-4">
           <div>
             {isLoading || !member ? (
-              <div className="text-sm text-[var(--color-muted-foreground)]">
-                불러오는 중…
-              </div>
+              <div className="text-sm text-[var(--color-muted-foreground)]">불러오는 중…</div>
             ) : (
               <>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-semibold tracking-tight">
-                    {member.name}
-                  </h2>
-                  <Badge tone={STAGE_TONE[member.lifecycleStage]}>
-                    {STAGE_LABEL[member.lifecycleStage]}
-                  </Badge>
+                  <h2 className="text-xl font-semibold tracking-tight">{member.name}</h2>
+                  <Badge tone={STAGE_TONE[member.lifecycleStage]}>{STAGE_LABEL[member.lifecycleStage]}</Badge>
                 </div>
                 {member.phone && (
                   <div className="mt-1 inline-flex items-center gap-1 text-xs text-[var(--color-muted-foreground)]">
@@ -89,19 +65,10 @@ export function MemberDetailModal({
         <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
           {member && (
             <>
-              <PositionSection
-                memberId={memberId}
-                current={member.position.current}
-                history={member.position.history}
-              />
+              <PositionSection memberId={memberId} current={member.position.current} history={member.position.history} />
 
-              {KINDS.map((kind) => (
-                <AffiliationSection
-                  key={kind}
-                  kind={kind}
-                  memberId={memberId}
-                  items={affiliationsByKind(member.affiliations, kind)}
-                />
+              {KINDS.map(kind => (
+                <AffiliationSection key={kind} kind={kind} memberId={memberId} items={affiliationsByKind(member.affiliations, kind)} />
               ))}
 
               <div className="border-t border-[var(--color-border)] pt-5">
@@ -116,86 +83,73 @@ export function MemberDetailModal({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function affiliationsByKind(
   affiliations: {
-    departments: AffiliationSummary[]
-    ministries: AffiliationSummary[]
-    smallGroups: AffiliationSummary[]
+    departments: AffiliationSummary[];
+    ministries: AffiliationSummary[];
+    smallGroups: AffiliationSummary[];
   },
-  kind: AffiliationKind,
+  kind: AffiliationKind
 ): AffiliationSummary[] {
   switch (kind) {
     case 'department':
-      return affiliations.departments
+      return affiliations.departments;
     case 'ministry':
-      return affiliations.ministries
+      return affiliations.ministries;
     case 'smallGroup':
-      return affiliations.smallGroups
+      return affiliations.smallGroups;
   }
 }
 
-function AffiliationSection({
-  kind,
-  memberId,
-  items,
-}: {
-  kind: AffiliationKind
-  memberId: number
-  items: AffiliationSummary[]
-}) {
-  const queryClient = useQueryClient()
-  const { can } = usePermissions()
-  const canWrite = can('member:write')
-  const [adding, setAdding] = useState(false)
+function AffiliationSection({ kind, memberId, items }: { kind: AffiliationKind; memberId: number; items: AffiliationSummary[] }) {
+  const queryClient = useQueryClient();
+  const { can } = usePermissions();
+  const canWrite = can('member:write');
+  const [adding, setAdding] = useState(false);
 
-  const { data: refs = [] } = useQuery({
+  const { data: references = [] } = useQuery({
     queryKey: ['references', kind],
     queryFn: () => listReferences(kind),
     enabled: adding,
-  })
+  });
 
   const assignMut = useMutation({
-    mutationFn: (refId: number) => assignAffiliation(memberId, kind, { refId }),
+    mutationFn: (referenceId: number) => assignAffiliation(memberId, kind, { referenceId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['member', memberId] })
-      queryClient.invalidateQueries({ queryKey: ['members'] })
-      setAdding(false)
+      queryClient.invalidateQueries({ queryKey: ['member', memberId] });
+      queryClient.invalidateQueries({ queryKey: ['members'] });
+      setAdding(false);
     },
-  })
+  });
 
   const endMut = useMutation({
-    mutationFn: (refId: number) => endAffiliation(memberId, kind, refId),
+    mutationFn: (referenceId: number) => endAffiliation(memberId, kind, referenceId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['member', memberId] })
-      queryClient.invalidateQueries({ queryKey: ['members'] })
+      queryClient.invalidateQueries({ queryKey: ['member', memberId] });
+      queryClient.invalidateQueries({ queryKey: ['members'] });
     },
-  })
+  });
 
   const leaderMut = useMutation({
-    mutationFn: ({ refId, isLeader }: { refId: number; isLeader: boolean }) =>
-      setAffiliationLeader(memberId, kind, refId, isLeader),
+    mutationFn: ({ referenceId, isLeader }: { referenceId: number; isLeader: boolean }) => setAffiliationLeader(memberId, kind, referenceId, isLeader),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['member', memberId] })
-      queryClient.invalidateQueries({ queryKey: ['members'] })
+      queryClient.invalidateQueries({ queryKey: ['member', memberId] });
+      queryClient.invalidateQueries({ queryKey: ['members'] });
     },
-  })
+  });
 
-  const assignedIds = new Set(items.map((i) => i.refId))
-  const available = refs.filter((r: Reference) => !assignedIds.has(r.id))
+  const assignedIds = new Set(items.map(item => item.referenceId));
+  const available = references.filter((reference: Reference) => !assignedIds.has(reference.id));
 
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-semibold">{REF_LABEL[kind]}</h3>
+        <h3 className="text-sm font-semibold">{REFERENCE_LABEL[kind]}</h3>
         {canWrite && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => setAdding(!adding)}
-          >
+          <Button size="sm" variant="ghost" onClick={() => setAdding(!adding)}>
             <Plus className="size-3.5" />
             추가
           </Button>
@@ -203,19 +157,15 @@ function AffiliationSection({
       </div>
 
       <div className="flex flex-wrap gap-1.5">
-        {items.length === 0 && !adding && (
-          <span className="text-xs text-[var(--color-muted-foreground)]">
-            소속 없음
-          </span>
-        )}
-        {items.map((a) => (
+        {items.length === 0 && !adding && <span className="text-xs text-[var(--color-muted-foreground)]">소속 없음</span>}
+        {items.map(affiliation => (
           <AffiliationChip
-            key={a.id}
-            label={a.refName ?? '(이름 없음)'}
-            leader={a.isLeader}
+            key={affiliation.id}
+            label={affiliation.referenceName ?? '(이름 없음)'}
+            leader={affiliation.isLeader}
             canWrite={canWrite}
-            onToggleLeader={() => leaderMut.mutate({ refId: a.refId, isLeader: !a.isLeader })}
-            onRemove={() => endMut.mutate(a.refId)}
+            onToggleLeader={() => leaderMut.mutate({ referenceId: affiliation.referenceId, isLeader: !affiliation.isLeader })}
+            onRemove={() => endMut.mutate(affiliation.referenceId)}
           />
         ))}
       </div>
@@ -224,22 +174,22 @@ function AffiliationSection({
         <div className="mt-3 rounded-xl border border-dashed border-[var(--color-border)] p-3">
           {available.length === 0 ? (
             <p className="text-xs text-[var(--color-muted-foreground)]">
-              추가 가능한 {REF_LABEL[kind]}이 없습니다. 먼저 설정에서 등록하세요.
+              추가 가능한 {REFERENCE_LABEL[kind]}이 없습니다. 먼저 설정에서 등록하세요.
             </p>
           ) : (
             <div className="flex flex-wrap gap-1.5">
-              {available.map((r) => (
+              {available.map(reference => (
                 <button
-                  key={r.id}
-                  onClick={() => assignMut.mutate(r.id)}
+                  key={reference.id}
+                  onClick={() => assignMut.mutate(reference.id)}
                   disabled={assignMut.isPending}
                   className={cn(
                     'rounded-full border border-[var(--color-border)] px-3 py-1 text-xs font-medium',
                     'hover:border-[var(--color-foreground)] hover:bg-[var(--color-muted)]',
-                    'transition-colors disabled:opacity-50',
+                    'transition-colors disabled:opacity-50'
                   )}
                 >
-                  + {r.name}
+                  + {reference.name}
                 </button>
               ))}
             </div>
@@ -247,7 +197,7 @@ function AffiliationSection({
         </div>
       )}
     </div>
-  )
+  );
 }
 
 function AffiliationChip({
@@ -257,11 +207,11 @@ function AffiliationChip({
   onToggleLeader,
   onRemove,
 }: {
-  label: string
-  leader: boolean
-  canWrite: boolean
-  onToggleLeader: () => void
-  onRemove: () => void
+  label: string;
+  leader: boolean;
+  canWrite: boolean;
+  onToggleLeader: () => void;
+  onRemove: () => void;
 }) {
   return (
     <span
@@ -269,7 +219,7 @@ function AffiliationChip({
         'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs',
         leader
           ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
-          : 'border-[var(--color-border)] bg-[var(--color-background)]',
+          : 'border-[var(--color-border)] bg-[var(--color-background)]'
       )}
     >
       {canWrite ? (
@@ -277,10 +227,7 @@ function AffiliationChip({
           onClick={onToggleLeader}
           aria-label={leader ? '리더 해제' : '리더 지정'}
           title={leader ? '리더 해제' : '리더 지정'}
-          className={cn(
-            'text-[10px] leading-none transition-opacity',
-            leader ? 'opacity-100' : 'opacity-40 hover:opacity-100',
-          )}
+          className={cn('text-[10px] leading-none transition-opacity', leader ? 'opacity-100' : 'opacity-40 hover:opacity-100')}
         >
           ★
         </button>
@@ -291,17 +238,14 @@ function AffiliationChip({
       {canWrite && (
         <button
           onClick={onRemove}
-          className={cn(
-            'rounded-full p-0.5 transition-colors',
-            leader ? 'hover:bg-white/15' : 'hover:bg-[var(--color-muted)]',
-          )}
+          className={cn('rounded-full p-0.5 transition-colors', leader ? 'hover:bg-white/15' : 'hover:bg-[var(--color-muted)]')}
           aria-label="종료"
         >
           <X className="size-3" />
         </button>
       )}
     </span>
-  )
+  );
 }
 
 function PositionSection({
@@ -309,42 +253,41 @@ function PositionSection({
   current,
   history,
 }: {
-  memberId: number
-  current: PositionHistoryEntry | null
-  history: PositionHistoryEntry[]
+  memberId: number;
+  current: PositionHistoryEntry | null;
+  history: PositionHistoryEntry[];
 }) {
-  const queryClient = useQueryClient()
-  const { can } = usePermissions()
-  const canWrite = can('member:write')
-  const [picking, setPicking] = useState(false)
-  const [showHistory, setShowHistory] = useState(false)
+  const queryClient = useQueryClient();
+  const { can } = usePermissions();
+  const canWrite = can('member:write');
+  const [picking, setPicking] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const { data: positions = [] } = useQuery({
     queryKey: ['references', 'position'],
     queryFn: () => listReferences('position'),
     enabled: picking,
-  })
+  });
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['member', memberId] })
-    queryClient.invalidateQueries({ queryKey: ['members'] })
-  }
+    queryClient.invalidateQueries({ queryKey: ['member', memberId] });
+    queryClient.invalidateQueries({ queryKey: ['members'] });
+  };
 
   const promoteMut = useMutation({
-    mutationFn: (positionId: number) =>
-      promotePosition(memberId, { positionId }),
+    mutationFn: (positionId: number) => promotePosition(memberId, { positionId }),
     onSuccess: () => {
-      invalidate()
-      setPicking(false)
+      invalidate();
+      setPicking(false);
     },
-  })
+  });
 
   const endMut = useMutation({
     mutationFn: () => endCurrentPosition(memberId),
     onSuccess: invalidate,
-  })
+  });
 
-  const previousHistory = history.filter((h) => !h.isCurrent)
+  const previousHistory = history.filter(historyRecord => !historyRecord.isCurrent);
 
   return (
     <div>
@@ -361,20 +304,16 @@ function PositionSection({
       <div className="flex items-center gap-2">
         {current ? (
           <>
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-foreground)] bg-[var(--color-foreground)] px-3 py-1 text-xs font-medium text-[var(--color-background)]"
-            >
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-foreground)] bg-[var(--color-foreground)] px-3 py-1 text-xs font-medium text-[var(--color-background)]">
               {current.positionName ?? '(이름 없음)'}
             </span>
-            <span className="text-xs text-[var(--color-muted-foreground)]">
-              {current.startDate} ~
-            </span>
+            <span className="text-xs text-[var(--color-muted-foreground)]">{current.startDate} ~</span>
             {canWrite && (
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => {
-                  if (window.confirm('현재 직분을 종료할까요?')) endMut.mutate()
+                  if (window.confirm('현재 직분을 종료할까요?')) endMut.mutate();
                 }}
                 className="text-xs text-[var(--color-muted-foreground)]"
               >
@@ -383,34 +322,30 @@ function PositionSection({
             )}
           </>
         ) : (
-          <span className="text-xs text-[var(--color-muted-foreground)]">
-            현재 직분 없음
-          </span>
+          <span className="text-xs text-[var(--color-muted-foreground)]">현재 직분 없음</span>
         )}
       </div>
 
       {picking && (
         <div className="mt-3 rounded-xl border border-dashed border-[var(--color-border)] p-3">
           {positions.length === 0 ? (
-            <p className="text-xs text-[var(--color-muted-foreground)]">
-              등록된 직분이 없습니다. 먼저 설정에서 등록하세요.
-            </p>
+            <p className="text-xs text-[var(--color-muted-foreground)]">등록된 직분이 없습니다. 먼저 설정에서 등록하세요.</p>
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {positions
-                .filter((p: Reference) => p.id !== current?.positionId)
-                .map((p) => (
+                .filter((position: Reference) => position.id !== current?.positionId)
+                .map(position => (
                   <button
-                    key={p.id}
-                    onClick={() => promoteMut.mutate(p.id)}
+                    key={position.id}
+                    onClick={() => promoteMut.mutate(position.id)}
                     disabled={promoteMut.isPending}
                     className={cn(
                       'rounded-full border border-[var(--color-border)] px-3 py-1 text-xs font-medium',
                       'hover:border-[var(--color-foreground)] hover:bg-[var(--color-muted)]',
-                      'transition-colors disabled:opacity-50',
+                      'transition-colors disabled:opacity-50'
                     )}
                   >
-                    → {p.name}
+                    → {position.name}
                   </button>
                 ))}
             </div>
@@ -424,23 +359,19 @@ function PositionSection({
             onClick={() => setShowHistory(!showHistory)}
             className="inline-flex items-center gap-1 text-xs text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
           >
-            {showHistory ? (
-              <ChevronDown className="size-3" />
-            ) : (
-              <ChevronRight className="size-3" />
-            )}
+            {showHistory ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
             이전 직분 ({previousHistory.length})
           </button>
 
           {showHistory && (
             <ul className="mt-2 space-y-1 pl-4 text-xs text-[var(--color-muted-foreground)]">
-              {previousHistory.map((h) => (
-                <li key={h.id}>
-                  {h.positionName ?? '(이름 없음)'} ·{' '}
+              {previousHistory.map(historyRecord => (
+                <li key={historyRecord.id}>
+                  {historyRecord.positionName ?? '(이름 없음)'} ·{' '}
                   <span className="tabular-nums">
-                    {h.startDate} ~ {h.endDate}
+                    {historyRecord.startDate} ~ {historyRecord.endDate}
                   </span>
-                  {h.note && <span> · {h.note}</span>}
+                  {historyRecord.note && <span> · {historyRecord.note}</span>}
                 </li>
               ))}
             </ul>
@@ -448,5 +379,5 @@ function PositionSection({
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -69,10 +69,10 @@ export function ChurchSelectPage() {
         </div>
 
         <ul className="space-y-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 shadow-sm">
-          {state.memberships.map((m) => (
-            <li key={m.id}>
+          {state.memberships.map((membership) => (
+            <li key={membership.id}>
               <button
-                onClick={() => choose(m.churchId)}
+                onClick={() => choose(membership.churchId)}
                 disabled={pending !== null}
                 className={cn(
                   'flex w-full items-center justify-between rounded-xl border border-transparent px-4 py-3 text-left transition-colors',
@@ -80,10 +80,10 @@ export function ChurchSelectPage() {
                 )}
               >
                 <span className="text-sm font-medium">
-                  {m.churchName ?? `교회 #${m.churchId}`}
+                  {membership.churchName ?? `교회 #${membership.churchId}`}
                 </span>
                 <span className="text-xs text-[var(--color-muted-foreground)]">
-                  {pending === m.churchId ? '들어가는 중…' : (ROLE_LABEL[m.role] ?? m.role)}
+                  {pending === membership.churchId ? '들어가는 중…' : (ROLE_LABEL[membership.role] ?? membership.role)}
                 </span>
               </button>
             </li>

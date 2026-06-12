@@ -63,8 +63,8 @@ function TeamManager() {
             <div className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">불러오는 중…</div>
           ) : (
             <ul className="divide-y divide-[var(--color-border)]">
-              {members.map((m) => (
-                <MemberRow key={m.membershipId} member={m} onChanged={invalidate} />
+              {members.map((member) => (
+                <MemberRow key={member.membershipId} member={member} onChanged={invalidate} />
               ))}
             </ul>
           )}
@@ -86,7 +86,7 @@ function InviteForm({ onDone }: { onDone: () => void }) {
       setEmail('')
       onDone()
     },
-    onError: (e: Error) => setError(e.message),
+    onError: (error: Error) => setError(error.message),
   })
 
   return (
@@ -99,7 +99,7 @@ function InviteForm({ onDone }: { onDone: () => void }) {
               type="email"
               placeholder="초대할 이메일"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(event) => setEmail(event.target.value)}
               className="pl-9"
             />
           </div>
@@ -143,7 +143,7 @@ function MemberRow({ member, onChanged }: { member: TeamMember; onChanged: () =>
         <Badge tone="neutral">{ROLE_LABEL.owner}</Badge>
       ) : (
         <>
-          <RoleSelect value={member.role} onChange={(r) => roleMut.mutate(r)} disabled={roleMut.isPending} />
+          <RoleSelect value={member.role} onChange={(role) => roleMut.mutate(role)} disabled={roleMut.isPending} />
           <Button
             size="icon"
             variant="ghost"
@@ -172,13 +172,13 @@ function RoleSelect({
   return (
     <select
       value={value}
-      onChange={(e) => onChange(e.target.value as Role)}
+      onChange={(event) => onChange(event.target.value as Role)}
       disabled={disabled}
       className="h-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-sm outline-none focus:border-[var(--color-foreground)] disabled:opacity-50"
     >
-      {ASSIGNABLE_ROLES.map((r) => (
-        <option key={r} value={r}>
-          {ROLE_LABEL[r]}
+      {ASSIGNABLE_ROLES.map((role) => (
+        <option key={role} value={role}>
+          {ROLE_LABEL[role]}
         </option>
       ))}
     </select>

@@ -43,24 +43,24 @@ export class BudgetService {
 
     const usedMap = await this.transactions.expenseByBudget(
       churchId,
-      rows.map(r => r.id)
+      rows.map(allocation => allocation.id)
     );
     const nameMaps = await this.targetNameMaps(churchId);
 
-    return rows.map(r => {
-      const used = usedMap.get(r.id) ?? 0;
-      const allocated = r.amount;
+    return rows.map(allocation => {
+      const used = usedMap.get(allocation.id) ?? 0;
+      const allocated = allocation.amount;
       return {
-        id: r.id,
-        fiscalYearId: r.fiscalYearId,
-        targetKind: r.targetKind,
-        targetId: r.targetId,
-        targetName: nameMaps[r.targetKind].get(r.targetId) ?? null,
+        id: allocation.id,
+        fiscalYearId: allocation.fiscalYearId,
+        targetKind: allocation.targetKind,
+        targetId: allocation.targetId,
+        targetName: nameMaps[allocation.targetKind].get(allocation.targetId) ?? null,
         allocated,
         used,
         remaining: allocated - used,
         rate: allocated === 0 ? 0 : Math.round((used / allocated) * 100),
-        note: r.note ?? null,
+        note: allocation.note ?? null,
       };
     });
   }
@@ -87,8 +87,8 @@ export class BudgetService {
   /** 대시보드용 — 회계연도 전체 집행률. */
   async executionRate(churchId: number, fiscalYearId: number): Promise<{ allocated: number; used: number; rate: number }> {
     const items = await this.list(churchId, fiscalYearId);
-    const allocated = items.reduce((s, i) => s + i.allocated, 0);
-    const used = items.reduce((s, i) => s + i.used, 0);
+    const allocated = items.reduce((sum, item) => sum + item.allocated, 0);
+    const used = items.reduce((sum, item) => sum + item.used, 0);
     return { allocated, used, rate: allocated === 0 ? 0 : Math.round((used / allocated) * 100) };
   }
 
@@ -99,9 +99,9 @@ export class BudgetService {
       DataSources.instance.getRepository(SmallGroupEntity).find({ where: { churchId } }),
     ]);
     return {
-      [BudgetTargetKind.DEPARTMENT]: new Map(departments.map(d => [d.id, d.name])),
-      [BudgetTargetKind.MINISTRY]: new Map(ministries.map(m => [m.id, m.name])),
-      [BudgetTargetKind.SMALL_GROUP]: new Map(smallGroups.map(g => [g.id, g.name])),
+      [BudgetTargetKind.DEPARTMENT]: new Map(departments.map(department => [department.id, department.name])),
+      [BudgetTargetKind.MINISTRY]: new Map(ministries.map(ministry => [ministry.id, ministry.name])),
+      [BudgetTargetKind.SMALL_GROUP]: new Map(smallGroups.map(smallGroup => [smallGroup.id, smallGroup.name])),
     };
   }
 

@@ -29,13 +29,13 @@ export class PhotoService {
       order: { sortOrder: 'ASC', id: 'ASC' },
     });
     return Promise.all(
-      rows.map(async r => ({
-        id: r.id,
-        originalName: r.originalName,
-        contentType: r.contentType ?? null,
-        size: r.size ?? null,
-        url: await this.s3.presignGet(r.s3Key),
-        createdAt: r.createdAt,
+      rows.map(async photo => ({
+        id: photo.id,
+        originalName: photo.originalName,
+        contentType: photo.contentType ?? null,
+        size: photo.size ?? null,
+        url: await this.s3.presignGet(photo.s3Key),
+        createdAt: photo.createdAt,
       }))
     );
   }
@@ -77,9 +77,9 @@ export class PhotoService {
   /** 행사 삭제 시 연쇄 — S3 객체 + row 정리. */
   async removeAllForEvent(churchId: number, eventId: number): Promise<void> {
     const rows = await this.repo().find({ where: { churchId, eventId } });
-    await Promise.all(rows.map(r => this.s3.remove(r.s3Key).catch(() => undefined)));
+    await Promise.all(rows.map(photo => this.s3.remove(photo.s3Key).catch(() => undefined)));
     if (rows.length > 0) {
-      await this.repo().softDelete(rows.map(r => r.id));
+      await this.repo().softDelete(rows.map(photo => photo.id));
     }
   }
 

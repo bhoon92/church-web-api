@@ -1,10 +1,7 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { BaseDateEntityWithDeletedAt } from './base-date.entity';
 
-/**
- * 행사 (planning 5.2/5.3) — 사진 갤러리의 "폴더" 모델.
- * 수련회/절기예배/행사 단위로 사진을 묶음. per-church.
- */
+/** 행사 — 갤러리 사진 폴더 단위. */
 @Entity('event')
 @Index(['churchId'])
 @Index(['churchId', 'date'])

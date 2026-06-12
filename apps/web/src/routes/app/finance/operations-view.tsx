@@ -65,17 +65,17 @@ export function OperationsView() {
             </div>
           ) : (
             <ul className="divide-y divide-[var(--color-border)]">
-              {rows.map((r) => {
-                const income = r.flow === 'income'
+              {rows.map((transaction) => {
+                const income = transaction.flow === 'income'
                 return (
-                  <li key={r.id} className="flex items-center gap-4 px-5 py-3.5">
+                  <li key={transaction.id} className="flex items-center gap-4 px-5 py-3.5">
                     <div className="text-xs tabular-nums text-[var(--color-muted-foreground)]">
-                      {r.date.slice(5)}
+                      {transaction.date.slice(5)}
                     </div>
                     <div className="flex-1">
-                      <div className="text-sm font-medium">{r.title}</div>
+                      <div className="text-sm font-medium">{transaction.title}</div>
                       <div className="text-xs text-[var(--color-muted-foreground)]">
-                        {r.categoryName ?? (income ? '수입' : '지출')}
+                        {transaction.categoryName ?? (income ? '수입' : '지출')}
                       </div>
                     </div>
                     <div
@@ -85,12 +85,12 @@ export function OperationsView() {
                       )}
                     >
                       {income ? '+' : '−'}
-                      {formatKRW(r.amount)}
+                      {formatKRW(transaction.amount)}
                     </div>
                     {canWrite && (
                       <button
                         onClick={() => {
-                          if (window.confirm('이 거래를 삭제할까요?')) deleteMut.mutate(r.id)
+                          if (window.confirm('이 거래를 삭제할까요?')) deleteMut.mutate(transaction.id)
                         }}
                         className="rounded-full p-1 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)]"
                         aria-label="삭제"
@@ -125,9 +125,9 @@ function TransactionForm({ onCreated }: { onCreated: () => void }) {
 
   const createCategoryMut = useMutation({
     mutationFn: createAccountCategory,
-    onSuccess: (c) => {
+    onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'account-categories'] })
-      setCategoryId(c.id)
+      setCategoryId(created.id)
     },
   })
 
@@ -156,26 +156,26 @@ function TransactionForm({ onCreated }: { onCreated: () => void }) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <div className="inline-flex rounded-full border border-[var(--color-border)] p-0.5">
-          {(['expense', 'income'] as TransactionFlow[]).map((f) => (
+          {(['expense', 'income'] as TransactionFlow[]).map((flowOption) => (
             <button
-              key={f}
+              key={flowOption}
               type="button"
-              onClick={() => setFlow(f)}
+              onClick={() => setFlow(flowOption)}
               className={cn(
                 'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                flow === f
+                flow === flowOption
                   ? 'bg-[var(--color-foreground)] text-[var(--color-background)]'
                   : 'text-[var(--color-muted-foreground)]',
               )}
             >
-              {f === 'expense' ? '지출' : '수입'}
+              {flowOption === 'expense' ? '지출' : '수입'}
             </button>
           ))}
         </div>
         <Input
           type="date"
           value={date}
-          onChange={(e) => setDate(e.target.value)}
+          onChange={(event) => setDate(event.target.value)}
           className="w-40"
         />
       </div>
@@ -184,7 +184,7 @@ function TransactionForm({ onCreated }: { onCreated: () => void }) {
         <Input
           placeholder="적요 (예: 6월 임대료)"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(event) => setTitle(event.target.value)}
           className="sm:col-span-7"
         />
         <div className="flex gap-2 sm:col-span-5">
@@ -192,9 +192,9 @@ function TransactionForm({ onCreated }: { onCreated: () => void }) {
             inputMode="numeric"
             placeholder="금액"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') submit()
+            onChange={(event) => setAmount(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') submit()
             }}
             className="text-right tabular-nums"
           />

@@ -1,19 +1,12 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { BaseDateEntityWithDeletedAt } from './base-date.entity';
 
-/**
- * Member ↔ Department N:N + 기간 + 리더 표현.
- * 현재 소속: end_date IS NULL.
- * 변경 이력: 동일 (member, department) 에 대해 endDate 가 채워진 과거 row + endDate IS NULL 인 현재 row 동시 존재 가능.
- */
+/** 성도 ↔ 부서 소속 이력 (+리더). */
 @Entity('member_department')
 @Index(['churchId'])
 @Index(['memberId'])
 @Index(['departmentId'])
-@Index(['memberId', 'departmentId'], {
-  unique: true,
-  where: 'end_date IS NULL AND deleted_at IS NULL',
-})
+@Index(['memberId', 'departmentId'], { unique: true, where: 'end_date IS NULL AND deleted_at IS NULL' })
 export class MemberDepartmentEntity extends BaseDateEntityWithDeletedAt {
   @PrimaryGeneratedColumn()
   id!: number;

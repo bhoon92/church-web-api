@@ -9,7 +9,9 @@ import { ChurchModule } from './module/church/church.module';
 import { ExportModule } from './module/export/export.module';
 import { FinanceModule } from './module/finance/finance.module';
 import { GalleryModule } from './module/gallery/gallery.module';
+import { GoogleCalendarModule } from './module/google-calendar/google-calendar.module';
 import { MemberModule } from './module/member/member.module';
+import { OrganizationChartModule } from './module/organization-chart/organization-chart.module';
 import { PastoralRecordModule } from './module/pastoral-record/pastoral-record.module';
 import { MemberPositionModule } from './module/position/member-position.module';
 import { ReferenceModule } from './module/reference/reference.module';
@@ -22,6 +24,7 @@ import { TeamModule } from './module/team/team.module';
     MemberModule,
     ReferenceModule,
     AffiliationModule,
+    OrganizationChartModule,
     MemberPositionModule,
     PastoralRecordModule,
     AttendanceModule,
@@ -29,6 +32,7 @@ import { TeamModule } from './module/team/team.module';
     ExportModule,
     GalleryModule,
     CalendarModule,
+    GoogleCalendarModule,
     TeamModule,
   ],
   controllers: [AppController],

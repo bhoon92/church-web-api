@@ -72,29 +72,29 @@ export function PastoralRecordSection({ memberId }: { memberId: number }) {
         <p className="text-xs text-[var(--color-muted-foreground)]">사역 기록 없음</p>
       ) : (
         <ul className="mt-1 space-y-3">
-          {records.map((r) => (
+          {records.map((record) => (
             <li
-              key={r.id}
+              key={record.id}
               className="rounded-xl border border-[var(--color-border)] p-3"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone={TYPE_TONE[r.type]}>
-                    {PASTORAL_RECORD_TYPE_LABEL[r.type]}
+                  <Badge tone={TYPE_TONE[record.type]}>
+                    {PASTORAL_RECORD_TYPE_LABEL[record.type]}
                   </Badge>
                   <span className="text-xs tabular-nums text-[var(--color-muted-foreground)]">
-                    {r.date}
+                    {record.date}
                   </span>
-                  {r.location && (
+                  {record.location && (
                     <span className="text-xs text-[var(--color-muted-foreground)]">
-                      · {r.location}
+                      · {record.location}
                     </span>
                   )}
                 </div>
                 {canWrite && (
                   <button
                     onClick={() => {
-                      if (window.confirm('이 기록을 삭제할까요?')) deleteMut.mutate(r.id)
+                      if (window.confirm('이 기록을 삭제할까요?')) deleteMut.mutate(record.id)
                     }}
                     className="rounded-full p-0.5 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)]"
                     aria-label="삭제"
@@ -104,23 +104,23 @@ export function PastoralRecordSection({ memberId }: { memberId: number }) {
                 )}
               </div>
 
-              <p className="mt-2 whitespace-pre-wrap text-sm">{r.content}</p>
+              <p className="mt-2 whitespace-pre-wrap text-sm">{record.content}</p>
 
-              {r.prayerRequest && (
+              {record.prayerRequest && (
                 <p className="mt-2 whitespace-pre-wrap rounded-lg bg-[var(--color-muted)] px-2.5 py-1.5 text-xs">
                   <span className="font-medium">기도제목 </span>
-                  {r.prayerRequest}
+                  {record.prayerRequest}
                 </p>
               )}
-              {r.statusNote && (
+              {record.statusNote && (
                 <p className="mt-1.5 whitespace-pre-wrap text-xs text-[var(--color-muted-foreground)]">
                   <span className="font-medium">상황 </span>
-                  {r.statusNote}
+                  {record.statusNote}
                 </p>
               )}
 
               <p className="mt-2 text-[11px] text-[var(--color-muted-foreground)]">
-                {r.recorderName ?? '작성자 미상'}
+                {record.recorderName ?? '작성자 미상'}
               </p>
             </li>
           ))}
@@ -168,18 +168,18 @@ function RecordForm({
   return (
     <div className="mb-3 space-y-3 rounded-xl border border-dashed border-[var(--color-border)] p-3">
       <div className="flex flex-wrap gap-1.5">
-        {PASTORAL_RECORD_TYPES.map((t) => (
+        {PASTORAL_RECORD_TYPES.map((recordType) => (
           <button
-            key={t}
-            onClick={() => setType(t)}
+            key={recordType}
+            onClick={() => setType(recordType)}
             className={cn(
               'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-              type === t
+              type === recordType
                 ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
                 : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]',
             )}
           >
-            {PASTORAL_RECORD_TYPE_LABEL[t]}
+            {PASTORAL_RECORD_TYPE_LABEL[recordType]}
           </button>
         ))}
       </div>
@@ -188,34 +188,34 @@ function RecordForm({
         <Input
           type="date"
           value={date}
-          onChange={(e) => setDate(e.target.value)}
+          onChange={(event) => setDate(event.target.value)}
           className="w-40"
         />
         <Input
           placeholder="장소 (선택)"
           value={location}
-          onChange={(e) => setLocation(e.target.value)}
+          onChange={(event) => setLocation(event.target.value)}
         />
       </div>
 
       <textarea
         placeholder="본문"
         value={content}
-        onChange={(e) => setContent(e.target.value)}
+        onChange={(event) => setContent(event.target.value)}
         rows={3}
         className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm outline-none focus:border-[var(--color-foreground)]"
       />
       <textarea
         placeholder="기도제목 (선택)"
         value={prayerRequest}
-        onChange={(e) => setPrayerRequest(e.target.value)}
+        onChange={(event) => setPrayerRequest(event.target.value)}
         rows={2}
         className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm outline-none focus:border-[var(--color-foreground)]"
       />
       <textarea
         placeholder="현재 상황 (선택)"
         value={statusNote}
-        onChange={(e) => setStatusNote(e.target.value)}
+        onChange={(event) => setStatusNote(event.target.value)}
         rows={2}
         className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm outline-none focus:border-[var(--color-foreground)]"
       />

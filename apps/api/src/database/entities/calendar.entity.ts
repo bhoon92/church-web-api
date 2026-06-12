@@ -1,10 +1,7 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { BaseDateEntityWithDeletedAt } from './base-date.entity';
 
-/**
- * 달력 레이어 (planning 5.1) — 공지/전체/부서/사역팀/목장/개인 등 구분 단위.
- * per-church. 색상은 UI 표시 + iCal 구분용. 사용자는 구독에서 포함 달력을 선택.
- */
+/** 달력 레이어 — 공지/부서/개인 등 구분 단위. */
 @Entity('calendar')
 @Index(['churchId'])
 export class CalendarEntity extends BaseDateEntityWithDeletedAt {

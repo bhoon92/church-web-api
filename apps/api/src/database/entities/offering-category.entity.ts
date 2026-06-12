@@ -1,10 +1,7 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { BaseDateEntityWithDeletedAt } from './base-date.entity';
 
-/**
- * 헌금 종류 (planning 4.1) — 십일조/감사/주정/선교/건축/절기/기타.
- * per-church 사용자 정의 reference table (reference 패턴 재사용).
- */
+/** 헌금 종류 reference. */
 @Entity('offering_category')
 @Index(['churchId'])
 @Index(['churchId', 'name'], { unique: true, where: 'deleted_at IS NULL' })

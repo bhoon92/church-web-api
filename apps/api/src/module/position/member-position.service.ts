@@ -77,27 +77,27 @@ export class MemberPositionService {
     });
     if (rows.length === 0) return { current: null, history: [] };
 
-    const positionIds = Array.from(new Set(rows.map(r => r.positionId)));
+    const positionIds = Array.from(new Set(rows.map(positionRecord => positionRecord.positionId)));
     const positions = await DataSources.instance.getRepository(PositionEntity).find({ where: positionIds.map(id => ({ id, churchId })) });
-    const posMap = new Map(positions.map(p => [p.id, p.name]));
+    const positionMap = new Map(positions.map(position => [position.id, position.name]));
 
-    const items: PositionHistoryItem[] = rows.map(r => ({
-      id: r.id,
-      positionId: r.positionId,
-      positionName: posMap.get(r.positionId) ?? null,
-      startDate: r.startDate,
-      endDate: r.endDate ?? null,
-      note: r.note ?? null,
-      isCurrent: r.endDate === null || r.endDate === undefined,
+    const items: PositionHistoryItem[] = rows.map(positionRecord => ({
+      id: positionRecord.id,
+      positionId: positionRecord.positionId,
+      positionName: positionMap.get(positionRecord.positionId) ?? null,
+      startDate: positionRecord.startDate,
+      endDate: positionRecord.endDate ?? null,
+      note: positionRecord.note ?? null,
+      isCurrent: positionRecord.endDate === null || positionRecord.endDate === undefined,
     }));
 
-    const current = items.find(i => i.isCurrent) ?? null;
+    const current = items.find(item => item.isCurrent) ?? null;
     return { current, history: items };
   }
 
   private async assertMember(churchId: number, memberId: number): Promise<void> {
-    const m = await DataSources.instance.getRepository(MemberEntity).findOne({ where: { id: memberId, churchId } });
-    if (!m) throw new NotFoundException('Member not found');
+    const member = await DataSources.instance.getRepository(MemberEntity).findOne({ where: { id: memberId, churchId } });
+    if (!member) throw new NotFoundException('Member not found');
   }
 
   private async assertPosition(churchId: number, positionId: number): Promise<void> {

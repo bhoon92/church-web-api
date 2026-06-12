@@ -18,8 +18,8 @@ export function LoginPage() {
     return <Navigate to={state.currentChurch ? '/app' : '/onboarding'} replace />
   }
 
-  const handleDevSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleDevSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
     if (!devEmail) return
     setSubmitting(true)
     try {
@@ -79,13 +79,13 @@ export function LoginPage() {
                 type="email"
                 placeholder="email@example.com"
                 value={devEmail}
-                onChange={(e) => setDevEmail(e.target.value)}
+                onChange={(event) => setDevEmail(event.target.value)}
                 required
               />
               <Input
                 placeholder="이름 (선택)"
                 value={devName}
-                onChange={(e) => setDevName(e.target.value)}
+                onChange={(event) => setDevName(event.target.value)}
               />
               <Button
                 type="submit"

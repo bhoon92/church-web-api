@@ -11,17 +11,17 @@ import { ReferenceService } from './reference.service';
 @Controller('ministries')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class MinistryController {
-  constructor(private readonly refs: ReferenceService) {}
+  constructor(private readonly referenceService: ReferenceService) {}
 
   @Get()
   list(@RequireChurch() auth: AuthContext & { churchId: number }) {
-    return this.refs.list(MinistryEntity, auth.churchId);
+    return this.referenceService.list(MinistryEntity, auth.churchId);
   }
 
   @Post()
   @Permissions('settings:write')
   create(@RequireChurch() auth: AuthContext & { churchId: number }, @Body() dto: UpsertReferenceDto) {
-    return this.refs.create(MinistryEntity, auth.churchId, dto);
+    return this.referenceService.create(MinistryEntity, auth.churchId, dto);
   }
 
   @Patch(':id')
@@ -31,13 +31,13 @@ export class MinistryController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpsertReferenceDto
   ) {
-    return this.refs.update(MinistryEntity, auth.churchId, id, dto);
+    return this.referenceService.update(MinistryEntity, auth.churchId, id, dto);
   }
 
   @Delete(':id')
   @Permissions('settings:write')
   @HttpCode(204)
   remove(@RequireChurch() auth: AuthContext & { churchId: number }, @Param('id', ParseIntPipe) id: number) {
-    return this.refs.remove(MinistryEntity, auth.churchId, id);
+    return this.referenceService.remove(MinistryEntity, auth.churchId, id);
   }
 }

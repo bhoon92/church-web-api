@@ -26,25 +26,25 @@ type EntityClass<T> = { new (): T };
 
 type Config<J extends JoinRow, R extends ObjectLiteral> = {
   joinEntity: EntityClass<J>;
-  refEntity: EntityClass<R>;
-  refKey: keyof J; // e.g., 'departmentId'
+  referenceEntity: EntityClass<R>;
+  referenceKey: keyof J; // e.g., 'departmentId'
 };
 
 const CONFIGS = {
   department: {
     joinEntity: MemberDepartmentEntity,
-    refEntity: DepartmentEntity,
-    refKey: 'departmentId' as const,
+    referenceEntity: DepartmentEntity,
+    referenceKey: 'departmentId' as const,
   },
   ministry: {
     joinEntity: MemberMinistryEntity,
-    refEntity: MinistryEntity,
-    refKey: 'ministryId' as const,
+    referenceEntity: MinistryEntity,
+    referenceKey: 'ministryId' as const,
   },
   smallGroup: {
     joinEntity: MemberSmallGroupEntity,
-    refEntity: SmallGroupEntity,
-    refKey: 'smallGroupId' as const,
+    referenceEntity: SmallGroupEntity,
+    referenceKey: 'smallGroupId' as const,
   },
 } as const;
 
@@ -53,7 +53,7 @@ export class AffiliationService {
   async assign(kind: AffiliationKind, churchId: number, memberId: number, dto: AssignAffiliationDto): Promise<JoinRow> {
     const config = CONFIGS[kind] as Config<JoinRow, ObjectLiteral>;
     await this.assertMember(churchId, memberId);
-    await this.assertRef(config.refEntity, churchId, dto.refId);
+    await this.assertReference(config.referenceEntity, churchId, dto.referenceId);
 
     const joinRepo = DataSources.instance.getRepository(config.joinEntity) as Repository<JoinRow>;
 
@@ -61,7 +61,7 @@ export class AffiliationService {
       where: {
         churchId,
         memberId,
-        [config.refKey]: dto.refId,
+        [config.referenceKey]: dto.referenceId,
         endDate: IsNull(),
       } as never,
     });
@@ -73,7 +73,7 @@ export class AffiliationService {
     Object.assign(row, {
       churchId,
       memberId,
-      [config.refKey]: dto.refId,
+      [config.referenceKey]: dto.referenceId,
       startDate: dto.startDate ?? this.today(),
       isLeader: dto.isLeader ?? false,
       roleLabel: dto.roleLabel,
@@ -81,7 +81,7 @@ export class AffiliationService {
     return joinRepo.save(row);
   }
 
-  async end(kind: AffiliationKind, churchId: number, memberId: number, refId: number): Promise<void> {
+  async end(kind: AffiliationKind, churchId: number, memberId: number, referenceId: number): Promise<void> {
     const config = CONFIGS[kind] as Config<JoinRow, ObjectLiteral>;
     const joinRepo = DataSources.instance.getRepository(config.joinEntity) as Repository<JoinRow>;
 
@@ -89,7 +89,7 @@ export class AffiliationService {
       where: {
         churchId,
         memberId,
-        [config.refKey]: refId,
+        [config.referenceKey]: referenceId,
         endDate: IsNull(),
       } as never,
     });
@@ -104,7 +104,7 @@ export class AffiliationService {
     kind: AffiliationKind,
     churchId: number,
     memberId: number,
-    refId: number,
+    referenceId: number,
     isLeader: boolean,
     roleLabel?: string
   ): Promise<JoinRow> {
@@ -115,7 +115,7 @@ export class AffiliationService {
       where: {
         churchId,
         memberId,
-        [config.refKey]: refId,
+        [config.referenceKey]: referenceId,
         endDate: IsNull(),
       } as never,
     });
@@ -138,7 +138,7 @@ export class AffiliationService {
   private async currentJoins(kind: AffiliationKind, churchId: number, memberId: number) {
     const config = CONFIGS[kind] as Config<JoinRow, ObjectLiteral>;
     const joinRepo = DataSources.instance.getRepository(config.joinEntity) as Repository<JoinRow>;
-    const refRepo = DataSources.instance.getRepository(config.refEntity);
+    const referenceRepo = DataSources.instance.getRepository(config.referenceEntity);
 
     const joins = await joinRepo.find({
       where: { churchId, memberId, endDate: IsNull() } as never,
@@ -146,33 +146,33 @@ export class AffiliationService {
     });
     if (joins.length === 0) return [];
 
-    const refIds = joins.map(j => j[config.refKey] as number);
-    const refs = (await refRepo.find({
-      where: { id: refIds.length === 1 ? refIds[0] : (refIds as never) } as never,
+    const referenceIds = joins.map(joinRow => joinRow[config.referenceKey] as number);
+    const references = (await referenceRepo.find({
+      where: { id: referenceIds.length === 1 ? referenceIds[0] : (referenceIds as never) } as never,
     })) as { id: number; name: string }[];
-    const refMap = new Map(refs.map(r => [r.id, r]));
+    const referenceMap = new Map(references.map(reference => [reference.id, reference]));
 
-    return joins.map(j => {
-      const ref = refMap.get(j[config.refKey] as number);
+    return joins.map(joinRow => {
+      const reference = referenceMap.get(joinRow[config.referenceKey] as number);
       return {
-        id: j.id,
-        refId: j[config.refKey],
-        refName: ref?.name ?? null,
-        startDate: j.startDate,
-        isLeader: j.isLeader,
-        roleLabel: j.roleLabel ?? null,
+        id: joinRow.id,
+        referenceId: joinRow[config.referenceKey],
+        referenceName: reference?.name ?? null,
+        startDate: joinRow.startDate,
+        isLeader: joinRow.isLeader,
+        roleLabel: joinRow.roleLabel ?? null,
       };
     });
   }
 
   private async assertMember(churchId: number, memberId: number): Promise<void> {
-    const m = await DataSources.instance.getRepository(MemberEntity).findOne({ where: { id: memberId, churchId } });
-    if (!m) throw new NotFoundException('Member not found');
+    const member = await DataSources.instance.getRepository(MemberEntity).findOne({ where: { id: memberId, churchId } });
+    if (!member) throw new NotFoundException('Member not found');
   }
 
-  private async assertRef<R extends ObjectLiteral>(entity: EntityClass<R>, churchId: number, refId: number): Promise<void> {
-    const r = await DataSources.instance.getRepository(entity).findOne({ where: { id: refId, churchId } as never });
-    if (!r) throw new BadRequestException('Reference not found in this church');
+  private async assertReference<R extends ObjectLiteral>(entity: EntityClass<R>, churchId: number, referenceId: number): Promise<void> {
+    const reference = await DataSources.instance.getRepository(entity).findOne({ where: { id: referenceId, churchId } as never });
+    if (!reference) throw new BadRequestException('Reference not found in this church');
   }
 
   private today(): string {

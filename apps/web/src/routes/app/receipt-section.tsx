@@ -15,7 +15,7 @@ export function ReceiptSection({ memberId }: { memberId: number }) {
   const downloadMut = useMutation({
     mutationFn: () => downloadReceipt(memberId, year),
     onMutate: () => setError(null),
-    onError: (e: Error) => setError(e.message),
+    onError: (error: Error) => setError(error.message),
   })
 
   return (
@@ -24,12 +24,12 @@ export function ReceiptSection({ memberId }: { memberId: number }) {
       <div className="flex flex-wrap items-center gap-2">
         <select
           value={year}
-          onChange={(e) => setYear(Number(e.target.value))}
+          onChange={(event) => setYear(Number(event.target.value))}
           className="h-9 rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-sm outline-none focus:border-[var(--color-foreground)]"
         >
-          {YEARS.map((y) => (
-            <option key={y} value={y}>
-              {y}년
+          {YEARS.map((yearOption) => (
+            <option key={yearOption} value={yearOption}>
+              {yearOption}년
             </option>
           ))}
         </select>

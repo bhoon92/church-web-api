@@ -40,7 +40,7 @@ export class ReceiptService {
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ size: 'A4', margin: 56 });
       const chunks: Buffer[] = [];
-      doc.on('data', c => chunks.push(c as Buffer));
+      doc.on('data', chunk => chunks.push(chunk as Buffer));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 
@@ -90,16 +90,16 @@ export class ReceiptService {
 
       // 표 행
       doc.font('kr').fontSize(11);
-      for (const c of summary.byCategory) {
-        const y = doc.y;
-        doc.text(c.categoryName ?? '기타', labelX + 10, y + 6);
-        doc.text(won(c.amount), amountX, y + 6, { width: amountW - 10, align: 'right' });
+      for (const category of summary.byCategory) {
+        const rowY = doc.y;
+        doc.text(category.categoryName ?? '기타', labelX + 10, rowY + 6);
+        doc.text(won(category.amount), amountX, rowY + 6, { width: amountW - 10, align: 'right' });
         doc
-          .moveTo(labelX, y + 24)
-          .lineTo(labelX + pageWidth, y + 24)
+          .moveTo(labelX, rowY + 24)
+          .lineTo(labelX + pageWidth, rowY + 24)
           .strokeColor('#e0e0e0')
           .stroke();
-        doc.y = y + 24;
+        doc.y = rowY + 24;
       }
 
       // 합계

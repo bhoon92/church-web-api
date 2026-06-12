@@ -1,6 +1,7 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { BaseDateEntityWithDeletedAt } from './base-date.entity';
 
+/** 성도 ↔ 사역팀 소속 이력 (+리더). */
 @Entity('member_ministry')
 @Index(['churchId'])
 @Index(['memberId'])

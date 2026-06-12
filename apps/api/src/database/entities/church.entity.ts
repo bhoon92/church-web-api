@@ -7,6 +7,7 @@ export enum ChurchStatus {
   SUSPENDED = 'suspended',
 }
 
+/** 교회 — 멀티테넌트 root. */
 @Entity('church')
 @Index(['slug'], { unique: true, where: 'deleted_at IS NULL' })
 export class ChurchEntity extends BaseDateEntityWithDeletedAt {

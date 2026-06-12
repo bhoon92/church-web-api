@@ -1,13 +1,6 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { BaseDateEntityWithDeletedAt } from './base-date.entity';
 
-/**
- * 교회 안의 성도 (planning 1.1). 도메인 모델 root — 헌금/출석/사역기록이 모두 member_id에 1:N.
- * lifecycle_stage 가 단일 enum 으로 등록 상태까지 통합.
- *
- * uniqueness: (church_id, name, phone) 부분 unique — 동일 교회 안에서 이름+전화 동일하면 중복 등록 방지.
- *   phone 없는 경우 (방문/익명 등) 는 unique 제약에서 자연스럽게 빠짐.
- */
 export enum LifecycleStage {
   VISITOR = 'visitor', // 방문
   NEW = 'new', // 새가족
@@ -18,6 +11,7 @@ export enum LifecycleStage {
   ANONYMOUS = 'anonymous', // 익명 (무명 헌금 묶음용)
 }
 
+/** 성도 — 도메인 모델 root (헌금·출석·사역기록 1:N). */
 @Entity('member')
 @Index(['churchId'])
 @Index(['churchId', 'lifecycleStage'])

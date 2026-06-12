@@ -40,14 +40,14 @@ export class ExportService {
       { header: '봉투명', key: 'raw', width: 16 },
       { header: '비고', key: 'note', width: 24 },
     ]);
-    for (const o of items) {
+    for (const offering of items) {
       ws.addRow({
-        date: o.date,
-        member: o.memberName ?? o.rawDonorName ?? '(미상)',
-        category: o.categoryName ?? '',
-        amount: o.amount,
-        raw: o.rawDonorName ?? '',
-        note: o.note ?? '',
+        date: offering.date,
+        member: offering.memberName ?? offering.rawDonorName ?? '(미상)',
+        category: offering.categoryName ?? '',
+        amount: offering.amount,
+        raw: offering.rawDonorName ?? '',
+        note: offering.note ?? '',
       });
     }
     this.currencyColumn(ws, 'amount');
@@ -68,14 +68,14 @@ export class ExportService {
       { header: '수입', key: 'income', width: 16 },
       { header: '지출', key: 'expense', width: 16 },
     ]);
-    for (const t of rows) {
+    for (const transaction of rows) {
       ws.addRow({
-        date: t.date,
-        flow: t.flow === 'income' ? '수입' : '지출',
-        category: t.categoryName ?? '',
-        title: t.title,
-        income: t.flow === 'income' ? t.amount : null,
-        expense: t.flow === 'expense' ? t.amount : null,
+        date: transaction.date,
+        flow: transaction.flow === 'income' ? '수입' : '지출',
+        category: transaction.categoryName ?? '',
+        title: transaction.title,
+        income: transaction.flow === 'income' ? transaction.amount : null,
+        expense: transaction.flow === 'expense' ? transaction.amount : null,
       });
     }
     this.currencyColumn(ws, 'income');
@@ -96,14 +96,14 @@ export class ExportService {
       { header: '잔여', key: 'remaining', width: 16 },
       { header: '집행률(%)', key: 'rate', width: 10 },
     ]);
-    for (const b of items) {
+    for (const allocation of items) {
       ws.addRow({
-        kind: KIND_LABEL[b.targetKind] ?? b.targetKind,
-        target: b.targetName ?? '',
-        allocated: b.allocated,
-        used: b.used,
-        remaining: b.remaining,
-        rate: b.rate,
+        kind: KIND_LABEL[allocation.targetKind] ?? allocation.targetKind,
+        target: allocation.targetName ?? '',
+        allocated: allocation.allocated,
+        used: allocation.used,
+        remaining: allocation.remaining,
+        rate: allocation.rate,
       });
     }
     for (const key of ['allocated', 'used', 'remaining']) this.currencyColumn(ws, key);
@@ -125,16 +125,16 @@ export class ExportService {
       { header: '직업', key: 'occupation', width: 14 },
       { header: '주소', key: 'address', width: 28 },
     ]);
-    for (const m of rows) {
+    for (const member of rows) {
       ws.addRow({
-        name: m.name,
-        phone: m.phone ?? '',
-        birth: m.birth ?? '',
-        stage: STAGE_LABEL[m.lifecycleStage],
-        registeredAt: m.registeredAt ?? '',
-        baptizedAt: m.baptizedAt ?? '',
-        occupation: m.occupation ?? '',
-        address: m.address ?? '',
+        name: member.name,
+        phone: member.phone ?? '',
+        birth: member.birth ?? '',
+        stage: STAGE_LABEL[member.lifecycleStage],
+        registeredAt: member.registeredAt ?? '',
+        baptizedAt: member.baptizedAt ?? '',
+        occupation: member.occupation ?? '',
+        address: member.address ?? '',
       });
     }
     return this.toBuffer(wb);

@@ -24,19 +24,19 @@ export function CategorySelect({
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      {categories.map((c) => (
+      {categories.map((category) => (
         <button
-          key={c.id}
+          key={category.id}
           type="button"
-          onClick={() => onChange(c.id)}
+          onClick={() => onChange(category.id)}
           className={cn(
             'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-            value === c.id
+            value === category.id
               ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
               : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]',
           )}
         >
-          {c.name}
+          {category.name}
         </button>
       ))}
 
@@ -44,18 +44,18 @@ export function CategorySelect({
         <span className="inline-flex items-center gap-1">
           <Input
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(event) => setName(event.target.value)}
             autoFocus
             maxLength={20}
             placeholder="새 분류"
             className="h-8 w-28"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && name.trim()) {
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && name.trim()) {
                 onCreate(name.trim())
                 setName('')
                 setAdding(false)
               }
-              if (e.key === 'Escape') {
+              if (event.key === 'Escape') {
                 setAdding(false)
                 setName('')
               }

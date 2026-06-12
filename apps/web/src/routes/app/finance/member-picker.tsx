@@ -13,12 +13,12 @@ export function MemberPicker({
   selectedName: string | null
   onSelect: (member: { id: number; name: string }) => void
 }) {
-  const [q, setQ] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [open, setOpen] = useState(false)
 
   const { data } = useQuery({
-    queryKey: ['members', { q, page: 1, pageSize: 8 }],
-    queryFn: () => listMembers({ q: q || undefined, page: 1, pageSize: 8 }),
+    queryKey: ['members', { q: searchQuery, page: 1, pageSize: 8 }],
+    queryFn: () => listMembers({ q: searchQuery || undefined, page: 1, pageSize: 8 }),
     enabled: open,
   })
 
@@ -27,34 +27,34 @@ export function MemberPicker({
   return (
     <div className="relative">
       <Input
-        value={open ? q : (selectedName ?? '')}
+        value={open ? searchQuery : (selectedName ?? '')}
         placeholder="성도 검색…"
         onFocus={() => setOpen(true)}
-        onChange={(e) => {
-          setQ(e.target.value)
+        onChange={(event) => {
+          setSearchQuery(event.target.value)
           setOpen(true)
         }}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
       />
       {open && items.length > 0 && (
         <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] py-1 shadow-md">
-          {items.map((m) => (
-            <li key={m.id}>
+          {items.map((member) => (
+            <li key={member.id}>
               <button
                 type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  onSelect({ id: m.id, name: m.name })
-                  setQ('')
+                onMouseDown={(event) => {
+                  event.preventDefault()
+                  onSelect({ id: member.id, name: member.name })
+                  setSearchQuery('')
                   setOpen(false)
                 }}
                 className={cn(
                   'flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-[var(--color-muted)]',
                 )}
               >
-                <span className="font-medium">{m.name}</span>
-                {m.phone && (
-                  <span className="text-xs text-[var(--color-muted-foreground)]">{m.phone}</span>
+                <span className="font-medium">{member.name}</span>
+                {member.phone && (
+                  <span className="text-xs text-[var(--color-muted-foreground)]">{member.phone}</span>
                 )}
               </button>
             </li>

@@ -2,16 +2,12 @@ import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { bigintTransformer } from '../column-transformer';
 import { BaseDateEntityWithDeletedAt } from './base-date.entity';
 
-/**
- * 운영 재정 거래 (planning 4.2) — 입금/출금 단위 ledger.
- * flow = income/expense. account_category_id = 계정과목.
- * budget_allocation_id (지출 한정) 가 있으면 부서별 예산 집행으로 집계.
- */
 export enum TransactionFlow {
   INCOME = 'income',
   EXPENSE = 'expense',
 }
 
+/** 운영 재정 거래 — 수입·지출. */
 @Entity('finance_transaction')
 @Index(['churchId'])
 @Index(['churchId', 'date'])

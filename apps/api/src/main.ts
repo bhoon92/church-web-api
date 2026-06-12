@@ -15,12 +15,13 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.useGlobalFilters(new AllExceptionsFilter());
   app.use(cookieParser());
-
   setupCors(app);
   setValidationPipe(app);
   setTransformInterceptor(app);
   await setupSwagger(app);
-  await app.listen(3000);
-  console.log(`Server is running on port ${3000}`);
+  const port = process.env.PORT || 3030;
+  await app.listen(port);
+
+  console.log(`Server is running on port ${port}`);
 }
 bootstrap();

@@ -11,17 +11,17 @@ import { ReferenceService } from './reference.service';
 @Controller('positions')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class PositionController {
-  constructor(private readonly refs: ReferenceService) {}
+  constructor(private readonly referenceService: ReferenceService) {}
 
   @Get()
   list(@RequireChurch() auth: AuthContext & { churchId: number }) {
-    return this.refs.list(PositionEntity, auth.churchId);
+    return this.referenceService.list(PositionEntity, auth.churchId);
   }
 
   @Post()
   @Permissions('settings:write')
   create(@RequireChurch() auth: AuthContext & { churchId: number }, @Body() dto: UpsertReferenceDto) {
-    return this.refs.create(PositionEntity, auth.churchId, dto);
+    return this.referenceService.create(PositionEntity, auth.churchId, dto);
   }
 
   @Patch(':id')
@@ -31,13 +31,13 @@ export class PositionController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpsertReferenceDto
   ) {
-    return this.refs.update(PositionEntity, auth.churchId, id, dto);
+    return this.referenceService.update(PositionEntity, auth.churchId, id, dto);
   }
 
   @Delete(':id')
   @Permissions('settings:write')
   @HttpCode(204)
   remove(@RequireChurch() auth: AuthContext & { churchId: number }, @Param('id', ParseIntPipe) id: number) {
-    return this.refs.remove(PositionEntity, auth.churchId, id);
+    return this.referenceService.remove(PositionEntity, auth.churchId, id);
   }
 }

@@ -60,7 +60,7 @@ function makeValidateDecoratorAsOptions(name: string, options?: ValidatorOptions
     decorators.push(IsDefined(requiredErrorMsg(name)));
   } else {
     decorators.push(IsOptional());
-    decorators.push(ValidateIf(e => e !== null && e !== undefined));
+    decorators.push(ValidateIf(value => value !== null && value !== undefined));
   }
   if (each) {
     decorators.push(IsArray(typeErrorMsg(name, '배열')));

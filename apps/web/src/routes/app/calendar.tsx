@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, ChevronLeft, ChevronRight, Copy, Plus, RefreshCw, Share2, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Check, ChevronLeft, ChevronRight, Copy, Plus, RefreshCw, Share2, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 import {
   createCalendar,
@@ -14,69 +14,69 @@ import {
   updateSubscription,
   type Calendar,
   type CalendarEvent,
-} from '@/api/calendar'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { PageHeader } from '@/components/page-header'
-import { cn } from '@/lib/utils'
-import { usePermissions } from '@/lib/permissions'
+} from '@/api/calendar';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { PageHeader } from '@/components/page-header';
+import { cn } from '@/lib/utils';
+import { usePermissions } from '@/lib/permissions';
 
-const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
-function ymd(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+function formatDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 /** 표시 월의 그리드(앞뒤 주 포함) Date 배열. */
 function buildMatrix(year: number, month: number): Date[] {
-  const first = new Date(year, month, 1)
-  const start = new Date(first)
-  start.setDate(1 - first.getDay())
-  const cells: Date[] = []
-  for (let i = 0; i < 42; i++) {
-    const d = new Date(start)
-    d.setDate(start.getDate() + i)
-    cells.push(d)
+  const first = new Date(year, month, 1);
+  const start = new Date(first);
+  start.setDate(1 - first.getDay());
+  const cells: Date[] = [];
+  for (let index = 0; index < 42; index++) {
+    const day = new Date(start);
+    day.setDate(start.getDate() + index);
+    cells.push(day);
   }
-  return cells
+  return cells;
 }
 
 export function CalendarPage() {
-  const today = new Date()
-  const [year, setYear] = useState(today.getFullYear())
-  const [month, setMonth] = useState(today.getMonth())
-  const [hidden, setHidden] = useState<Set<number>>(new Set())
-  const [addFor, setAddFor] = useState<string | null>(null)
-  const [showSub, setShowSub] = useState(false)
-  const { can } = usePermissions()
-  const canWrite = can('calendar:write')
+  const today = new Date();
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth());
+  const [hidden, setHidden] = useState<Set<number>>(new Set());
+  const [addFor, setAddFor] = useState<string | null>(null);
+  const [showSub, setShowSub] = useState(false);
+  const { can } = usePermissions();
+  const canWrite = can('calendar:write');
 
-  const matrix = useMemo(() => buildMatrix(year, month), [year, month])
-  const rangeFrom = matrix[0]
-  const rangeTo = new Date(matrix[41])
-  rangeTo.setHours(23, 59, 59)
+  const matrix = useMemo(() => buildMatrix(year, month), [year, month]);
+  const rangeFrom = matrix[0];
+  const rangeTo = new Date(matrix[41]);
+  rangeTo.setHours(23, 59, 59);
 
-  const { data: calendars = [] } = useQuery({ queryKey: ['calendars'], queryFn: listCalendars })
+  const { data: calendars = [] } = useQuery({ queryKey: ['calendars'], queryFn: listCalendars });
   const { data: events = [] } = useQuery({
-    queryKey: ['calendar-events', ymd(rangeFrom), ymd(rangeTo)],
+    queryKey: ['calendar-events', formatDate(rangeFrom), formatDate(rangeTo)],
     queryFn: () => listEvents(rangeFrom.toISOString(), rangeTo.toISOString()),
-  })
+  });
 
-  const calById = new Map(calendars.map((c) => [c.id, c]))
-  const visibleEvents = events.filter((e) => !hidden.has(e.calendarId))
-  const byDay = new Map<string, CalendarEvent[]>()
-  for (const e of visibleEvents) {
-    const key = ymd(new Date(e.startAt))
-    if (!byDay.has(key)) byDay.set(key, [])
-    byDay.get(key)!.push(e)
+  const calById = new Map(calendars.map(calendar => [calendar.id, calendar]));
+  const visibleEvents = events.filter(event => !hidden.has(event.calendarId));
+  const byDay = new Map<string, CalendarEvent[]>();
+  for (const event of visibleEvents) {
+    const key = formatDate(new Date(event.startAt));
+    if (!byDay.has(key)) byDay.set(key, []);
+    byDay.get(key)!.push(event);
   }
 
   const go = (delta: number) => {
-    const d = new Date(year, month + delta, 1)
-    setYear(d.getFullYear())
-    setMonth(d.getMonth())
-  }
+    const day = new Date(year, month + delta, 1);
+    setYear(day.getFullYear());
+    setMonth(day.getMonth());
+  };
 
   return (
     <div className="space-y-6">
@@ -91,7 +91,7 @@ export function CalendarPage() {
               구독
             </Button>
             {canWrite && (
-              <Button onClick={() => setAddFor(ymd(today))}>
+              <Button onClick={() => setAddFor(formatDate(today))}>
                 <Plus />
                 일정 추가
               </Button>
@@ -105,12 +105,12 @@ export function CalendarPage() {
           calendars={calendars}
           hidden={hidden}
           canWrite={canWrite}
-          onToggle={(id) =>
-            setHidden((prev) => {
-              const next = new Set(prev)
-              if (next.has(id)) next.delete(id)
-              else next.add(id)
-              return next
+          onToggle={id =>
+            setHidden(prev => {
+              const next = new Set(prev);
+              if (next.has(id)) next.delete(id);
+              else next.add(id);
+              return next;
             })
           }
         />
@@ -133,8 +133,8 @@ export function CalendarPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  setYear(today.getFullYear())
-                  setMonth(today.getMonth())
+                  setYear(today.getFullYear());
+                  setMonth(today.getMonth());
                 }}
               >
                 오늘
@@ -142,54 +142,52 @@ export function CalendarPage() {
             </div>
 
             <div className="grid grid-cols-7 border-t border-l border-[var(--color-border)]">
-              {WEEKDAYS.map((d, i) => (
+              {WEEKDAYS.map((day, index) => (
                 <div
-                  key={d}
+                  key={day}
                   className={cn(
                     'border-r border-b border-[var(--color-border)] bg-[var(--color-muted)] px-2 py-1.5 text-[11px] font-medium',
-                    i === 0 && 'text-rose-500',
-                    i === 6 && 'text-sky-500',
+                    index === 0 && 'text-rose-500',
+                    index === 6 && 'text-sky-500'
                   )}
                 >
-                  {d}
+                  {day}
                 </div>
               ))}
-              {matrix.map((d, i) => {
-                const key = ymd(d)
-                const inMonth = d.getMonth() === month
-                const isToday = key === ymd(today)
-                const dayEvents = byDay.get(key) ?? []
+              {matrix.map((day, index) => {
+                const key = formatDate(day);
+                const inMonth = day.getMonth() === month;
+                const isToday = key === formatDate(today);
+                const dayEvents = byDay.get(key) ?? [];
                 return (
                   <button
-                    key={i}
+                    key={index}
                     onClick={() => canWrite && setAddFor(key)}
                     className={cn(
                       'min-h-24 border-r border-b border-[var(--color-border)] p-1.5 text-left transition-colors',
                       canWrite && 'hover:bg-[var(--color-muted)]/50',
-                      !inMonth && 'bg-[var(--color-muted)]/40',
+                      !inMonth && 'bg-[var(--color-muted)]/40'
                     )}
                   >
                     <div
                       className={cn(
                         'mb-1 inline-flex size-6 items-center justify-center text-xs font-medium tabular-nums',
                         isToday && 'rounded-full bg-[var(--color-primary)] text-[var(--color-primary-foreground)]',
-                        !inMonth && !isToday && 'text-[var(--color-muted-foreground)]',
+                        !inMonth && !isToday && 'text-[var(--color-muted-foreground)]'
                       )}
                     >
-                      {d.getDate()}
+                      {day.getDate()}
                     </div>
                     <div className="space-y-1">
-                      {dayEvents.slice(0, 3).map((e) => (
-                        <EventPill key={e.id} event={e} color={calById.get(e.calendarId)?.color} canWrite={canWrite} />
+                      {dayEvents.slice(0, 3).map(event => (
+                        <EventPill key={event.id} event={event} color={calById.get(event.calendarId)?.color} canWrite={canWrite} />
                       ))}
                       {dayEvents.length > 3 && (
-                        <div className="px-1.5 text-[10px] text-[var(--color-muted-foreground)]">
-                          +{dayEvents.length - 3}
-                        </div>
+                        <div className="px-1.5 text-[10px] text-[var(--color-muted-foreground)]">+{dayEvents.length - 3}</div>
                       )}
                     </div>
                   </button>
-                )
+                );
               })}
             </div>
           </CardContent>
@@ -199,24 +197,24 @@ export function CalendarPage() {
       {addFor && <EventModal date={addFor} calendars={calendars} onClose={() => setAddFor(null)} />}
       {showSub && <SubscriptionModal calendars={calendars} onClose={() => setShowSub(false)} />}
     </div>
-  )
+  );
 }
 
 function EventPill({ event, color, canWrite }: { event: CalendarEvent; color?: string; canWrite: boolean }) {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
   const deleteMut = useMutation({
     mutationFn: () => deleteEvent(event.id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['calendar-events'] }),
-  })
+  });
   const time = event.allDay
     ? null
-    : new Date(event.startAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
+    : new Date(event.startAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
 
   return (
     <div
-      onClick={(e) => {
-        e.stopPropagation()
-        if (canWrite && window.confirm(`"${event.title}" 일정을 삭제할까요?`)) deleteMut.mutate()
+      onClick={clickEvent => {
+        clickEvent.stopPropagation();
+        if (canWrite && window.confirm(`"${event.title}" 일정을 삭제할까요?`)) deleteMut.mutate();
       }}
       className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px]"
       style={{
@@ -228,7 +226,7 @@ function EventPill({ event, color, canWrite }: { event: CalendarEvent; color?: s
       {time && <span className="shrink-0 tabular-nums opacity-80">{time}</span>}
       <span className="truncate font-medium">{event.title}</span>
     </div>
-  )
+  );
 }
 
 function CalendarSidebar({
@@ -237,23 +235,23 @@ function CalendarSidebar({
   canWrite,
   onToggle,
 }: {
-  calendars: Calendar[]
-  hidden: Set<number>
-  canWrite: boolean
-  onToggle: (id: number) => void
+  calendars: Calendar[];
+  hidden: Set<number>;
+  canWrite: boolean;
+  onToggle: (id: number) => void;
 }) {
-  const queryClient = useQueryClient()
-  const [adding, setAdding] = useState(false)
-  const [name, setName] = useState('')
+  const queryClient = useQueryClient();
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState('');
 
   const createMut = useMutation({
     mutationFn: () => createCalendar({ name: name.trim() }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['calendars'] })
-      setName('')
-      setAdding(false)
+      queryClient.invalidateQueries({ queryKey: ['calendars'] });
+      setName('');
+      setAdding(false);
     },
-  })
+  });
 
   return (
     <Card className="h-fit">
@@ -273,15 +271,15 @@ function CalendarSidebar({
 
         {adding && (
           <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              if (name.trim()) createMut.mutate()
+            onSubmit={event => {
+              event.preventDefault();
+              if (name.trim()) createMut.mutate();
             }}
             className="px-1 pb-2"
           >
             <Input
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={event => setName(event.target.value)}
               placeholder="새 달력 이름"
               autoFocus
               maxLength={40}
@@ -291,67 +289,52 @@ function CalendarSidebar({
         )}
 
         <ul className="space-y-0.5">
-          {calendars.map((c) => {
-            const on = !hidden.has(c.id)
+          {calendars.map(calendar => {
+            const on = !hidden.has(calendar.id);
             return (
-              <li key={c.id}>
+              <li key={calendar.id}>
                 <button
-                  onClick={() => onToggle(c.id)}
+                  onClick={() => onToggle(calendar.id)}
                   className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-[var(--color-muted)]"
                 >
                   <span
                     className={cn(
                       'flex size-4 items-center justify-center rounded-[5px] border transition-all',
-                      on ? 'border-transparent' : 'border-[var(--color-border)]',
+                      on ? 'border-transparent' : 'border-[var(--color-border)]'
                     )}
-                    style={on ? { backgroundColor: c.color } : undefined}
+                    style={on ? { backgroundColor: calendar.color } : undefined}
                   >
                     {on && <Check className="size-3 text-white" strokeWidth={3} />}
                   </span>
-                  <span
-                    className={cn(
-                      'flex-1 truncate',
-                      on ? 'text-[var(--color-foreground)]' : 'text-[var(--color-muted-foreground)]',
-                    )}
-                  >
-                    {c.name}
+                  <span className={cn('flex-1 truncate', on ? 'text-[var(--color-foreground)]' : 'text-[var(--color-muted-foreground)]')}>
+                    {calendar.name}
                   </span>
                 </button>
               </li>
-            )
+            );
           })}
           {calendars.length === 0 && !adding && (
-            <li className="px-2 py-3 text-xs text-[var(--color-muted-foreground)]">
-              달력이 없습니다. + 로 추가하세요.
-            </li>
+            <li className="px-2 py-3 text-xs text-[var(--color-muted-foreground)]">달력이 없습니다. + 로 추가하세요.</li>
           )}
         </ul>
       </CardContent>
     </Card>
-  )
+  );
 }
 
-function EventModal({
-  date,
-  calendars,
-  onClose,
-}: {
-  date: string
-  calendars: Calendar[]
-  onClose: () => void
-}) {
-  const queryClient = useQueryClient()
-  const [title, setTitle] = useState('')
-  const [calendarId, setCalendarId] = useState<number | null>(calendars[0]?.id ?? null)
-  const [allDay, setAllDay] = useState(false)
-  const [startTime, setStartTime] = useState('11:00')
-  const [endTime, setEndTime] = useState('12:00')
-  const [location, setLocation] = useState('')
+function EventModal({ date, calendars, onClose }: { date: string; calendars: Calendar[]; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [title, setTitle] = useState('');
+  const [calendarId, setCalendarId] = useState<number | null>(calendars[0]?.id ?? null);
+  const [allDay, setAllDay] = useState(false);
+  const [startTime, setStartTime] = useState('11:00');
+  const [endTime, setEndTime] = useState('12:00');
+  const [location, setLocation] = useState('');
 
   const createMut = useMutation({
     mutationFn: () => {
-      const startAt = allDay ? new Date(`${date}T00:00:00`) : new Date(`${date}T${startTime}`)
-      const endAt = allDay ? undefined : new Date(`${date}T${endTime}`)
+      const startAt = allDay ? new Date(`${date}T00:00:00`) : new Date(`${date}T${startTime}`);
+      const endAt = allDay ? undefined : new Date(`${date}T${endTime}`);
       return createEvent({
         calendarId: calendarId!,
         title: title.trim(),
@@ -359,51 +342,51 @@ function EventModal({
         allDay,
         startAt: startAt.toISOString(),
         endAt: endAt?.toISOString(),
-      })
+      });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['calendar-events'] })
-      onClose()
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+      onClose();
     },
-  })
+  });
 
   return (
     <ModalShell title={`일정 추가 · ${date}`} onClose={onClose}>
       <div className="space-y-3">
-        <Input placeholder="일정 제목" value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+        <Input placeholder="일정 제목" value={title} onChange={event => setTitle(event.target.value)} autoFocus />
 
         <div className="flex flex-wrap gap-1.5">
-          {calendars.map((c) => (
+          {calendars.map(calendar => (
             <button
-              key={c.id}
-              onClick={() => setCalendarId(c.id)}
+              key={calendar.id}
+              onClick={() => setCalendarId(calendar.id)}
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                calendarId === c.id
+                calendarId === calendar.id
                   ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
-                  : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]',
+                  : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]'
               )}
             >
-              <span className="size-2 rounded-full" style={{ backgroundColor: c.color }} />
-              {c.name}
+              <span className="size-2 rounded-full" style={{ backgroundColor: calendar.color }} />
+              {calendar.name}
             </button>
           ))}
         </div>
 
         <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} />
+          <input type="checkbox" checked={allDay} onChange={event => setAllDay(event.target.checked)} />
           종일
         </label>
 
         {!allDay && (
           <div className="flex items-center gap-2">
-            <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="w-32" />
+            <Input type="time" value={startTime} onChange={event => setStartTime(event.target.value)} className="w-32" />
             <span className="text-[var(--color-muted-foreground)]">~</span>
-            <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="w-32" />
+            <Input type="time" value={endTime} onChange={event => setEndTime(event.target.value)} className="w-32" />
           </div>
         )}
 
-        <Input placeholder="장소 (선택)" value={location} onChange={(e) => setLocation(e.target.value)} />
+        <Input placeholder="장소 (선택)" value={location} onChange={event => setLocation(event.target.value)} />
 
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="ghost" onClick={onClose}>
@@ -415,34 +398,34 @@ function EventModal({
         </div>
       </div>
     </ModalShell>
-  )
+  );
 }
 
 function SubscriptionModal({ calendars, onClose }: { calendars: Calendar[]; onClose: () => void }) {
-  const queryClient = useQueryClient()
-  const [copied, setCopied] = useState(false)
+  const queryClient = useQueryClient();
+  const [copied, setCopied] = useState(false);
 
-  const { data: sub } = useQuery({ queryKey: ['calendar-subscription'], queryFn: getSubscription })
+  const { data: sub } = useQuery({ queryKey: ['calendar-subscription'], queryFn: getSubscription });
 
   const updateMut = useMutation({
     mutationFn: (calendarIds: number[]) => updateSubscription(calendarIds),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['calendar-subscription'] }),
-  })
+  });
   const regenMut = useMutation({
     mutationFn: regenerateSubscription,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['calendar-subscription'] }),
-  })
+  });
 
-  const url = sub ? feedUrl(sub) : ''
-  const included = new Set(sub?.calendarIds ?? [])
+  const url = sub ? feedUrl(sub) : '';
+  const included = new Set(sub?.calendarIds ?? []);
 
   const toggle = (id: number) => {
-    if (!sub) return
-    const next = new Set(included)
-    if (next.has(id)) next.delete(id)
-    else next.add(id)
-    updateMut.mutate(Array.from(next))
-  }
+    if (!sub) return;
+    const next = new Set(included);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    updateMut.mutate(Array.from(next));
+  };
 
   return (
     <ModalShell title="iCal 구독" onClose={onClose}>
@@ -452,13 +435,13 @@ function SubscriptionModal({ calendars, onClose }: { calendars: Calendar[]; onCl
         </p>
 
         <div className="flex gap-2">
-          <Input readOnly value={url} className="text-xs" onFocus={(e) => e.currentTarget.select()} />
+          <Input readOnly value={url} className="text-xs" onFocus={event => event.currentTarget.select()} />
           <Button
             variant="outline"
             onClick={async () => {
-              await navigator.clipboard.writeText(url)
-              setCopied(true)
-              setTimeout(() => setCopied(false), 1500)
+              await navigator.clipboard.writeText(url);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
             }}
           >
             {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
@@ -468,17 +451,12 @@ function SubscriptionModal({ calendars, onClose }: { calendars: Calendar[]; onCl
         <div>
           <div className="mb-2 text-xs font-medium text-[var(--color-muted-foreground)]">피드에 포함할 달력</div>
           <ul className="space-y-1">
-            {calendars.map((c) => (
-              <li key={c.id}>
+            {calendars.map(calendar => (
+              <li key={calendar.id}>
                 <label className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm hover:bg-[var(--color-muted)]">
-                  <input
-                    type="checkbox"
-                    checked={included.has(c.id)}
-                    onChange={() => toggle(c.id)}
-                    disabled={updateMut.isPending}
-                  />
-                  <span className="size-2.5 rounded-full" style={{ backgroundColor: c.color }} />
-                  {c.name}
+                  <input type="checkbox" checked={included.has(calendar.id)} onChange={() => toggle(calendar.id)} disabled={updateMut.isPending} />
+                  <span className="size-2.5 rounded-full" style={{ backgroundColor: calendar.color }} />
+                  {calendar.name}
                 </label>
               </li>
             ))}
@@ -491,7 +469,7 @@ function SubscriptionModal({ calendars, onClose }: { calendars: Calendar[]; onCl
             variant="ghost"
             size="sm"
             onClick={() => {
-              if (window.confirm('기존 구독 URL 이 무효화됩니다. 계속할까요?')) regenMut.mutate()
+              if (window.confirm('기존 구독 URL 이 무효화됩니다. 계속할까요?')) regenMut.mutate();
             }}
             disabled={regenMut.isPending}
           >
@@ -501,24 +479,13 @@ function SubscriptionModal({ calendars, onClose }: { calendars: Calendar[]; onCl
         </div>
       </div>
     </ModalShell>
-  )
+  );
 }
 
-function ModalShell({
-  title,
-  onClose,
-  children,
-}: {
-  title: string
-  onClose: () => void
-  children: React.ReactNode
-}) {
+function ModalShell({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-md rounded-2xl bg-[var(--color-background)] shadow-md"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="w-full max-w-md rounded-2xl bg-[var(--color-background)] shadow-md" onClick={event => event.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-3.5">
           <h2 className="text-base font-semibold">{title}</h2>
           <Button variant="ghost" size="icon" onClick={onClose} aria-label="닫기">
@@ -528,5 +495,5 @@ function ModalShell({
         <div className="p-5">{children}</div>
       </div>
     </div>
-  )
+  );
 }

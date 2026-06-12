@@ -4,6 +4,7 @@ import {
   ChevronRight,
   FolderTree,
   ListChecks,
+  Plug,
   Users2,
 } from 'lucide-react'
 import type { ComponentType } from 'react'
@@ -42,6 +43,13 @@ const SECTIONS: SettingSection[] = [
     to: '/app/settings/references',
   },
   {
+    icon: Plug,
+    title: '외부 연동',
+    description: '달력 일정을 Google Calendar로 내보냅니다(단방향 push).',
+    hint: 'Google Calendar',
+    to: '/app/settings/integrations',
+  },
+  {
     icon: CalendarRange,
     title: '회계연도 (FiscalYear)',
     description: '교회 회계 기간을 설정합니다. 예산·결산은 이 기간에 묶입니다.',
@@ -65,8 +73,8 @@ export function SettingsPage() {
       />
 
       <div className="grid gap-3">
-        {SECTIONS.map((s) => {
-          const Icon = s.icon
+        {SECTIONS.map((section) => {
+          const Icon = section.icon
           const card = (
             <Card className="transition-colors hover:bg-[var(--color-muted)]/60">
               <CardContent className="flex items-center gap-4 p-5">
@@ -82,25 +90,25 @@ export function SettingsPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-sm font-semibold">{s.title}</h3>
+                    <h3 className="text-sm font-semibold">{section.title}</h3>
                     <span className="text-xs text-[var(--color-muted-foreground)]">
-                      · {s.hint}
+                      · {section.hint}
                     </span>
                   </div>
                   <p className="mt-0.5 text-sm text-[var(--color-muted-foreground)]">
-                    {s.description}
+                    {section.description}
                   </p>
                 </div>
                 <ChevronRight className="size-4 text-[var(--color-muted-foreground)]" />
               </CardContent>
             </Card>
           )
-          return s.to ? (
-            <Link key={s.title} to={s.to} className="block">
+          return section.to ? (
+            <Link key={section.title} to={section.to} className="block">
               {card}
             </Link>
           ) : (
-            <div key={s.title}>{card}</div>
+            <div key={section.title}>{card}</div>
           )
         })}
       </div>

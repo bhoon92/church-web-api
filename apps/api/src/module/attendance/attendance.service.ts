@@ -38,19 +38,19 @@ export class AttendanceService {
       where: { churchId },
       order: { name: 'ASC', id: 'ASC' },
     });
-    const roster = members.filter(m => !EXCLUDED_STAGES.includes(m.lifecycleStage));
+    const roster = members.filter(member => !EXCLUDED_STAGES.includes(member.lifecycleStage));
 
     const rows = await this.repo().find({ where: { churchId, worshipServiceId, date } });
-    const presentSet = new Set(rows.map(r => r.memberId));
+    const presentSet = new Set(rows.map(attendance => attendance.memberId));
 
-    const items: RosterItem[] = roster.map(m => ({
-      memberId: m.id,
-      name: m.name,
-      lifecycleStage: m.lifecycleStage,
-      present: presentSet.has(m.id),
+    const items: RosterItem[] = roster.map(member => ({
+      memberId: member.id,
+      name: member.name,
+      lifecycleStage: member.lifecycleStage,
+      present: presentSet.has(member.id),
     }));
 
-    const present = items.filter(i => i.present).length;
+    const present = items.filter(item => item.present).length;
     const total = items.length;
     return {
       worshipServiceId,
@@ -96,7 +96,7 @@ export class AttendanceService {
   }
 
   private async assertMember(churchId: number, memberId: number): Promise<void> {
-    const m = await DataSources.instance.getRepository(MemberEntity).findOne({ where: { id: memberId, churchId } });
-    if (!m) throw new NotFoundException('Member not found');
+    const member = await DataSources.instance.getRepository(MemberEntity).findOne({ where: { id: memberId, churchId } });
+    if (!member) throw new NotFoundException('Member not found');
   }
 }

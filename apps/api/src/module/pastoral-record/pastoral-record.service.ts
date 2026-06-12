@@ -50,21 +50,21 @@ export class PastoralRecordService {
     });
     if (rows.length === 0) return [];
 
-    const accountIds = Array.from(new Set(rows.map(r => r.recorderAccountId)));
+    const accountIds = Array.from(new Set(rows.map(record => record.recorderAccountId)));
     const accounts = await DataSources.instance.getRepository(AccountEntity).find({ where: accountIds.map(id => ({ id })) });
-    const nameMap = new Map(accounts.map(a => [a.id, a.name]));
+    const nameMap = new Map(accounts.map(account => [account.id, account.name]));
 
-    return rows.map(r => ({
-      id: r.id,
-      type: r.type,
-      date: r.date,
-      location: r.location ?? null,
-      content: r.content,
-      prayerRequest: r.prayerRequest ?? null,
-      statusNote: r.statusNote ?? null,
-      recorderAccountId: r.recorderAccountId,
-      recorderName: nameMap.get(r.recorderAccountId) ?? null,
-      createdAt: r.createdAt,
+    return rows.map(record => ({
+      id: record.id,
+      type: record.type,
+      date: record.date,
+      location: record.location ?? null,
+      content: record.content,
+      prayerRequest: record.prayerRequest ?? null,
+      statusNote: record.statusNote ?? null,
+      recorderAccountId: record.recorderAccountId,
+      recorderName: nameMap.get(record.recorderAccountId) ?? null,
+      createdAt: record.createdAt,
     }));
   }
 
@@ -82,8 +82,8 @@ export class PastoralRecordService {
   }
 
   private async assertMember(churchId: number, memberId: number): Promise<void> {
-    const m = await DataSources.instance.getRepository(MemberEntity).findOne({ where: { id: memberId, churchId } });
-    if (!m) throw new NotFoundException('Member not found');
+    const member = await DataSources.instance.getRepository(MemberEntity).findOne({ where: { id: memberId, churchId } });
+    if (!member) throw new NotFoundException('Member not found');
   }
 
   private today(): string {

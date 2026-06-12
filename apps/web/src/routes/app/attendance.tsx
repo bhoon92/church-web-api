@@ -1,58 +1,52 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, ChevronLeft, ChevronRight } from 'lucide-react'
-import { useState } from 'react'
-import { Link } from 'react-router'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import { Link } from 'react-router';
 
-import { fetchRoster, markAttendance, type RosterItem } from '@/api/attendance'
-import { STAGE_LABEL } from '@/api/members'
-import { listReferences, type Reference } from '@/api/references'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { PageHeader } from '@/components/page-header'
-import { cn } from '@/lib/utils'
-import { usePermissions } from '@/lib/permissions'
+import { fetchRoster, markAttendance, type RosterItem } from '@/api/attendance';
+import { STAGE_LABEL } from '@/api/members';
+import { listReferences, type Reference } from '@/api/references';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { PageHeader } from '@/components/page-header';
+import { cn } from '@/lib/utils';
+import { usePermissions } from '@/lib/permissions';
 
 function shiftDate(date: string, days: number): string {
-  const d = new Date(`${date}T00:00:00`)
-  d.setDate(d.getDate() + days)
-  return d.toISOString().slice(0, 10)
+  const d = new Date(`${date}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 function formatDate(date: string): string {
-  const d = new Date(`${date}T00:00:00`)
-  const days = ['일', '월', '화', '수', '목', '금', '토']
-  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})`
+  const d = new Date(`${date}T00:00:00`);
+  const days = ['일', '월', '화', '수', '목', '금', '토'];
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
 }
 
 export function AttendancePage() {
-  const today = new Date().toISOString().slice(0, 10)
-  const [date, setDate] = useState(today)
-  const [serviceId, setServiceId] = useState<number | null>(null)
+  const today = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = useState(today);
+  const [serviceId, setServiceId] = useState<number | null>(null);
 
   const { data: services = [] } = useQuery({
     queryKey: ['references', 'worshipService'],
     queryFn: () => listReferences('worshipService'),
-  })
+  });
 
   // 예배 목록 로드되면 첫 예배 자동 선택
-  const activeServiceId = serviceId ?? services[0]?.id ?? null
+  const activeServiceId = serviceId ?? services[0]?.id ?? null;
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow="출석"
-        title="출석 체크"
-        description="예배별 출석을 기록하고 출석률을 확인합니다."
-      />
+      <PageHeader eyebrow="출석" title="출석 체크" description="예배별 출석을 기록하고 출석률을 확인합니다." />
 
       {services.length === 0 ? (
         <Card>
           <CardContent className="space-y-3 py-12 text-center">
-            <p className="text-sm text-[var(--color-muted-foreground)]">
-              등록된 예배가 없습니다. 먼저 예배를 등록하세요.
-            </p>
+            <p className="text-sm text-[var(--color-muted-foreground)]">등록된 예배가 없습니다. 먼저 예배를 등록하세요.</p>
             <Button asChild variant="outline" size="sm">
               <Link to="/app/settings/references">설정에서 예배 등록</Link>
             </Button>
@@ -68,7 +62,7 @@ export function AttendancePage() {
         />
       )}
     </div>
-  )
+  );
 }
 
 function AttendanceBoard({
@@ -78,17 +72,17 @@ function AttendanceBoard({
   date,
   onDateChange,
 }: {
-  services: Reference[]
-  serviceId: number | null
-  onSelectService: (id: number) => void
-  date: string
-  onDateChange: (date: string) => void
+  services: Reference[];
+  serviceId: number | null;
+  onSelectService: (id: number) => void;
+  date: string;
+  onDateChange: (date: string) => void;
 }) {
   const { data: roster, isLoading } = useQuery({
     queryKey: ['attendance', serviceId, date],
     queryFn: () => fetchRoster(serviceId!, date),
     enabled: serviceId != null,
-  })
+  });
 
   return (
     <>
@@ -103,68 +97,49 @@ function AttendanceBoard({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <DateNav date={date} onChange={onDateChange} />
             <div className="flex flex-wrap gap-1.5">
-              {services.map((s) => (
+              {services.map(service => (
                 <button
-                  key={s.id}
-                  onClick={() => onSelectService(s.id)}
+                  key={service.id}
+                  onClick={() => onSelectService(service.id)}
                   className={cn(
                     'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-                    serviceId === s.id
+                    serviceId === service.id
                       ? 'bg-[var(--color-foreground)] text-[var(--color-background)]'
-                      : 'text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]',
+                      : 'text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]'
                   )}
                 >
-                  {s.name}
+                  {service.name}
                 </button>
               ))}
             </div>
           </div>
 
           {isLoading ? (
-            <div className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">
-              불러오는 중…
-            </div>
+            <div className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">불러오는 중…</div>
           ) : !roster || roster.items.length === 0 ? (
-            <div className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">
-              대상 성도가 없습니다.
-            </div>
+            <div className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">대상 성도가 없습니다.</div>
           ) : (
             <ul className="divide-y divide-[var(--color-border)]">
-              {roster.items.map((item) => (
-                <AttendanceRow
-                  key={item.memberId}
-                  item={item}
-                  worshipServiceId={roster.worshipServiceId}
-                  date={date}
-                />
+              {roster.items.map(item => (
+                <AttendanceRow key={item.memberId} item={item} worshipServiceId={roster.worshipServiceId} date={date} />
               ))}
             </ul>
           )}
         </CardContent>
       </Card>
     </>
-  )
+  );
 }
 
-function AttendanceRow({
-  item,
-  worshipServiceId,
-  date,
-}: {
-  item: RosterItem
-  worshipServiceId: number
-  date: string
-}) {
-  const queryClient = useQueryClient()
-  const { can } = usePermissions()
-  const canWrite = can('attendance:write')
+function AttendanceRow({ item, worshipServiceId, date }: { item: RosterItem; worshipServiceId: number; date: string }) {
+  const queryClient = useQueryClient();
+  const { can } = usePermissions();
+  const canWrite = can('attendance:write');
 
   const mut = useMutation({
-    mutationFn: (present: boolean) =>
-      markAttendance({ worshipServiceId, memberId: item.memberId, date, present }),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ['attendance', worshipServiceId, date] }),
-  })
+    mutationFn: (present: boolean) => markAttendance({ worshipServiceId, memberId: item.memberId, date, present }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['attendance', worshipServiceId, date] }),
+  });
 
   return (
     <li className="flex items-center gap-3 py-2.5">
@@ -177,7 +152,7 @@ function AttendanceRow({
           item.present
             ? 'border-transparent bg-[var(--color-primary)] text-[var(--color-primary-foreground)]'
             : 'border-[var(--color-border)] bg-[var(--color-background)]',
-          canWrite && !item.present && 'hover:border-[var(--color-foreground)]',
+          canWrite && !item.present && 'hover:border-[var(--color-foreground)]'
         )}
       >
         {item.present && <Check className="size-4" strokeWidth={3} />}
@@ -188,7 +163,7 @@ function AttendanceRow({
       <Badge tone="muted">{STAGE_LABEL[item.lifecycleStage]}</Badge>
       {item.present && <Badge tone="success">출석</Badge>}
     </li>
-  )
+  );
 }
 
 function StatCard({ label, value, suffix }: { label: string; value: string; suffix?: string }) {
@@ -198,15 +173,11 @@ function StatCard({ label, value, suffix }: { label: string; value: string; suff
         <div className="text-xs text-[var(--color-muted-foreground)]">{label}</div>
         <div className="mt-1 text-2xl font-semibold tabular-nums">
           {value}
-          {suffix && (
-            <span className="ml-1 text-sm font-normal text-[var(--color-muted-foreground)]">
-              {suffix}
-            </span>
-          )}
+          {suffix && <span className="ml-1 text-sm font-normal text-[var(--color-muted-foreground)]">{suffix}</span>}
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function DateNav({ date, onChange }: { date: string; onChange: (date: string) => void }) {
@@ -220,7 +191,7 @@ function DateNav({ date, onChange }: { date: string; onChange: (date: string) =>
         <Input
           type="date"
           value={date}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={event => onChange(event.target.value)}
           className="absolute inset-0 h-full cursor-pointer opacity-0"
           aria-label="날짜 선택"
         />
@@ -229,5 +200,5 @@ function DateNav({ date, onChange }: { date: string; onChange: (date: string) =>
         <ChevronRight />
       </Button>
     </div>
-  )
+  );
 }

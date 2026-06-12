@@ -1,26 +1,26 @@
-import { REF_PATH } from './references';
+import { REFERENCE_PATH } from './references';
 
 /** Affiliation 은 부서/사역팀/목장만 — Position 은 별도 endpoint. */
 export type AffiliationKind = 'department' | 'ministry' | 'smallGroup';
 
 export type Affiliation = {
   id: number;
-  refId: number;
-  refName: string | null;
+  referenceId: number;
+  referenceName: string | null;
   startDate: string;
   isLeader: boolean;
   roleLabel: string | null;
 };
 
 export type AssignAffiliationPayload = {
-  refId: number;
+  referenceId: number;
   isLeader?: boolean;
   roleLabel?: string;
   startDate?: string;
 };
 
 export async function assignAffiliation(memberId: number, kind: AffiliationKind, payload: AssignAffiliationPayload): Promise<unknown> {
-  const res = await fetch(`/api/members/${memberId}/${REF_PATH[kind]}`, {
+  const res = await fetch(`/api/members/${memberId}/${REFERENCE_PATH[kind]}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -33,8 +33,8 @@ export async function assignAffiliation(memberId: number, kind: AffiliationKind,
   return res.json();
 }
 
-export async function endAffiliation(memberId: number, kind: AffiliationKind, refId: number): Promise<void> {
-  const res = await fetch(`/api/members/${memberId}/${REF_PATH[kind]}/${refId}`, {
+export async function endAffiliation(memberId: number, kind: AffiliationKind, referenceId: number): Promise<void> {
+  const res = await fetch(`/api/members/${memberId}/${REFERENCE_PATH[kind]}/${referenceId}`, {
     method: 'DELETE',
     credentials: 'include',
   });
@@ -44,11 +44,11 @@ export async function endAffiliation(memberId: number, kind: AffiliationKind, re
 export async function setAffiliationLeader(
   memberId: number,
   kind: AffiliationKind,
-  refId: number,
+  referenceId: number,
   isLeader: boolean,
   roleLabel?: string
 ): Promise<unknown> {
-  const res = await fetch(`/api/members/${memberId}/${REF_PATH[kind]}/${refId}/leader`, {
+  const res = await fetch(`/api/members/${memberId}/${REFERENCE_PATH[kind]}/${referenceId}/leader`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',

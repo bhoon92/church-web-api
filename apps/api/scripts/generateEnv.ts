@@ -1,10 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 
-/**
- * direnv / shell 에 이미 export 된 환경변수를 .env 파일로 덤프.
- * (TypeORM CLI 가 dotenv 로 읽기 위한 brige. localdev 에선 비어있어도 동작함.)
- */
 const KEYS = [
   'NODE_ENV',
   'POSTGRES_DB_HOST',

@@ -38,8 +38,9 @@ export class MemberService {
 
     if (query.q) {
       qb.andWhere(
-        new Brackets(b => {
-          b.where('m.name ILIKE :q', { q: `%${query.q}%` })
+        new Brackets(builder => {
+          builder
+            .where('m.name ILIKE :q', { q: `%${query.q}%` })
             .orWhere('m.phone ILIKE :q', { q: `%${query.q}%` })
             .orWhere('m.previousChurch ILIKE :q', { q: `%${query.q}%` });
         })
@@ -96,8 +97,9 @@ export class MemberService {
 
     if (q) {
       qb.andWhere(
-        new Brackets(b => {
-          b.where('m.name ILIKE :q', { q: `%${q}%` })
+        new Brackets(builder => {
+          builder
+            .where('m.name ILIKE :q', { q: `%${q}%` })
             .orWhere('m.phone ILIKE :q', { q: `%${q}%` })
             .orWhere('m.previousChurch ILIKE :q', { q: `%${q}%` });
         })

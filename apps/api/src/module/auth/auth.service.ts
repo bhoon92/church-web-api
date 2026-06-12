@@ -80,14 +80,14 @@ export class AuthService {
 
   /** 다교회 소속자가 활성 교회를 바꾸기 / 첫 멤버십을 발급받은 직후 churchId를 JWT에 박기 */
   async selectChurch(accountId: number, churchId: number): Promise<{ token: string; role: MembershipRole }> {
-    const m = await DataSources.instance.getRepository(MembershipEntity).findOne({
+    const membership = await DataSources.instance.getRepository(MembershipEntity).findOne({
       where: { accountId, churchId },
     });
-    if (!m) {
+    if (!membership) {
       throw new ForbiddenException('해당 교회에 소속되어 있지 않습니다.');
     }
-    const token = await this.signToken({ accountId, churchId, role: m.role });
-    return { token, role: m.role };
+    const token = await this.signToken({ accountId, churchId, role: membership.role });
+    return { token, role: membership.role };
   }
 
   async me(auth: AuthContext) {
@@ -101,15 +101,15 @@ export class AuthService {
     const memberships = await membershipRepo.find({ where: { accountId: auth.accountId } });
 
     // 다교회 선택 UI 를 위해 멤버십에 교회 이름 enrich
-    const churchIds = memberships.map(m => m.churchId);
+    const churchIds = memberships.map(membership => membership.churchId);
     const churches = churchIds.length > 0 ? await churchRepo.find({ where: churchIds.map(id => ({ id })) }) : [];
-    const churchNameMap = new Map(churches.map(c => [c.id, c.name]));
-    const enrichedMemberships = memberships.map(m => ({
-      id: m.id,
-      accountId: m.accountId,
-      churchId: m.churchId,
-      role: m.role,
-      churchName: churchNameMap.get(m.churchId) ?? null,
+    const churchNameMap = new Map(churches.map(church => [church.id, church.name]));
+    const enrichedMemberships = memberships.map(membership => ({
+      id: membership.id,
+      accountId: membership.accountId,
+      churchId: membership.churchId,
+      role: membership.role,
+      churchName: churchNameMap.get(membership.churchId) ?? null,
     }));
 
     let currentChurch: ChurchEntity | null = null;

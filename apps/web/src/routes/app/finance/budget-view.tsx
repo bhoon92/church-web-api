@@ -86,9 +86,9 @@ function FiscalYearSetup() {
           </p>
         </div>
         <div className="grid gap-2 sm:grid-cols-3">
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="이름" />
-          <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="이름" />
+          <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+          <Input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
         </div>
         <Button
           onClick={() => createMut.mutate({ name, startDate, endDate, isCurrent: true })}
@@ -182,21 +182,21 @@ function AllocationForm({ fiscalYearId }: { fiscalYearId: number }) {
     <Card>
       <CardContent className="space-y-3 p-5">
         <div className="inline-flex rounded-full border border-[var(--color-border)] p-0.5">
-          {(Object.keys(BUDGET_KIND_LABEL) as BudgetTargetKind[]).map((k) => (
+          {(Object.keys(BUDGET_KIND_LABEL) as BudgetTargetKind[]).map((kindOption) => (
             <button
-              key={k}
+              key={kindOption}
               onClick={() => {
-                setKind(k)
+                setKind(kindOption)
                 setTargetId(null)
               }}
               className={cn(
                 'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                kind === k
+                kind === kindOption
                   ? 'bg-[var(--color-foreground)] text-[var(--color-background)]'
                   : 'text-[var(--color-muted-foreground)]',
               )}
             >
-              {BUDGET_KIND_LABEL[k]}
+              {BUDGET_KIND_LABEL[kindOption]}
             </button>
           ))}
         </div>
@@ -207,18 +207,18 @@ function AllocationForm({ fiscalYearId }: { fiscalYearId: number }) {
           </p>
         ) : (
           <div className="flex flex-wrap gap-1.5">
-            {targets.map((t) => (
+            {targets.map((target) => (
               <button
-                key={t.id}
-                onClick={() => setTargetId(t.id)}
+                key={target.id}
+                onClick={() => setTargetId(target.id)}
                 className={cn(
                   'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                  targetId === t.id
+                  targetId === target.id
                     ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
                     : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]',
                 )}
               >
-                {t.name}
+                {target.name}
               </button>
             ))}
           </div>
@@ -229,9 +229,9 @@ function AllocationForm({ fiscalYearId }: { fiscalYearId: number }) {
             inputMode="numeric"
             placeholder="할당 금액"
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') submit()
+            onChange={(event) => setAmount(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') submit()
             }}
             className="max-w-xs text-right tabular-nums"
           />
@@ -271,24 +271,24 @@ function BudgetCards({ fiscalYearId, canWrite }: { fiscalYearId: number; canWrit
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      {budgets.map((b) => {
-        const tone = b.rate >= 90 ? 'danger' : b.rate >= 70 ? 'warn' : ('success' as const)
+      {budgets.map((budget) => {
+        const tone = budget.rate >= 90 ? 'danger' : budget.rate >= 70 ? 'warn' : ('success' as const)
         return (
-          <Card key={b.id}>
+          <Card key={budget.id}>
             <CardContent className="space-y-4 p-5">
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="text-sm font-semibold">{b.targetName ?? '(이름 없음)'}</div>
+                  <div className="text-sm font-semibold">{budget.targetName ?? '(이름 없음)'}</div>
                   <div className="text-xs text-[var(--color-muted-foreground)]">
-                    {BUDGET_KIND_LABEL[b.targetKind]}
+                    {BUDGET_KIND_LABEL[budget.targetKind]}
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Badge tone={tone}>{b.rate}%</Badge>
+                  <Badge tone={tone}>{budget.rate}%</Badge>
                   {canWrite && (
                     <button
                       onClick={() => {
-                        if (window.confirm('이 예산 할당을 삭제할까요?')) deleteMut.mutate(b.id)
+                        if (window.confirm('이 예산 할당을 삭제할까요?')) deleteMut.mutate(budget.id)
                       }}
                       className="rounded-full p-1 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)]"
                       aria-label="삭제"
@@ -302,20 +302,20 @@ function BudgetCards({ fiscalYearId, canWrite }: { fiscalYearId: number; canWrit
                 <div className="flex justify-between text-xs">
                   <span className="text-[var(--color-muted-foreground)]">사용</span>
                   <span className="font-medium tabular-nums">
-                    {formatKRW(b.used)} / {formatKRW(b.allocated)}
+                    {formatKRW(budget.used)} / {formatKRW(budget.allocated)}
                   </span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-[var(--color-muted)]">
                   <div
                     className="h-full rounded-full transition-all"
                     style={{
-                      width: `${Math.min(b.rate, 100)}%`,
+                      width: `${Math.min(budget.rate, 100)}%`,
                       backgroundColor: 'var(--color-primary)',
                     }}
                   />
                 </div>
                 <div className="text-xs text-[var(--color-muted-foreground)]">
-                  잔여 {formatKRW(b.remaining)}
+                  잔여 {formatKRW(budget.remaining)}
                 </div>
               </div>
             </CardContent>

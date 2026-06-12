@@ -24,17 +24,17 @@ export class TeamService {
   async list(churchId: number): Promise<TeamMember[]> {
     const memberships = await this.membershipRepo().find({ where: { churchId }, order: { id: 'ASC' } });
     if (memberships.length === 0) return [];
-    const accounts = await this.accountRepo().find({ where: memberships.map(m => ({ id: m.accountId })) });
-    const accMap = new Map(accounts.map(a => [a.id, a]));
-    return memberships.map(m => {
-      const a = accMap.get(m.accountId);
+    const accounts = await this.accountRepo().find({ where: memberships.map(membership => ({ id: membership.accountId })) });
+    const accountMap = new Map(accounts.map(account => [account.id, account]));
+    return memberships.map(membership => {
+      const account = accountMap.get(membership.accountId);
       return {
-        membershipId: m.id,
-        accountId: m.accountId,
-        email: a?.email ?? '(알 수 없음)',
-        name: a?.name ?? '(알 수 없음)',
-        role: m.role,
-        pending: a?.googleId?.startsWith('pending:') ?? false,
+        membershipId: membership.id,
+        accountId: membership.accountId,
+        email: account?.email ?? '(알 수 없음)',
+        name: account?.name ?? '(알 수 없음)',
+        role: membership.role,
+        pending: account?.googleId?.startsWith('pending:') ?? false,
       };
     });
   }
@@ -74,20 +74,20 @@ export class TeamService {
   }
 
   async updateRole(churchId: number, membershipId: number, role: MembershipRole): Promise<void> {
-    const m = await this.membershipRepo().findOne({ where: { id: membershipId, churchId } });
-    if (!m) throw new NotFoundException('멤버를 찾을 수 없습니다.');
-    if (m.role === MembershipRole.OWNER || role === MembershipRole.OWNER) {
+    const membership = await this.membershipRepo().findOne({ where: { id: membershipId, churchId } });
+    if (!membership) throw new NotFoundException('멤버를 찾을 수 없습니다.');
+    if (membership.role === MembershipRole.OWNER || role === MembershipRole.OWNER) {
       throw new ForbiddenException('소유자 역할은 변경할 수 없습니다.');
     }
-    await this.membershipRepo().update(m.id, { role });
+    await this.membershipRepo().update(membership.id, { role });
   }
 
   async remove(churchId: number, membershipId: number): Promise<void> {
-    const m = await this.membershipRepo().findOne({ where: { id: membershipId, churchId } });
-    if (!m) throw new NotFoundException('멤버를 찾을 수 없습니다.');
-    if (m.role === MembershipRole.OWNER) {
+    const membership = await this.membershipRepo().findOne({ where: { id: membershipId, churchId } });
+    if (!membership) throw new NotFoundException('멤버를 찾을 수 없습니다.');
+    if (membership.role === MembershipRole.OWNER) {
       throw new ForbiddenException('소유자는 제거할 수 없습니다.');
     }
-    await this.membershipRepo().softDelete(m.id);
+    await this.membershipRepo().softDelete(membership.id);
   }
 }

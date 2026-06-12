@@ -44,7 +44,7 @@ export function OfferingsView() {
             <Input
               type="date"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              onChange={(event) => setDate(event.target.value)}
               className="w-44"
             />
             {canWrite && <Badge tone="accent">빠른 입력</Badge>}
@@ -75,16 +75,16 @@ export function OfferingsView() {
             </div>
           ) : (
             <ul className="divide-y divide-[var(--color-border)]">
-              {list.items.map((o) => (
-                <li key={o.id} className="grid grid-cols-12 items-center gap-4 px-5 py-3">
+              {list.items.map((offering) => (
+                <li key={offering.id} className="grid grid-cols-12 items-center gap-4 px-5 py-3">
                   <div className="col-span-5 text-sm font-medium">
-                    {o.memberName ?? o.rawDonorName ?? '(미상)'}
+                    {offering.memberName ?? offering.rawDonorName ?? '(미상)'}
                   </div>
                   <div className="col-span-3">
-                    <Badge tone="muted">{o.categoryName ?? '—'}</Badge>
+                    <Badge tone="muted">{offering.categoryName ?? '—'}</Badge>
                   </div>
                   <div className="col-span-4 text-right text-sm font-semibold tabular-nums">
-                    {formatKRW(o.amount)}
+                    {formatKRW(offering.amount)}
                   </div>
                 </li>
               ))}
@@ -113,9 +113,9 @@ function OfferingForm({ date, onCreated }: { date: string; onCreated: () => void
 
   const createCategoryMut = useMutation({
     mutationFn: createOfferingCategory,
-    onSuccess: (c) => {
+    onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ['finance', 'offering-categories'] })
-      setCategoryId(c.id)
+      setCategoryId(created.id)
     },
   })
 
@@ -156,9 +156,9 @@ function OfferingForm({ date, onCreated }: { date: string; onCreated: () => void
           inputMode="numeric"
           placeholder="금액"
           value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') submit()
+          onChange={(event) => setAmount(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') submit()
           }}
           className="text-right tabular-nums"
         />

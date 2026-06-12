@@ -1,11 +1,7 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { BaseDateEntityWithDeletedAt } from './base-date.entity';
 
-/**
- * 직분 — 성도/집사/안수집사/권사/장로/목사/부목사/전도사 등.
- * per-church reference table. 교회마다 직제 자유 정의.
- * 변경 이력은 MemberPositionEntity 로 추적.
- */
+/** 직분 reference — 성도/집사/장로/목사 등. */
 @Entity('position')
 @Index(['churchId'])
 @Index(['churchId', 'name'], { unique: true, where: 'deleted_at IS NULL' })

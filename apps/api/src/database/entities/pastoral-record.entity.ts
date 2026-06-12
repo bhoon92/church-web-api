@@ -1,13 +1,6 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { BaseDateEntityWithDeletedAt } from './base-date.entity';
 
-/**
- * 사역 기록 (planning 1.2) — 심방일지 + 새가족교육 면담 노트를 단일 entity 로 통합.
- * 한 성도 프로필에서 시간순 timeline 으로 표시.
- *
- * recorder_account_id: 작성자(로그인 정체성, 보통 목사/전도사/팀장).
- * member_id: 대상 성도.
- */
 export enum PastoralRecordType {
   VISIT = 'visit', // 심방
   NEWCOMER_EDUCATION = 'newcomer_education', // 새가족교육
@@ -15,6 +8,7 @@ export enum PastoralRecordType {
   ETC = 'etc', // 기타
 }
 
+/** 사역 기록 — 심방·새가족교육·상담 노트. */
 @Entity('pastoral_record')
 @Index(['churchId'])
 @Index(['memberId'])

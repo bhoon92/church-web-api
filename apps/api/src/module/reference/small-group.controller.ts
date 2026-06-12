@@ -11,17 +11,17 @@ import { ReferenceService } from './reference.service';
 @Controller('small-groups')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class SmallGroupController {
-  constructor(private readonly refs: ReferenceService) {}
+  constructor(private readonly referenceService: ReferenceService) {}
 
   @Get()
   list(@RequireChurch() auth: AuthContext & { churchId: number }) {
-    return this.refs.list(SmallGroupEntity, auth.churchId);
+    return this.referenceService.list(SmallGroupEntity, auth.churchId);
   }
 
   @Post()
   @Permissions('settings:write')
   create(@RequireChurch() auth: AuthContext & { churchId: number }, @Body() dto: UpsertReferenceDto) {
-    return this.refs.create(SmallGroupEntity, auth.churchId, dto);
+    return this.referenceService.create(SmallGroupEntity, auth.churchId, dto);
   }
 
   @Patch(':id')
@@ -31,13 +31,13 @@ export class SmallGroupController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpsertReferenceDto
   ) {
-    return this.refs.update(SmallGroupEntity, auth.churchId, id, dto);
+    return this.referenceService.update(SmallGroupEntity, auth.churchId, id, dto);
   }
 
   @Delete(':id')
   @Permissions('settings:write')
   @HttpCode(204)
   remove(@RequireChurch() auth: AuthContext & { churchId: number }, @Param('id', ParseIntPipe) id: number) {
-    return this.refs.remove(SmallGroupEntity, auth.churchId, id);
+    return this.referenceService.remove(SmallGroupEntity, auth.churchId, id);
   }
 }

@@ -121,8 +121,8 @@ export type PositionHistoryEntry = {
 
 export type AffiliationSummary = {
   id: number;
-  refId: number;
-  refName: string | null;
+  referenceId: number;
+  referenceName: string | null;
   startDate: string;
   isLeader: boolean;
   roleLabel: string | null;

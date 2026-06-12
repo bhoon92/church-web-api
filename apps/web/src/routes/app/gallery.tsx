@@ -1,69 +1,57 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ImageOff, Plus, Trash2, Upload } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, ImageOff, Plus, Trash2, Upload } from 'lucide-react';
+import { useRef, useState } from 'react';
 
-import {
-  createEvent,
-  deleteEvent,
-  deletePhoto,
-  listEvents,
-  listPhotos,
-  uploadPhoto,
-  type ChurchEvent,
-} from '@/api/gallery'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { PageHeader } from '@/components/page-header'
-import { cn } from '@/lib/utils'
-import { usePermissions } from '@/lib/permissions'
+import { createEvent, deleteEvent, deletePhoto, listEvents, listPhotos, uploadPhoto, type ChurchEvent } from '@/api/gallery';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { PageHeader } from '@/components/page-header';
+import { cn } from '@/lib/utils';
+import { usePermissions } from '@/lib/permissions';
 
 export function GalleryPage() {
-  const [selected, setSelected] = useState<ChurchEvent | null>(null)
-  const { can } = usePermissions()
-  const canWrite = can('gallery:write')
+  const [selected, setSelected] = useState<ChurchEvent | null>(null);
+  const { can } = usePermissions();
+  const canWrite = can('gallery:write');
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow="행사"
-        title="행사 갤러리"
-        description="수련회·행사 사진을 행사별 폴더로 관리합니다."
-      />
+      <PageHeader eyebrow="행사" title="행사 갤러리" description="수련회·행사 사진을 행사별 폴더로 관리합니다." />
       {selected ? (
         <EventDetail event={selected} canWrite={canWrite} onBack={() => setSelected(null)} />
       ) : (
         <EventList onOpen={setSelected} canWrite={canWrite} />
       )}
     </div>
-  )
+  );
 }
 
-function EventList({ onOpen, canWrite }: { onOpen: (e: ChurchEvent) => void; canWrite: boolean }) {
-  const queryClient = useQueryClient()
-  const [creating, setCreating] = useState(false)
-  const [name, setName] = useState('')
-  const [date, setDate] = useState('')
+function EventList({ onOpen, canWrite }: { onOpen: (event: ChurchEvent) => void; canWrite: boolean }) {
+  const queryClient = useQueryClient();
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState('');
+  const [date, setDate] = useState('');
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ['events'],
     queryFn: listEvents,
-  })
+  });
 
   const createMut = useMutation({
     mutationFn: () => createEvent({ name: name.trim(), date: date || undefined }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['events'] })
-      setName('')
-      setDate('')
-      setCreating(false)
+      queryClient.invalidateQueries({ queryKey: ['events'] });
+      setName('');
+      setDate('');
+      setCreating(false);
     },
-  })
+  });
 
   const deleteMut = useMutation({
     mutationFn: deleteEvent,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['events'] }),
-  })
+  });
 
   return (
     <div className="space-y-4">
@@ -81,16 +69,11 @@ function EventList({ onOpen, canWrite }: { onOpen: (e: ChurchEvent) => void; can
           <CardContent className="flex flex-wrap items-end gap-3 p-5">
             <div className="flex-1">
               <label className="mb-1 block text-xs font-medium">행사명</label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="예: 2026 여름 수련회"
-                autoFocus
-              />
+              <Input value={name} onChange={event => setName(event.target.value)} placeholder="예: 2026 여름 수련회" autoFocus />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium">날짜</label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-44" />
+              <Input type="date" value={date} onChange={event => setDate(event.target.value)} className="w-44" />
             </div>
             <Button onClick={() => createMut.mutate()} disabled={!name.trim() || createMut.isPending}>
               만들기
@@ -103,27 +86,23 @@ function EventList({ onOpen, canWrite }: { onOpen: (e: ChurchEvent) => void; can
         <div className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">불러오는 중…</div>
       ) : events.length === 0 ? (
         <Card>
-          <CardContent className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">
-            등록된 행사가 없습니다.
-          </CardContent>
+          <CardContent className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">등록된 행사가 없습니다.</CardContent>
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {events.map((e) => (
-            <Card key={e.id} className="group cursor-pointer transition-shadow hover:shadow-md">
-              <CardContent className="p-5" onClick={() => onOpen(e)}>
+          {events.map(event => (
+            <Card key={event.id} className="group cursor-pointer transition-shadow hover:shadow-md">
+              <CardContent className="p-5" onClick={() => onOpen(event)}>
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="text-sm font-semibold">{e.name}</div>
-                    {e.date && (
-                      <div className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">{e.date}</div>
-                    )}
+                    <div className="text-sm font-semibold">{event.name}</div>
+                    {event.date && <div className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">{event.date}</div>}
                   </div>
                   {canWrite && (
                     <button
-                      onClick={(ev) => {
-                        ev.stopPropagation()
-                        if (window.confirm(`"${e.name}" 행사와 사진을 모두 삭제할까요?`)) deleteMut.mutate(e.id)
+                      onClick={ev => {
+                        ev.stopPropagation();
+                        if (window.confirm(`"${event.name}" 행사와 사진을 모두 삭제할까요?`)) deleteMut.mutate(event.id);
                       }}
                       className="rounded-full p-1 text-[var(--color-muted-foreground)] opacity-0 transition-opacity hover:bg-[var(--color-muted)] group-hover:opacity-100"
                       aria-label="삭제"
@@ -132,49 +111,49 @@ function EventList({ onOpen, canWrite }: { onOpen: (e: ChurchEvent) => void; can
                     </button>
                   )}
                 </div>
-                <div className="mt-4 text-xs text-[var(--color-muted-foreground)]">사진 {e.photoCount}장</div>
+                <div className="mt-4 text-xs text-[var(--color-muted-foreground)]">사진 {event.photoCount}장</div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
     </div>
-  )
+  );
 }
 
 function EventDetail({ event, canWrite, onBack }: { event: ChurchEvent; canWrite: boolean; onBack: () => void }) {
-  const queryClient = useQueryClient()
-  const fileInput = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const queryClient = useQueryClient();
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const { data: photos = [], isLoading } = useQuery({
     queryKey: ['photos', event.id],
     queryFn: () => listPhotos(event.id),
-  })
+  });
 
   const deleteMut = useMutation({
     mutationFn: (photoId: number) => deletePhoto(event.id, photoId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['photos', event.id] }),
-  })
+  });
 
   const onFiles = async (files: FileList | null) => {
-    if (!files || files.length === 0) return
-    setError(null)
-    setUploading(true)
+    if (!files || files.length === 0) return;
+    setError(null);
+    setUploading(true);
     try {
       for (const file of Array.from(files)) {
-        await uploadPhoto(event.id, file)
+        await uploadPhoto(event.id, file);
       }
-      await queryClient.invalidateQueries({ queryKey: ['photos', event.id] })
-      await queryClient.invalidateQueries({ queryKey: ['events'] })
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '업로드 실패')
+      await queryClient.invalidateQueries({ queryKey: ['photos', event.id] });
+      await queryClient.invalidateQueries({ queryKey: ['events'] });
+    } catch (error) {
+      setError(error instanceof Error ? error.message : '업로드 실패');
     } finally {
-      setUploading(false)
-      if (fileInput.current) fileInput.current.value = ''
+      setUploading(false);
+      if (fileInput.current) fileInput.current.value = '';
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -187,14 +166,7 @@ function EventDetail({ event, canWrite, onBack }: { event: ChurchEvent; canWrite
           행사 목록
         </button>
         <div className="flex items-center gap-2">
-          <input
-            ref={fileInput}
-            type="file"
-            accept="image/*"
-            multiple
-            hidden
-            onChange={(e) => void onFiles(e.target.files)}
-          />
+          <input ref={fileInput} type="file" accept="image/*" multiple hidden onChange={event => void onFiles(event.target.files)} />
           {canWrite && (
             <Button size="sm" onClick={() => fileInput.current?.click()} disabled={uploading}>
               <Upload className="size-3.5" />
@@ -222,25 +194,20 @@ function EventDetail({ event, canWrite, onBack }: { event: ChurchEvent; canWrite
         </Card>
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-          {photos.map((p) => (
+          {photos.map(photo => (
             <div
-              key={p.id}
+              key={photo.id}
               className="group relative aspect-square overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-muted)]"
             >
-              <img
-                src={p.url}
-                alt={p.originalName}
-                loading="lazy"
-                className="size-full object-cover"
-              />
+              <img src={photo.url} alt={photo.originalName} loading="lazy" className="size-full object-cover" />
               {canWrite && (
                 <button
                   onClick={() => {
-                    if (window.confirm('이 사진을 삭제할까요?')) deleteMut.mutate(p.id)
+                    if (window.confirm('이 사진을 삭제할까요?')) deleteMut.mutate(photo.id);
                   }}
                   className={cn(
                     'absolute top-1.5 right-1.5 rounded-full bg-black/50 p-1.5 text-white opacity-0 transition-opacity',
-                    'hover:bg-black/70 group-hover:opacity-100',
+                    'hover:bg-black/70 group-hover:opacity-100'
                   )}
                   aria-label="삭제"
                 >
@@ -252,5 +219,5 @@ function EventDetail({ event, canWrite, onBack }: { event: ChurchEvent; canWrite
         </div>
       )}
     </div>
-  )
+  );
 }

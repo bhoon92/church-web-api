@@ -46,23 +46,25 @@ export class TransactionService {
     });
     if (rows.length === 0) return [];
 
-    const categoryIds = Array.from(new Set(rows.map(r => r.accountCategoryId).filter((v): v is number => v != null)));
+    const categoryIds = Array.from(
+      new Set(rows.map(transaction => transaction.accountCategoryId).filter((value): value is number => value != null))
+    );
     const categories =
       categoryIds.length > 0
         ? await DataSources.instance.getRepository(AccountCategoryEntity).find({ where: categoryIds.map(id => ({ id, churchId })) })
         : [];
-    const nameMap = new Map(categories.map(c => [c.id, c.name]));
+    const nameMap = new Map(categories.map(category => [category.id, category.name]));
 
-    return rows.map(r => ({
-      id: r.id,
-      flow: r.flow,
-      amount: r.amount,
-      title: r.title,
-      date: r.date,
-      accountCategoryId: r.accountCategoryId ?? null,
-      categoryName: r.accountCategoryId != null ? (nameMap.get(r.accountCategoryId) ?? null) : null,
-      budgetAllocationId: r.budgetAllocationId ?? null,
-      note: r.note ?? null,
+    return rows.map(transaction => ({
+      id: transaction.id,
+      flow: transaction.flow,
+      amount: transaction.amount,
+      title: transaction.title,
+      date: transaction.date,
+      accountCategoryId: transaction.accountCategoryId ?? null,
+      categoryName: transaction.accountCategoryId != null ? (nameMap.get(transaction.accountCategoryId) ?? null) : null,
+      budgetAllocationId: transaction.budgetAllocationId ?? null,
+      note: transaction.note ?? null,
     }));
   }
 
@@ -95,7 +97,7 @@ export class TransactionService {
       .andWhere('t.budget_allocation_id IN (:...ids)', { ids: allocationIds })
       .groupBy('t.budget_allocation_id')
       .getRawMany()) as { allocationId: number; sum: string }[];
-    return new Map(rows.map(r => [Number(r.allocationId), Number(r.sum)]));
+    return new Map(rows.map(row => [Number(row.allocationId), Number(row.sum)]));
   }
 
   private today(): string {

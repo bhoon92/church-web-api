@@ -8,6 +8,7 @@ export enum MembershipRole {
   VIEWER = 'viewer',
 }
 
+/** 계정 ↔ 교회 소속 + 역할(RBAC). */
 @Entity('membership')
 @Index(['accountId', 'churchId'], { unique: true, where: 'deleted_at IS NULL' })
 @Index(['churchId'])

@@ -1,6 +1,6 @@
 export type ReferenceKind = 'department' | 'ministry' | 'smallGroup' | 'position' | 'worshipService';
 
-export const REF_PATH: Record<ReferenceKind, string> = {
+export const REFERENCE_PATH: Record<ReferenceKind, string> = {
   department: 'departments',
   ministry: 'ministries',
   smallGroup: 'small-groups',
@@ -8,7 +8,7 @@ export const REF_PATH: Record<ReferenceKind, string> = {
   worshipService: 'worship-services',
 };
 
-export const REF_LABEL: Record<ReferenceKind, string> = {
+export const REFERENCE_LABEL: Record<ReferenceKind, string> = {
   department: '부서',
   ministry: '사역팀',
   smallGroup: '목장',
@@ -35,13 +35,13 @@ export type UpsertReferencePayload = {
 };
 
 export async function listReferences(kind: ReferenceKind): Promise<Reference[]> {
-  const res = await fetch(`/api/${REF_PATH[kind]}`, { credentials: 'include' });
+  const res = await fetch(`/api/${REFERENCE_PATH[kind]}`, { credentials: 'include' });
   if (!res.ok) throw new Error(`list ${kind} ${res.status}`);
   return res.json();
 }
 
 export async function createReference(kind: ReferenceKind, payload: UpsertReferencePayload): Promise<Reference> {
-  const res = await fetch(`/api/${REF_PATH[kind]}`, {
+  const res = await fetch(`/api/${REFERENCE_PATH[kind]}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -55,7 +55,7 @@ export async function createReference(kind: ReferenceKind, payload: UpsertRefere
 }
 
 export async function updateReference(kind: ReferenceKind, id: number, payload: Partial<UpsertReferencePayload>): Promise<Reference> {
-  const res = await fetch(`/api/${REF_PATH[kind]}/${id}`, {
+  const res = await fetch(`/api/${REFERENCE_PATH[kind]}/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
@@ -66,7 +66,7 @@ export async function updateReference(kind: ReferenceKind, id: number, payload: 
 }
 
 export async function deleteReference(kind: ReferenceKind, id: number): Promise<void> {
-  const res = await fetch(`/api/${REF_PATH[kind]}/${id}`, {
+  const res = await fetch(`/api/${REFERENCE_PATH[kind]}/${id}`, {
     method: 'DELETE',
     credentials: 'include',
   });

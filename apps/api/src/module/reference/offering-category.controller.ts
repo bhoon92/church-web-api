@@ -11,17 +11,17 @@ import { ReferenceService } from './reference.service';
 @Controller('offering-categories')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class OfferingCategoryController {
-  constructor(private readonly refs: ReferenceService) {}
+  constructor(private readonly referenceService: ReferenceService) {}
 
   @Get()
   list(@RequireChurch() auth: AuthContext & { churchId: number }) {
-    return this.refs.list(OfferingCategoryEntity, auth.churchId);
+    return this.referenceService.list(OfferingCategoryEntity, auth.churchId);
   }
 
   @Post()
   @Permissions('settings:write')
   create(@RequireChurch() auth: AuthContext & { churchId: number }, @Body() dto: UpsertReferenceDto) {
-    return this.refs.create(OfferingCategoryEntity, auth.churchId, dto);
+    return this.referenceService.create(OfferingCategoryEntity, auth.churchId, dto);
   }
 
   @Patch(':id')
@@ -31,13 +31,13 @@ export class OfferingCategoryController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpsertReferenceDto
   ) {
-    return this.refs.update(OfferingCategoryEntity, auth.churchId, id, dto);
+    return this.referenceService.update(OfferingCategoryEntity, auth.churchId, id, dto);
   }
 
   @Delete(':id')
   @Permissions('settings:write')
   @HttpCode(204)
   remove(@RequireChurch() auth: AuthContext & { churchId: number }, @Param('id', ParseIntPipe) id: number) {
-    return this.refs.remove(OfferingCategoryEntity, auth.churchId, id);
+    return this.referenceService.remove(OfferingCategoryEntity, auth.churchId, id);
   }
 }

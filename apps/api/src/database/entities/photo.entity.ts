@@ -2,10 +2,7 @@ import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { bigintTransformer } from '../column-transformer';
 import { BaseDateEntityWithDeletedAt } from './base-date.entity';
 
-/**
- * 사진 (planning 5.3) — 행사(Event=폴더)에 속한 S3 객체 메타데이터.
- * 실제 파일은 S3, DB 는 key/메타만 보관. 조회 시 presigned GET URL 발급.
- */
+/** 사진 — 행사(Event)에 속한 S3 객체 메타. */
 @Entity('photo')
 @Index(['churchId'])
 @Index(['eventId'])

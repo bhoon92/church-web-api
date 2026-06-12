@@ -21,7 +21,7 @@ export class PermissionsGuard implements CanActivate {
     const req = context.switchToHttp().getRequest<Request & { user?: AuthContext }>();
     const role = req.user?.role ?? null;
 
-    const missing = required.filter(p => !roleHasPermission(role, p));
+    const missing = required.filter(permission => !roleHasPermission(role, permission));
     if (missing.length > 0) {
       throw new ForbiddenException(`권한이 없습니다 (${missing.join(', ')})`);
     }

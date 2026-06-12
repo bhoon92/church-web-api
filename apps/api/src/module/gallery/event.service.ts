@@ -31,9 +31,9 @@ export class EventService {
       .andWhere('p.deleted_at IS NULL')
       .groupBy('p.event_id')
       .getRawMany()) as { eventId: number; cnt: string }[];
-    const countMap = new Map(counts.map(c => [Number(c.eventId), Number(c.cnt)]));
+    const countMap = new Map(counts.map(eventCount => [Number(eventCount.eventId), Number(eventCount.cnt)]));
 
-    return events.map(e => Object.assign(e, { photoCount: countMap.get(e.id) ?? 0 }));
+    return events.map(event => Object.assign(event, { photoCount: countMap.get(event.id) ?? 0 }));
   }
 
   create(churchId: number, dto: CreateEventDto): Promise<EventEntity> {

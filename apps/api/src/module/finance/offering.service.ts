@@ -50,7 +50,7 @@ export class OfferingService {
 
     const rows = await qb.getMany();
     const items = await this.enrich(churchId, rows);
-    const total = items.reduce((s, i) => s + i.amount, 0);
+    const total = items.reduce((sum, item) => sum + item.amount, 0);
     return { items, total, count: items.length };
   }
 
@@ -74,14 +74,14 @@ export class OfferingService {
       .getRawMany()) as { categoryId: number; amount: string }[];
 
     const categories = await DataSources.instance.getRepository(OfferingCategoryEntity).find({ where: { churchId } });
-    const nameMap = new Map(categories.map(c => [c.id, c.name]));
+    const nameMap = new Map(categories.map(category => [category.id, category.name]));
 
-    const byCategory = rows.map(r => ({
-      categoryId: Number(r.categoryId),
-      categoryName: nameMap.get(Number(r.categoryId)) ?? null,
-      amount: Number(r.amount),
+    const byCategory = rows.map(categorySum => ({
+      categoryId: Number(categorySum.categoryId),
+      categoryName: nameMap.get(Number(categorySum.categoryId)) ?? null,
+      amount: Number(categorySum.amount),
     }));
-    const total = byCategory.reduce((s, c) => s + c.amount, 0);
+    const total = byCategory.reduce((sum, category) => sum + category.amount, 0);
     return { year, total, byCategory };
   }
 
@@ -110,31 +110,31 @@ export class OfferingService {
 
   private async enrich(churchId: number, rows: OfferingEntity[]): Promise<OfferingItem[]> {
     if (rows.length === 0) return [];
-    const memberIds = Array.from(new Set(rows.map(r => r.memberId)));
-    const categoryIds = Array.from(new Set(rows.map(r => r.offeringCategoryId)));
+    const memberIds = Array.from(new Set(rows.map(offering => offering.memberId)));
+    const categoryIds = Array.from(new Set(rows.map(offering => offering.offeringCategoryId)));
     const [members, categories] = await Promise.all([
       DataSources.instance.getRepository(MemberEntity).find({ where: memberIds.map(id => ({ id, churchId })) }),
       DataSources.instance.getRepository(OfferingCategoryEntity).find({ where: categoryIds.map(id => ({ id, churchId })) }),
     ]);
-    const memberMap = new Map(members.map(m => [m.id, m.name]));
-    const categoryMap = new Map(categories.map(c => [c.id, c.name]));
+    const memberMap = new Map(members.map(member => [member.id, member.name]));
+    const categoryMap = new Map(categories.map(category => [category.id, category.name]));
 
-    return rows.map(r => ({
-      id: r.id,
-      memberId: r.memberId,
-      memberName: memberMap.get(r.memberId) ?? null,
-      offeringCategoryId: r.offeringCategoryId,
-      categoryName: categoryMap.get(r.offeringCategoryId) ?? null,
-      amount: r.amount,
-      date: r.date,
-      rawDonorName: r.rawDonorName ?? null,
-      note: r.note ?? null,
+    return rows.map(offering => ({
+      id: offering.id,
+      memberId: offering.memberId,
+      memberName: memberMap.get(offering.memberId) ?? null,
+      offeringCategoryId: offering.offeringCategoryId,
+      categoryName: categoryMap.get(offering.offeringCategoryId) ?? null,
+      amount: offering.amount,
+      date: offering.date,
+      rawDonorName: offering.rawDonorName ?? null,
+      note: offering.note ?? null,
     }));
   }
 
   private async assertMember(churchId: number, memberId: number): Promise<void> {
-    const m = await DataSources.instance.getRepository(MemberEntity).findOne({ where: { id: memberId, churchId } });
-    if (!m) throw new NotFoundException('Member not found');
+    const member = await DataSources.instance.getRepository(MemberEntity).findOne({ where: { id: memberId, churchId } });
+    if (!member) throw new NotFoundException('Member not found');
   }
 
   private async assertCategory(churchId: number, categoryId: number): Promise<void> {

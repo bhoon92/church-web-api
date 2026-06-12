@@ -2,11 +2,7 @@ import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { bigintTransformer } from '../column-transformer';
 import { BaseDateEntityWithDeletedAt } from './base-date.entity';
 
-/**
- * 개인 헌금 (planning 4.1) — 모든 헌금은 member_id non-null (무명/미등록도 member row).
- * 연말정산 영수증 = member 별 calendar-year 합계.
- * raw_donor_name: 봉투 원본 이름 (매칭 정정용).
- */
+/** 개인 헌금 — 연말정산 영수증 집계 단위. */
 @Entity('offering')
 @Index(['churchId'])
 @Index(['churchId', 'date'])

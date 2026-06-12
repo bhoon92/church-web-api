@@ -7,7 +7,7 @@ import {
   createReference,
   deleteReference,
   listReferences,
-  REF_LABEL,
+  REFERENCE_LABEL,
   updateReference,
   type Reference,
   type ReferenceKind,
@@ -45,18 +45,18 @@ export function ReferencesPage() {
 
       <div className="border-b border-[var(--color-border)]">
         <div className="flex gap-4">
-          {TABS.map((t) => (
+          {TABS.map((tabOption) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={tabOption}
+              onClick={() => setTab(tabOption)}
               className={cn(
                 'relative -mb-px border-b-2 px-1 py-2.5 text-sm font-medium transition-colors',
-                tab === t
+                tab === tabOption
                   ? 'border-[var(--color-foreground)] text-[var(--color-foreground)]'
                   : 'border-transparent text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]',
               )}
             >
-              {REF_LABEL[t]}
+              {REFERENCE_LABEL[tabOption]}
             </button>
           ))}
         </div>
@@ -107,7 +107,7 @@ function ReferenceTab({ kind }: { kind: ReferenceKind }) {
           </div>
         ) : items.length === 0 ? (
           <div className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">
-            등록된 {REF_LABEL[kind]}이 없습니다.
+            등록된 {REFERENCE_LABEL[kind]}이 없습니다.
           </div>
         ) : (
           <ul className="divide-y divide-[var(--color-border)]">
@@ -141,8 +141,8 @@ function CreateRow({
 
   return (
     <form
-      onSubmit={(e) => {
-        e.preventDefault()
+      onSubmit={(event) => {
+        event.preventDefault()
         if (!name.trim()) return
         onSubmit(name.trim())
         setName('')
@@ -152,7 +152,7 @@ function CreateRow({
       <Plus className="size-4 text-[var(--color-muted-foreground)]" />
       <Input
         value={name}
-        onChange={(e) => setName(e.target.value)}
+        onChange={(event) => setName(event.target.value)}
         placeholder={placeholder}
         className="h-9 border-transparent bg-transparent focus-visible:bg-[var(--color-background)] focus-visible:ring-1"
         maxLength={40}
@@ -203,12 +203,12 @@ function ReferenceRow({
         <>
           <Input
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(event) => setDraft(event.target.value)}
             autoFocus
             maxLength={40}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') submit()
-              if (e.key === 'Escape') {
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') submit()
+              if (event.key === 'Escape') {
                 setEditing(false)
                 setDraft(item.name)
               }

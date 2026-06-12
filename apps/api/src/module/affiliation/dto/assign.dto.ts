@@ -3,7 +3,7 @@ import { IsBoolean, IsInt, IsOptional, IsString, Length, Matches, Min } from 'cl
 export class AssignAffiliationDto {
   @IsInt()
   @Min(1)
-  refId!: number;
+  referenceId!: number;
 
   @IsOptional()
   @IsBoolean()
