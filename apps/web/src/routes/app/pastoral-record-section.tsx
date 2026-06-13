@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { usePermissions } from '@/lib/permissions'
+import { todayString } from '@/lib/date'
 
 const TYPE_TONE: Record<PastoralRecordType, 'neutral' | 'muted' | 'success' | 'warn'> = {
   visit: 'success',
@@ -139,7 +140,7 @@ function RecordForm({
   onDone: () => void
   onCancel: () => void
 }) {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayString()
   const [type, setType] = useState<PastoralRecordType>('visit')
   const [date, setDate] = useState(today)
   const [location, setLocation] = useState('')

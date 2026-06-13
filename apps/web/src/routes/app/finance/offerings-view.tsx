@@ -21,6 +21,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Check, Download, Pencil, Trash2 } from 'lucide-react'
 import { usePermissions } from '@/lib/permissions'
+import { todayString } from '@/lib/date'
 import { CategorySelect } from './category-select'
 import { MemberPicker } from './member-picker'
 
@@ -28,7 +29,7 @@ export function OfferingsView() {
   const queryClient = useQueryClient()
   const { can } = usePermissions()
   const canWrite = can('finance:write')
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayString()
   const [date, setDate] = useState(today)
 
   const { data: list } = useQuery({

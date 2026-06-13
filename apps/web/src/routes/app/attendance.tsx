@@ -13,11 +13,12 @@ import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/page-header';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/lib/permissions';
+import { todayString, toDateString } from '@/lib/date';
 
 function shiftDate(date: string, days: number): string {
   const d = new Date(`${date}T00:00:00`);
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return toDateString(d);
 }
 
 function formatDate(date: string): string {
@@ -27,7 +28,7 @@ function formatDate(date: string): string {
 }
 
 export function AttendancePage() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayString();
   const [date, setDate] = useState(today);
   const [serviceId, setServiceId] = useState<number | null>(null);
 
