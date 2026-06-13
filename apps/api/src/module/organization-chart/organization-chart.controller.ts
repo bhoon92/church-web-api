@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { RequireChurch } from '@src/module/auth/decorators/current-auth.decorator';
 import { Permissions } from '@src/module/auth/decorators/permissions.decorator';
 import { JwtAuthGuard } from '@src/module/auth/guards/jwt-auth.guard';
@@ -15,7 +15,7 @@ export class OrganizationChartController {
 
   @Get()
   @Permissions('member:read')
-  tree(@RequireChurch() auth: Auth) {
-    return this.orgChart.tree(auth.churchId);
+  tree(@RequireChurch() auth: Auth, @Query('year') year?: string) {
+    return this.orgChart.tree(auth.churchId, year ? Number(year) : new Date().getFullYear());
   }
 }

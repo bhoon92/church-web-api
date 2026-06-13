@@ -55,16 +55,16 @@ export type OrganizationUnit = {
 
 @Injectable()
 export class OrganizationChartService {
-  async tree(churchId: number): Promise<Record<OrganizationKind, OrganizationUnit[]>> {
+  async tree(churchId: number, year: number): Promise<Record<OrganizationKind, OrganizationUnit[]>> {
     const [department, ministry, smallGroup] = await Promise.all([
-      this.section('department', churchId),
-      this.section('ministry', churchId),
-      this.section('smallGroup', churchId),
+      this.section('department', churchId, year),
+      this.section('ministry', churchId, year),
+      this.section('smallGroup', churchId, year),
     ]);
     return { department, ministry, smallGroup };
   }
 
-  private async section(kind: OrganizationKind, churchId: number): Promise<OrganizationUnit[]> {
+  private async section(kind: OrganizationKind, churchId: number, year: number): Promise<OrganizationUnit[]> {
     const config = CONFIG[kind];
     const joinRepo = DataSources.instance.getRepository(config.joinEntity) as Repository<JoinRow>;
     const referenceRepo = DataSources.instance.getRepository(config.referenceEntity);
@@ -72,7 +72,7 @@ export class OrganizationChartService {
 
     const [references, joins] = await Promise.all([
       referenceRepo.find({
-        where: { churchId, isActive: true } as never,
+        where: { churchId, year, isActive: true } as never,
         order: { sortOrder: 'ASC', name: 'ASC' } as never,
       }) as Promise<ReferenceRow[]>,
       joinRepo.find({ where: { churchId, endDate: IsNull() } as never }),

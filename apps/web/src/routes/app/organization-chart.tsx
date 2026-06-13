@@ -10,10 +10,13 @@ import { cn } from '@/lib/utils';
 
 export function OrganizationChartPage() {
   const [kind, setKind] = useState<OrganizationKind>('department');
+  const currentYear = new Date().getFullYear();
+  const [year, setYear] = useState(currentYear);
+  const yearOptions = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1];
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['organization-chart'],
-    queryFn: fetchOrganizationChart,
+    queryKey: ['organization-chart', year],
+    queryFn: () => fetchOrganizationChart(year),
   });
 
   const unit = data?.[kind] ?? [];
@@ -26,7 +29,26 @@ export function OrganizationChartPage() {
         description="재적의 소속 정보에서 부서·사역팀·목장별 구성을 보여줍니다. 편집은 재적 상세에서 합니다."
       />
 
-      <KindTabs kind={kind} onSelect={setKind} />
+      <div className="flex items-center justify-between gap-4">
+        <KindTabs kind={kind} onSelect={setKind} />
+        <div className="flex items-center gap-2">
+          <label htmlFor="organization-year" className="text-xs font-medium text-[var(--color-muted-foreground)]">
+            편성 연도
+          </label>
+          <select
+            id="organization-year"
+            value={year}
+            onChange={event => setYear(Number(event.target.value))}
+            className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-2 text-sm focus-visible:border-[var(--color-ring)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)]/30"
+          >
+            {yearOptions.map(option => (
+              <option key={option} value={option}>
+                {option}년
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {isLoading ? (
         <EmptyCard text="불러오는 중…" />

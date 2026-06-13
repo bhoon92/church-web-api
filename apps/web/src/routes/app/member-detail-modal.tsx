@@ -109,10 +109,11 @@ function AffiliationSection({ kind, memberId, items }: { kind: AffiliationKind; 
   const { can } = usePermissions();
   const canWrite = can('member:write');
   const [adding, setAdding] = useState(false);
+  const currentYear = new Date().getFullYear();
 
   const { data: references = [] } = useQuery({
-    queryKey: ['references', kind],
-    queryFn: () => listReferences(kind),
+    queryKey: ['references', kind, currentYear],
+    queryFn: () => listReferences(kind, currentYear),
     enabled: adding,
   });
 

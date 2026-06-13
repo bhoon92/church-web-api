@@ -4,13 +4,17 @@ import { BaseDateEntityWithDeletedAt } from './base-date.entity';
 /** 사역팀 — 봉사 단위 reference. */
 @Entity('ministry')
 @Index(['churchId'])
-@Index(['churchId', 'name'], { unique: true, where: 'deleted_at IS NULL' })
+@Index(['churchId', 'year'])
+@Index(['churchId', 'year', 'name'], { unique: true, where: 'deleted_at IS NULL' })
 export class MinistryEntity extends BaseDateEntityWithDeletedAt {
   @PrimaryGeneratedColumn()
   id!: number;
 
   @Column()
   churchId!: number;
+
+  @Column({ type: 'smallint', comment: '편성 연도' })
+  year!: number;
 
   @Column()
   name!: string;

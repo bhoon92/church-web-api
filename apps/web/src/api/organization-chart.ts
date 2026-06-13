@@ -24,8 +24,8 @@ export type OrganizationUnit = {
 
 export type OrganizationChart = Record<OrganizationKind, OrganizationUnit[]>;
 
-export async function fetchOrganizationChart(): Promise<OrganizationChart> {
-  const res = await fetch('/api/organization-chart', { credentials: 'include' });
+export async function fetchOrganizationChart(year: number): Promise<OrganizationChart> {
+  const res = await fetch(`/api/organization-chart?year=${year}`, { credentials: 'include' });
   if (!res.ok) throw new Error(`organization-chart ${res.status}`);
   return res.json();
 }

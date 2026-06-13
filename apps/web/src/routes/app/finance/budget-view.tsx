@@ -156,10 +156,11 @@ function AllocationForm({ fiscalYearId }: { fiscalYearId: number }) {
   const [kind, setKind] = useState<BudgetTargetKind>('department')
   const [targetId, setTargetId] = useState<number | null>(null)
   const [amount, setAmount] = useState('')
+  const currentYear = new Date().getFullYear()
 
   const { data: targets = [] } = useQuery({
-    queryKey: ['references', KIND_TO_REF[kind]],
-    queryFn: () => listReferences(KIND_TO_REF[kind]),
+    queryKey: ['references', KIND_TO_REF[kind], currentYear],
+    queryFn: () => listReferences(KIND_TO_REF[kind], currentYear),
   })
 
   const createMut = useMutation({
