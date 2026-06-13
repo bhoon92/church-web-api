@@ -18,6 +18,20 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
   return res.json();
 }
 
+async function patchJson<T>(url: string, body: unknown): Promise<T> {
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`${url} ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
 async function del(url: string): Promise<void> {
   const res = await fetch(url, { method: 'DELETE', credentials: 'include' });
   if (!res.ok) throw new Error(`${url} ${res.status}`);
@@ -81,6 +95,13 @@ export const createOffering = (body: {
   rawDonorName?: string;
   note?: string;
 }) => postJson<Offering>('/api/finance/offerings', body);
+
+export const updateOffering = (
+  id: number,
+  body: Partial<{ memberId: number; offeringCategoryId: number; amount: number; date: string; note: string }>
+) => patchJson<Offering>(`/api/finance/offerings/${id}`, body);
+
+export const deleteOffering = (id: number) => del(`/api/finance/offerings/${id}`);
 
 // ── 운영 거래 ─────────────────────────────
 export type TransactionFlow = 'income' | 'expense';
@@ -148,8 +169,12 @@ export type Category = { id: number; name: string };
 
 export const listOfferingCategories = () => getJson<Category[]>('/api/offering-categories');
 export const createOfferingCategory = (name: string) => postJson<Category>('/api/offering-categories', { name });
+export const updateOfferingCategory = (id: number, name: string) => patchJson<Category>(`/api/offering-categories/${id}`, { name });
+export const deleteOfferingCategory = (id: number) => del(`/api/offering-categories/${id}`);
 export const listAccountCategories = () => getJson<Category[]>('/api/account-categories');
 export const createAccountCategory = (name: string) => postJson<Category>('/api/account-categories', { name });
+export const updateAccountCategory = (id: number, name: string) => patchJson<Category>(`/api/account-categories/${id}`, { name });
+export const deleteAccountCategory = (id: number) => del(`/api/account-categories/${id}`);
 
 export function formatKRW(amount: number): string {
   return `₩ ${amount.toLocaleString()}`;
