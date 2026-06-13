@@ -5,10 +5,12 @@ import { useState } from 'react'
 import {
   createAccountCategory,
   createTransaction,
+  deleteAccountCategory,
   deleteTransaction,
   formatKRW,
   listAccountCategories,
   listTransactions,
+  updateAccountCategory,
   type TransactionFlow,
 } from '@/api/finance'
 import { exportTransactions } from '@/api/exports'
@@ -18,6 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Download } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePermissions } from '@/lib/permissions'
+import { todayString } from '@/lib/date'
 import { CategorySelect } from './category-select'
 
 export function OperationsView() {
@@ -38,6 +41,7 @@ export function OperationsView() {
   const deleteMut = useMutation({
     mutationFn: deleteTransaction,
     onSuccess: invalidate,
+    onError: (error: Error) => alert(`삭제 실패: ${error.message}`),
   })
 
   return (
@@ -111,7 +115,7 @@ export function OperationsView() {
 
 function TransactionForm({ onCreated }: { onCreated: () => void }) {
   const queryClient = useQueryClient()
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayString()
   const [flow, setFlow] = useState<TransactionFlow>('expense')
   const [title, setTitle] = useState('')
   const [amount, setAmount] = useState('')
@@ -123,12 +127,29 @@ function TransactionForm({ onCreated }: { onCreated: () => void }) {
     queryFn: listAccountCategories,
   })
 
+  const invalidateCategories = () => queryClient.invalidateQueries({ queryKey: ['finance', 'account-categories'] })
+
   const createCategoryMut = useMutation({
     mutationFn: createAccountCategory,
     onSuccess: (created) => {
-      queryClient.invalidateQueries({ queryKey: ['finance', 'account-categories'] })
+      invalidateCategories()
       setCategoryId(created.id)
     },
+  })
+
+  const updateCategoryMut = useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) => updateAccountCategory(id, name),
+    onSuccess: invalidateCategories,
+    onError: (error: Error) => alert(`분류 수정 실패: ${error.message}`),
+  })
+
+  const deleteCategoryMut = useMutation({
+    mutationFn: deleteAccountCategory,
+    onSuccess: (_data, id) => {
+      invalidateCategories()
+      if (categoryId === id) setCategoryId(null)
+    },
+    onError: (error: Error) => alert(`분류 삭제 실패: ${error.message}`),
   })
 
   const createMut = useMutation({
@@ -138,6 +159,7 @@ function TransactionForm({ onCreated }: { onCreated: () => void }) {
       setAmount('')
       onCreated()
     },
+    onError: (error: Error) => alert(`추가 실패: ${error.message}`),
   })
 
   const submit = () => {
@@ -204,13 +226,18 @@ function TransactionForm({ onCreated }: { onCreated: () => void }) {
         </div>
       </div>
 
-      <CategorySelect
-        categories={categories}
-        value={categoryId}
-        onChange={setCategoryId}
-        onCreate={(name) => createCategoryMut.mutate(name)}
-        creating={createCategoryMut.isPending}
-      />
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        <span className="text-xs font-medium text-[var(--color-muted-foreground)]">분류</span>
+        <CategorySelect
+          categories={categories}
+          value={categoryId}
+          onChange={setCategoryId}
+          onCreate={(name) => createCategoryMut.mutate(name)}
+          creating={createCategoryMut.isPending}
+          onUpdate={(id, name) => updateCategoryMut.mutate({ id, name })}
+          onDelete={(id) => deleteCategoryMut.mutate(id)}
+        />
+      </div>
     </div>
   )
 }
