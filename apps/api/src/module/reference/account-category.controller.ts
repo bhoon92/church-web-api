@@ -6,6 +6,7 @@ import { Permissions } from '@src/module/auth/decorators/permissions.decorator';
 import { PermissionsGuard } from '@src/module/auth/guards/permissions.guard';
 import type { AuthContext } from '@src/module/auth/types/auth-context';
 import { UpsertReferenceDto } from './dto/upsert-reference.dto';
+import { UpdateReferenceDto } from './dto/update-reference.dto';
 import { ReferenceService } from './reference.service';
 
 @Controller('account-categories')
@@ -29,7 +30,7 @@ export class AccountCategoryController {
   update(
     @RequireChurch() auth: AuthContext & { churchId: number },
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpsertReferenceDto
+    @Body() dto: UpdateReferenceDto
   ) {
     return this.referenceService.update(AccountCategoryEntity, auth.churchId, id, dto);
   }
