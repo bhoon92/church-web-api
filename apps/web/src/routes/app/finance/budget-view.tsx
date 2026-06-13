@@ -74,6 +74,7 @@ function FiscalYearSetup() {
   const createMut = useMutation({
     mutationFn: createFiscalYear,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['finance', 'fiscal-years'] }),
+    onError: (error: Error) => alert(`회계연도 생성 실패: ${error.message}`),
   })
 
   return (
@@ -118,6 +119,7 @@ function FiscalYearBar({
       queryClient.invalidateQueries({ queryKey: ['finance', 'budgets'] })
       queryClient.invalidateQueries({ queryKey: ['finance', 'dashboard'] })
     },
+    onError: (error: Error) => alert(`회계연도 변경 실패: ${error.message}`),
   })
 
   return (
@@ -171,6 +173,7 @@ function AllocationForm({ fiscalYearId }: { fiscalYearId: number }) {
       queryClient.invalidateQueries({ queryKey: ['finance', 'budgets'] })
       queryClient.invalidateQueries({ queryKey: ['finance', 'dashboard'] })
     },
+    onError: (error: Error) => alert(`예산 할당 실패: ${error.message}`),
   })
 
   const submit = () => {
@@ -258,6 +261,7 @@ function BudgetCards({ fiscalYearId, canWrite }: { fiscalYearId: number; canWrit
       queryClient.invalidateQueries({ queryKey: ['finance', 'budgets'] })
       queryClient.invalidateQueries({ queryKey: ['finance', 'dashboard'] })
     },
+    onError: (error: Error) => alert(`삭제 실패: ${error.message}`),
   })
 
   if (budgets.length === 0) {
