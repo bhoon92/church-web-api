@@ -1,6 +1,6 @@
 # 세션 핸드오프
 
-> 최종 갱신: 2026-06-13
+> 최종 갱신: 2026-06-14
 > 브랜치: `develop` (CI/CD 없이 develop 직접 커밋, 사용자가 수동 커밋)
 > 다음 세션이 가장 먼저 읽어야 할 문서.
 
@@ -8,75 +8,87 @@
 
 ## 0. 현재 상태 한 줄
 
-이번 세션은 **설정 > 부서·사역팀·목장 CRUD 페이지(`references.tsx`) 대대적 개선 + "연도별 편성" 기능 신규 구축 + 그 여파(예산/소속/조직도)까지 연도 인지화**. 코드 변경 다수, **전부 미커밋**. DB 마이그레이션은 **이미 적용됨**.
+이번 세션은 **헌금 수정/삭제 기능 신규 + 헌금분류·계정과목 인라인 관리(편집/삭제) UI + 대시보드 하드코딩 데모 제거 + 앱 전역 UTC 날짜 버그 수정 + 재정 mutation onError 일괄 보강 + API↔프론트 커버리지 전수 점검**. **전부 커밋 완료, 워킹 트리 깨끗.**
 
-> ⚠️ **미커밋 20+ 파일** (§5.3 목록). 마이그레이션 1개 신규(`AddReferenceYear`, 적용 완료) + DTO 1개 신규(`update-reference.dto.ts`).
-> ⚠️ `church-branding.tsx` 변경은 **버리지 말 것** — prettier 포맷 결과물이 맞음(§4 참고, 이전 핸드오프가 틀렸었음).
-> ⚠️ dev:api는 이번 세션 빌드 과정에서 여러 번 죽어서 **백그라운드로 재기동해 둠**(포트 3030). 다음 세션에서 본인 터미널로 다시 띄우는 게 깔끔.
+> ✅ 미커밋 없음. 이번 세션 커밋 9개(§1.6 목록).
+> ⚠️ dev:api는 빌드 때문에 여러 번 재기동함. 현재 백그라운드 기동 중(포트 3030). 다음 세션은 본인 터미널로 다시 띄우는 게 깔끔.
+> ⚠️ §3.2에 **백엔드는 있으나 프론트 미연결인 엔드포인트 목록**(의도된 미래 기능/문서화만 함, 무감독 구현 보류).
 
 ---
 
 ## 1. 완료된 작업 (이번 세션)
 
-### 1.1 prettier 스타일 정정 — 이전 핸드오프 오류 수정 ✅
-- 이전 핸드오프는 "코드베이스 무세미콜론 스타일"이라며 `church-branding.tsx` 변경(세미콜론 추가)을 버리라고 권함 → **틀렸음**.
-- 실제 루트 `.prettierrc`: `{ semi: true, singleQuote: true, printWidth: 140, arrowParens: avoid }`. **세미콜론이 정답.**
-- tsx 파일들이 무세미콜론처럼 보이는 건 `lint-staged`가 `*.ts`만 잡고 `*.tsx`는 안 잡아 prettier가 안 돈 드리프트일 뿐.
-- 사용자 확인: "세미콜론 넣는 린트 좋다, .prettierrc 따라가라". → 메모리 `feedback_code_style_prettier` 저장.
-- `church-branding.tsx`는 **유지**(prettier 통과 확인).
+### 1.1 대시보드 하드코딩 데모 데이터 제거 ✅
+- `dashboard.tsx`가 전부 가짜 데이터(출석 248·헌금 12.4M·일정·최근활동·고정날짜)였음. 웹 실데이터 테스트 위해 정리.
+- STATS 값 → `—` 플레이스홀더(라벨·아이콘 유지), UPCOMING/RECENT → 빈 배열 + 빈 상태 메시지, 고정 날짜 → 실제 오늘(`formatToday(new Date())`).
+- 아직 API 미연동 화면 — 빈 껍데기로 렌더, 추후 연동 대상.
 
-### 1.2 references.tsx CRUD 페이지 개선 ✅
-백엔드(엔티티/서비스/제네릭 컨트롤러)는 `description`/`sortOrder`/`isActive`를 이미 받는데 화면이 `name`만 썼음 → 채움:
-- **활성/비활성 토글**(Eye/EyeOff), **설명(description) 편집**, **부서명 아래 설명 표시**.
-- 추가 입력창을 **목록과 별도 카드로 분리**(UX 피드백: 입력창 구분). Input 테두리 복원.
-- **정렬: 화살표 → 네이티브 HTML5 드래그앤드롭(GripVertical ⋮ 핸들)**. 라이브러리 없이. `grabbed` 상태로 핸들에서만 드래그 시작. 드래그 행 흐림 + 드롭 대상 하이라이트. **터치 미지원(데스크탑 전용, 입력=데스크탑 우선 정책에 부합)**.
+### 1.2 헌금 수정/삭제 기능 (백엔드 신규) ✅
+- 헌금 컨트롤러엔 GET·POST·summary만 있었음 → **update/remove 신규**.
+- `dto/update-offering.dto.ts` = `PartialType(CreateOfferingDto)`. `OfferingService.update`(member/category 변경분만 존재검증)/`remove`. 컨트롤러 `@Patch(':id')`·`@Delete(':id')`(`finance:write`, delete 204).
+- curl 전구간 검증: POST 201 / PATCH 200 / DELETE 204.
 
-### 1.3 partial PATCH 버그 픽스 (중요) ✅
-- 증상: 정렬 화살표·토글이 **조용히 작동 안 함**.
-- 원인: PATCH가 `UpsertReferenceDto`(name 필수)를 사용 → `{sortOrder}`나 `{isActive}`만 보내면 글로벌 `ValidationPipe({whitelist:true})`가 **400** → 프론트가 `onError` 없이 삼킴.
-- 수정: `dto/update-reference.dto.ts` 신규 = `PartialType(UpsertReferenceDto)`. **7개 reference 컨트롤러 전부**의 `@Patch` body를 `UpdateReferenceDto`로 교체(create는 name 필수 유지). 프론트 mutation에 `onError` alert 추가.
-- curl로 `PATCH {sortOrder}` / `{isActive}` → 200 직접 검증.
+### 1.3 헌금 내역 수정/삭제 + 분류 인라인 관리 UI ✅
+- `finance.ts`: `patchJson` 헬퍼 + `updateOffering`/`deleteOffering`, 분류 `update`/`delete`(헌금·계정과목 양쪽).
+- `offerings-view.tsx`: 헌금 행마다 **수정(연필)**·**삭제(휴지통)**. 수정은 금액·분류 인라인 편집 + 저장/취소. **모든 mutation에 onError 알림**.
+- `category-select.tsx`: **편집 토글** → 분류 이름변경(인라인)·삭제(× + confirm). **blur=Enter 커밋**(포커스 빠지면 생성/이름변경 적용, Escape 취소). 이중 생성 방지 위해 Enter도 blur로 수렴. `onCreate/onUpdate/onDelete` 모두 optional → 폼에서만 관리 노출, 행 편집에선 선택만.
+- **운영재정(operations-view)도 계정과목 관리 연결** — 동일 CategorySelect에 onUpdate/onDelete + `분류` 라벨. (계정과목 update/delete API는 있었으나 프론트 미연결이었음.)
 
-### 1.4 "연도별 편성" 기능 신규 (부서·사역팀·목장만) ✅
-- **엔티티 3개**(`department`/`ministry`/`small_group`)에 `year: smallint` 추가. unique 인덱스 `(churchId,name)` → `(churchId,year,name)`, `(churchId,year)` 인덱스 추가.
-- **마이그레이션** `1781282257800-AddReferenceYear`: 기존 행 **2026 백필** 후 NOT NULL 승격 + 인덱스 스왑. **적용 완료**(부서 5·사역팀 3 백필 확인). generate가 만든 `ADD NOT NULL`을 손으로 nullable→update→NOT NULL 3단계로 고침.
-- **ReferenceService**: `list(…, year?)`, `create(…, year?)`, `copyYear(from,to)`(대상 연도 비어있을 때만, 아니면 **409**). year 없으면 기존 동작(연도 무관 kinds).
-- **컨트롤러 3개**(department/ministry/small-group): `GET ?year`(필수), `POST ?year`(필수), `POST /copy?from&to`. 나머지 4개(position/worshipService/account-category/offering-category)는 **연도 무관 그대로**.
-- **프론트**: 상단 **연도 드롭다운**(연도 범위 탭에서만, 기본 올해 2026, 2024~2027). 빈 연도면 **"○○년 구성 복사해오기" CTA**(이전 연도 복제). queryKey에 year 포함.
-- curl 전 엔드포인트 검증: `?year` 필터/누락 400/copy/재copy 409 ✅.
+### 1.4 UX 수정 (사용자 피드백) ✅
+- **선택 분류 pill hover 흰색 반전** → 선택 상태는 `hover:opacity-90`(어두운 톤 유지), 미선택만 회색 hover.
+- **헌금 폼 레이아웃 깨짐**(분류 많아지면 줄바꿈되며 성도검색·금액·추가 정렬 틀어짐) → **분류를 전체폭 별도 줄로 분리**. 위 줄 `[성도검색][금액][추가]`, 아래 줄 `분류 [pills…]`. 운영재정 폼도 `분류` 라벨로 통일.
 
-### 1.5 여파 처리 — 예산·소속·조직도 연도 인지화 ✅
-부서를 읽는 다운스트림이 `find({churchId})`로 **전 연도**를 읽던 문제 해결:
-- **조직도**: `OrganizationChartService.tree(churchId, year)` + `section`에 `where:{churchId,year,isActive}`. 컨트롤러 `?year`(없으면 현재연도). 프론트 페이지에 **연도 드롭다운** 추가.
-- **소속 picker**(`member-detail-modal` AffiliationSection): `listReferences(kind, 현재연도)`.
-- **예산 picker**(`budget-view` AllocationForm): `listReferences(kind, 현재연도)`.
-- `budget.service.targetNameMaps`는 **변경 안 함** — id 기반 이름조회라 전 연도 포함해도 정확(id는 연도 무관 고유).
+### 1.5 UTC 날짜 버그 수정 (전역) ✅
+- `new Date().toISOString().slice(0,10)`은 **UTC** → KST 저녁/밤엔 **어제 날짜**가 기본값(헌금 폼이 6/14인데 6/13으로 뜬 원인). attendance `shiftDate`도 로컬자정→UTC 변환이라 날짜 이동 오작동.
+- **`lib/date.ts` 신규**(`toDateString`/`todayString`, 로컬 컴포넌트 기반). 헌금·운영재정·출석(shiftDate+today)·심방 **5곳 + 1함수** 전부 교체.
 
-검증: API 빌드 ✅ / 프론트 tsc·eslint ✅ / 백엔드 prettier ✅ / 모든 신규 엔드포인트 curl ✅.
+### 1.6 이번 세션 커밋 (오래된→최신)
+```
+53608b2 [FIX] reference partial PATCH 허용 (UpdateReferenceDto)   # 직전 세션 작업 커밋
+8e8e2a9 [FEAT] 연도별 편성 (부서·사역팀·목장) + 다운스트림 연도 인지화  # 직전 세션 작업 커밋
+e7ac3ae [STYLE] church-branding prettier 포맷 (semi:true)         # 직전 세션 작업 커밋
+68d92a9 [DOCS] 세션 핸드오프 + 기획서 갱신
+69f42f8 [CHORE] 대시보드 하드코딩 예시 데이터 제거
+ba650fb [FEAT] 헌금 수정/삭제 API
+c9b1e96 [FEAT] 헌금 내역 수정/삭제 + 분류 인라인 관리 UI
+285841d [FIX] 날짜 기본값 UTC→로컬 (한국 밤 시간 하루 밀림)
+2c42bc5 [FEAT] 운영재정 계정과목 수정/삭제 UI 연결
+98ae12d [FIX] 예산 화면 mutation onError 알림 추가
+```
+> 앞 3개(53608b2~e7ac3ae)와 8e8e2a9는 **직전 세션의 연도별 편성 작업을 이번 세션 초반에 커밋**한 것. 나머지가 이번 세션 신규 작업.
 
 ---
 
 ## 2. 진행 중인 작업
 
-없음. 모든 슬라이스 완료, **커밋만 남음**.
+없음. 모든 슬라이스 완료 + 커밋 완료.
 
 ---
 
 ## 3. 남은 TODO
 
-### 3.1 이번 세션에서 생긴 것
-- **커밋**: 미커밋 20+ 파일(§5.3). 사용자가 수동 커밋.
-- **예산 picker = 현재 달력연도 단순화**: 예산은 `fiscalYearId`에 묶이는데 AllocationForm엔 달력연도가 없어 `new Date().getFullYear()`로 단순화. 과거 회계연도 예산을 지금 입력하면 picker가 올해 조직을 보여줌. 정확히 묶으려면 FiscalYear의 연도를 폼까지 내려야 함.
-- **드래그앤드롭 터치 미지원**: 네이티브 DnD라 마우스 전용. 태블릿 정렬 필요 시 dnd-kit 도입.
+### 3.1 다음에 바로 할 만한 것
+- **대시보드 API 연동**: 현재 빈 껍데기(STATS `—`, 일정/활동 빈 상태). 출석/헌금/새가족/예산 실데이터 + 오늘 일정 + 최근 활동 연결.
+- **AllocationForm 예산 picker = 현재 달력연도 단순화**(직전 세션 이월): 예산은 `fiscalYearId`에 묶이는데 폼이 `new Date().getFullYear()`로 조직을 조회 → 과거 회계연도 예산 입력 시 올해 조직이 뜸. 정확히 묶으려면 FiscalYear의 연도를 폼까지 내려야 함.
+- **드래그앤드롭 터치 미지원**(이월): references 정렬이 네이티브 DnD라 마우스 전용. 태블릿 필요 시 dnd-kit.
 
-### 3.2 이전 세션에서 이월된 것 (이번 세션 미터치)
-- **Google Calendar push 라이브 검증**(로그인은 이미 통과): 동의화면 calendar 스코프 + 테스트 사용자 등록 필요.
+### 3.2 ⭐ API↔프론트 커버리지 점검 결과 (이번 세션 전수 조사)
+백엔드 라우트 112개 vs 프론트 호출 전수 대조. **대부분 연결됨.** 백엔드에 있으나 **프론트 미연결**(=미완 기능 또는 미래용)인 것들 — 무감독 구현은 보류, 다음 세션에서 UX 설계 후 붙일 후보:
+- **`PATCH /calendar/calendars/:id`, `PATCH /calendar/events/:id`** — 달력 레이어/일정 **수정** 미구현(현재 생성·삭제만). 일정 오타 수정 수요 있음. 편집 모달 필요.
+- **`PATCH /events/:id`** — 갤러리 **행사 정보 수정** 미구현(생성·삭제만).
+- **`DELETE /finance/fiscal-years/:id`** — 회계연도 삭제 미연결(백엔드는 softDelete라 안전). budget-view FiscalYearBar에 삭제 버튼 붙이면 됨. 단 마지막/현재 연도 삭제 가드 UX 고려.
+- **`GET /finance/offerings/summary/:memberId/:year`** — 성도별 연말정산 카테고리별 합계 JSON. 현재 영수증은 PDF(`receipt`)로 충족 중이라 미사용. 화면 내 요약 표시 원하면 연결.
+- **`GET /churches/me`** — 프론트 어디서도 안 씀. `auth/me`와 중복 가능성. 정리/삭제 검토.
+- (참고) `GET /calendar/feed/:token`, `GET /auth/google/callback`, `GET /google-calendar/callback`은 외부/브라우저 리다이렉트용이라 fetch 미사용이 정상.
+
+### 3.3 이전 세션에서 이월 (미터치)
+- **Google Calendar push 라이브 검증**(로그인 통과): 동의화면 calendar 스코프 + 테스트 사용자 등록.
 - **refreshToken 암호화**: 현재 평문(localdev). production 전 필수.
-- **배포(Railway Hobby ~$5/월 결정됨)**: prod 도메인 전환 시 OAuth redirect 2개(로그인 `/api/auth/google/callback` + 캘린더 `/api/google-calendar/callback`) prod 도메인 등록, env 세팅, 마이그레이션 8개 run, JWT/S3 키 prod화. [[project_deployment_railway]]
+- **배포(Railway Hobby ~$5/월 결정됨)**: prod 도메인 전환 시 OAuth redirect 2개 등록, env 세팅, 마이그레이션 8개 run, JWT/S3 키 prod화. [[project_deployment_railway]]
 - S3 갤러리 `.envrc` 키 + 버킷 CORS.
-- FK `ON DELETE` 미결, super admin 분리, Postgres RLS, 자동 테스트, apps/api eslint flat config 이전(`.eslintignore` deprecated 경고).
+- FK `ON DELETE` 미결, super admin 분리, Postgres RLS, 자동 테스트, apps/api eslint flat config 이전.
 
-### 3.3 다음 도메인 후보
+### 3.4 다음 도메인 후보
 1. 알림(채널 결정 필요: 앱내/SMS/카톡).
 2. 커스텀 역할(per-church) — 현재 고정 4역할.
 3. 달력 양방향(개인 구글 일정 pull) — 현재 push만.
@@ -85,36 +97,37 @@
 
 ## 4. 중요한 결정사항과 이유
 
-- **코드 스타일 = `.prettierrc`(semi:true)**: 단일 출처. prettier 포맷 결과를 "스타일 역행"으로 보고 되돌리지 말 것. tsx 무세미콜론은 lint-staged가 `*.ts`만 잡는 드리프트. [[feedback_code_style_prettier]]
-- **연도 범위 = 부서·사역팀·목장만**: 이 셋은 매년 재편성. 직분·예배·재정과목은 교회 공통 상수라 연도 무관 유지(사용자 선택).
-- **연도 = 단순 달력연도(smallint)**, FiscalYear와 별개: FiscalYear는 시작/종료일 있는 회계기간이라 조직 편성엔 과함. 조직은 `year` 컬럼이면 충분.
-- **새 연도 = 이전 연도 복사**(사용자 선택). 빈 연도에서 CTA로 트리거, 대상 비어있을 때만(409 가드).
-- **기본 연도 = 현재 달력연도** 어디서나(`new Date().getFullYear()`).
-- **partial PATCH = `UpdateReferenceDto`(PartialType)**: create는 name 필수, update는 전 필드 optional이어야 `{sortOrder}`만 보내도 통과.
-- **정렬 = 네이티브 HTML5 DnD**: 새 라이브러리 없이(툴링 단순성). 데스크탑 전용 트레이드오프 수용.
-- **budget.targetNameMaps 전 연도 유지**: id 기반 조회라 안전, 손대지 않음.
+- **코드 스타일 = `.prettierrc`(semi:true)**: 단일 출처. tsx 무세미콜론은 lint-staged가 `*.ts`만 잡는 드리프트. [[feedback_code_style_prettier]]
+- **분류 관리 = 헌금/운영재정 폼 인라인**(사용자 선택): 설정 페이지가 아니라 분류를 생성·사용하는 그 자리에서 편집/삭제(발견성). CategorySelect 공용, 관리 핸들러는 optional prop.
+- **CategorySelect 커밋 = blur=Enter**(사용자 요청): 포커스 이탈도 Enter와 동일 적용. 단일 커밋 경로(Enter→blur 수렴)로 이중 생성 방지, Escape는 취소 플래그.
+- **헌금 수정 범위 = 삭제 + 인라인(금액·분류)**(사용자 선택): 성도 변경은 삭제 후 재입력. wrong-input 교정 목적.
+- **날짜 = 로컬 기준(`lib/date.ts`)**: toISOString(UTC) 금지. 새 날짜 기본값/이동은 `todayString`/`toDateString` 사용.
+- **mutation은 onError 필수**: 조용한 실패(400/500 무반응) 방지. 이번 세션 재정 전반 보강.
+- **미연결 백엔드 엔드포인트는 무감독 구현 보류**(§3.2): 추측 UI보다 문서화 후 설계 우선.
+- (이월) 연도 범위 = 부서·사역팀·목장만 / 연도=smallint 달력연도 / 새 연도=이전 복사 / partial PATCH=PartialType / budget.targetNameMaps 전 연도 유지.
 
 ---
 
 ## 5. 다음 세션 컨텍스트
 
 ### 5.1 환경/상태
-- **Postgres**: Homebrew `postgresql@14`, DB `yakirim`(`root`/`root1234`). **church id 1** = dev-login(`bhoon92@gmail.com`) 계정의 교회(owner) = 스모크 데이터. (이전 핸드오프의 "church id 2"와 다름 — 실제 dev-login은 church 1.)
-- **마이그레이션 8개**: 기존 7 + **AddReferenceYear**(적용됨). `year` 컬럼은 3개 테이블에 NOT NULL, 기존 데이터 2026.
-- **포트**: API `PORT`(기본 3030). 프론트 Vite 5173.
+- **Postgres**: Homebrew `postgresql@14`, DB `yakirim`(`root`/`root1234`). **church id 1** = dev-login(`bhoon92@gmail.com`) 교회(owner) = 스모크 데이터. 성도 1명(박병훈, id 3).
+- **헌금 분류**: church 1에 사용자가 만든 테스트 분류 다수(`헌금`·`감사`·`건축`·`테스트`·`1`·`test2` 등). 이제 헌금 폼 **편집**으로 정리 가능.
+- **마이그레이션 8개**: AddReferenceYear 포함 전부 적용됨. `year` 컬럼 3개 테이블 NOT NULL(기존 2026).
+- **포트**: API `PORT`(기본 3030). 프론트 Vite 5173. 둘 다 기동 중.
 
-### 5.2 ⚠️ 중요 gotchas (이번 세션에서 확인/추가)
-- **Vite 프록시가 `/api`를 떼고 보냄** (`rewrite: /^\/api/ → ''`). 즉 **API엔 글로벌 프리픽스 없음**. 라우트는 `/departments`, `/auth/dev-login` 등 **맨몸**. → **curl 테스트 시 `/api` 붙이면 404**. 프론트만 `/api/...` 쓰고 프록시가 떼줌.
-- **dev-login으로 빠른 인증**: `POST http://localhost:3030/auth/dev-login -d '{"email":"bhoon92@gmail.com"}'` → 쿠키 jar. localdev 전용. 바로 church 1 스코프.
-- **`nest build`(일회성)가 `nest start --watch`(dev:api)를 죽인다**: 이번 세션 빌드 때마다 3030이 내려감. 마이그레이션/타입체크로 build 후엔 dev:api 재기동 확인 필요. 좀비 점유 시 `lsof -ti:3030 | xargs kill -9`.
-- **migration:generate는 `dist/**/*.entity.js`를 읽음**(`migrationConfig.ts`) → **반드시 `build:api` 먼저**. 생성된 마이그레이션은 `ADD COLUMN NOT NULL`을 그대로 뱉으므로 **기존 데이터 있으면 손으로 nullable→UPDATE 백필→SET NOT NULL** 로 고친 뒤 build→run.
-- **`ValidationPipe({whitelist:true})`**: 알 수 없는 필드 무시 + **필수 필드 누락 시 400**. partial 업데이트는 PartialType DTO 필요.
-- **`@Query('year', ParseIntPipe)`는 필수**(누락 400). optional 원하면 수동 파싱(`year ? Number(year) : 기본`) — org-chart가 이 방식.
-- 마이그레이션 실행: `direnv exec . pnpm migration:run`. generate: `direnv exec . pnpm migration:generate <Name>`. env는 `generateEnv`가 `.env`로 뽑음(direnv 필요).
+### 5.2 ⚠️ 중요 gotchas (여전히 유효)
+- **Vite 프록시가 `/api`를 떼고 보냄**(`rewrite: /^\/api/ → ''`). API는 글로벌 프리픽스 없음 → **curl 테스트 시 `/api` 붙이면 404**. 예: 헌금은 `/finance/offerings`(프론트는 `/api/finance/offerings`).
+- **dev-login**: `POST http://localhost:3030/auth/dev-login -d '{"email":"bhoon92@gmail.com"}'` → 쿠키 jar. localdev 전용, 바로 church 1.
+- **`nest build`(build:api)가 `dev:api`(watch)를 죽인다**: 타입체크/마이그레이션 후 dev:api 재기동 필요. 좀비 점유 시 `lsof -ti:3030 | xargs kill -9`.
+- **migration:generate는 `dist/**/*.entity.js`를 읽음** → 반드시 `build:api` 먼저. `ADD COLUMN NOT NULL`을 그대로 뱉으므로 기존 데이터 있으면 nullable→UPDATE 백필→NOT NULL 수동 3단계.
+- **`ValidationPipe({whitelist:true})`**: 알 수 없는 필드 무시 + 필수 누락 시 400. partial 업데이트는 PartialType DTO.
+- **`@Query('year', ParseIntPipe)`는 필수**(누락 400). optional은 수동 파싱(org-chart 방식).
+- **lint-staged는 `*.ts`만** eslint+prettier 적용. `*.tsx`는 안 잡음 → tsc/eslint 수동 검증 필수.
+- 마이그레이션: `direnv exec . pnpm migration:run` / `migration:generate <Name>`(env는 `generateEnv`가 `.env`로, direnv 필요).
 
-### 5.3 미커밋 파일 (git status)
-신규: `apps/api/src/database/migration/1781282257800-AddReferenceYear.ts`, `apps/api/src/module/reference/dto/update-reference.dto.ts`, `HANDOFF.md`, `planning.md`(이전부터).
-수정: entities 3(department/ministry/small-group), reference.service, reference 컨트롤러 7개, organization-chart service/controller, web: api/references, api/organization-chart, settings/references, member-detail-modal, finance/budget-view, organization-chart 페이지, branding/church-branding.
+### 5.3 미커밋 파일
+없음 (전부 커밋됨).
 
 ### 5.4 실행 명령
 ```sh
@@ -124,27 +137,27 @@ direnv exec . pnpm migration:generate <Name>   # build:api 먼저, 생성물 손
 direnv exec . pnpm migration:run
 # 빠른 API 검증:
 curl -s -c /tmp/cj.txt -X POST http://localhost:3030/auth/dev-login -H 'Content-Type: application/json' -d '{"email":"bhoon92@gmail.com"}'
-curl -s -b /tmp/cj.txt "http://localhost:3030/departments?year=2026"   # /api 붙이지 말 것
+curl -s -b /tmp/cj.txt "http://localhost:3030/finance/offerings?date=2026-06-14"   # /api 붙이지 말 것
+# 프론트 검증: cd apps/web && npx tsc --noEmit && npx eslint src
 ```
 
 ### 5.5 자동 메모리 (저장됨)
-멀티테넌트 / user-centric / 실시간 finance / 모바일 정책 / entity 주석 한 줄 / DTO Request·Response 명명 / 약자·한글자 금지 / 배포=Railway Hobby / **코드 스타일=prettier(semi:true)**(이번 세션 추가).
+멀티테넌트 / user-centric / 실시간 finance / 모바일 정책 / entity 주석 한 줄 / DTO Request·Response 명명 / 약자·한글자 금지 / 배포=Railway Hobby / 코드 스타일=prettier(semi:true).
 
 ---
 
 ## 6. 이번 세션에서 배운 것
 
-- **이전 핸드오프도 틀릴 수 있다**: "무세미콜론 스타일" 단정은 `.prettierrc`(semi:true)와 정반대였음. 추측 대신 **설정 파일을 직접 확인**. 핸드오프의 가정은 검증 대상.
-- **조용한 실패 = onError 부재**: react-query mutation에 `onError`가 없으면 400도 무반응. UI 버그 디버깅 1순위는 **실제 HTTP를 직접 찔러보기**(curl + dev-login). 백엔드가 200이면 프론트, 400이면 백엔드 — 1초컷.
-- **Vite 프록시 rewrite가 프리픽스를 떼면 API는 맨몸 라우트**. curl로 재현할 땐 `/api` 빼야 함. 프론트 경로와 백엔드 라우트가 다르다는 걸 명심.
-- **TypeORM migration:generate는 데이터 안전을 모른다**: 기존 행 있는 테이블에 `ADD NOT NULL`을 그냥 뱉음. 백필 3단계는 항상 수동.
-- **year-scoping은 references 페이지로 끝나지 않는다**: 그 reference를 읽는 모든 다운스트림(예산/소속/조직도)이 연도 인지해야 일관됨. 신규 차원(dimension) 추가 시 **소비처를 전수 grep**.
-- **`nest build`가 watch를 죽인다**: 검증용 빌드 후 dev 서버 상태 항상 재확인.
+- **`toISOString().slice(0,10)`은 날짜 버그**: UTC라 KST 밤엔 하루 밀림. 로컬 날짜는 `getFullYear/Month/Date` 조합(`lib/date.ts`). 날짜 다루는 코드 보면 이 패턴 의심.
+- **조용한 실패 = onError 부재**(재확인): react-query mutation에 onError 없으면 400/500도 무반응. UI 버그 1순위 디버깅은 curl+dev-login으로 실제 HTTP 직접 찌르기(백엔드 200이면 프론트, 400이면 백엔드 — 1초컷).
+- **신규 차원/기능은 소비처 전수 grep**: 이번엔 반대로 **백엔드 라우트 112개 vs 프론트 호출 전수 대조**로 미연결 엔드포인트를 찾음(§3.2). orphan 엔드포인트 = 미완 기능 신호.
+- **공용 컴포넌트 확장은 optional prop**: CategorySelect의 onCreate/onUpdate/onDelete를 optional로 두니 폼(관리 노출)·행편집(선택만)·운영재정(관리) 한 컴포넌트로 재사용.
+- **blur 커밋 + Enter는 단일 경로로**: Enter가 setState(unmount)하면 blur가 또 발동 → 이중 생성. Enter를 `blur()`로 수렴시키고 생성은 onBlur 한 곳에서만.
 
 ---
 
 ## 7. 이전 세션 누적 (참고)
 
-기반(멀티테넌트·OAuth·디자인) → 재적/소속/직분 → 심방 → 출석 → 재정(헌금·운영·예산·대시보드) → 영수증 PDF → Excel → 갤러리+S3 → 달력+iCal → RBAC/팀원 → 조직도+Google Calendar push → Google 로그인 라이브 검증 + 배포(Railway) 결정 → **(이번) references CRUD 개선 + 드래그 정렬 + partial PATCH 픽스 + 연도별 편성(부서·사역팀·목장) + 예산·소속·조직도 연도 인지화**.
+기반(멀티테넌트·OAuth·디자인) → 재적/소속/직분 → 심방 → 출석 → 재정(헌금·운영·예산·대시보드) → 영수증 PDF → Excel → 갤러리+S3 → 달력+iCal → RBAC/팀원 → 조직도+Google Calendar push → Google 로그인 검증 + 배포(Railway) 결정 → references CRUD 개선 + 드래그 정렬 + partial PATCH 픽스 + 연도별 편성 + 예산·소속·조직도 연도 인지화 → **(이번) 헌금 수정/삭제 + 분류·계정과목 인라인 관리 + 대시보드 데모 제거 + UTC 날짜 버그 수정 + 재정 onError 보강 + API 커버리지 점검**.
 
 planning.md = 살아있는 기획서(결정 출처). 도메인 모델/필드 상세는 planning.md + git log.
