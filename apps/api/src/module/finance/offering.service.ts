@@ -4,6 +4,7 @@ import { MemberEntity } from '@src/database/entities/member.entity';
 import { OfferingCategoryEntity } from '@src/database/entities/offering-category.entity';
 import { OfferingEntity } from '@src/database/entities/offering.entity';
 import { CreateOfferingDto } from './dto/create-offering.dto';
+import { UpdateOfferingDto } from './dto/update-offering.dto';
 import { ListOfferingQueryDto } from './dto/list-offering.dto';
 
 export type OfferingItem = {
@@ -39,6 +40,20 @@ export class OfferingService {
       recorderAccountId,
     });
     return this.repo().save(row);
+  }
+
+  async update(churchId: number, id: number, dto: UpdateOfferingDto): Promise<OfferingEntity> {
+    const row = await this.repo().findOne({ where: { id, churchId } });
+    if (!row) throw new NotFoundException('Offering not found');
+    if (dto.memberId !== undefined) await this.assertMember(churchId, dto.memberId);
+    if (dto.offeringCategoryId !== undefined) await this.assertCategory(churchId, dto.offeringCategoryId);
+    Object.assign(row, dto);
+    return this.repo().save(row);
+  }
+
+  async remove(churchId: number, id: number): Promise<void> {
+    const result = await this.repo().delete({ id, churchId });
+    if (!result.affected) throw new NotFoundException('Offering not found');
   }
 
   async list(churchId: number, query: ListOfferingQueryDto): Promise<{ items: OfferingItem[]; total: number; count: number }> {
