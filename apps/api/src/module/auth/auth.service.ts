@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigProvider } from '@src/config';
 import { DataSources } from '@src/database/data-sources';
 import { AccountEntity } from '@src/database/entities/account.entity';
 import { ChurchEntity } from '@src/database/entities/church.entity';
@@ -7,10 +8,13 @@ import { MembershipEntity, MembershipRole } from '@src/database/entities/members
 import type { GoogleProfile } from './strategies/google.strategy';
 import type { AuthContext, JwtPayload } from './types/auth-context';
 
+export type AuthTokens = { accessToken: string; refreshToken: string };
+
 export type SessionResult = {
   account: AccountEntity;
   memberships: MembershipEntity[];
   token: string;
+  refreshToken: string;
   activeChurchId: number | null;
   activeRole: MembershipRole | null;
 };
@@ -69,25 +73,36 @@ export class AuthService {
     const activeChurchId = auto?.churchId ?? null;
     const activeRole = auto?.role ?? null;
 
-    const token = await this.signToken({
+    const { accessToken, refreshToken } = await this.issueTokens({
       accountId: account.id,
       churchId: activeChurchId,
       role: activeRole,
     });
 
-    return { account, memberships, token, activeChurchId, activeRole };
+    return { account, memberships, token: accessToken, refreshToken, activeChurchId, activeRole };
   }
 
   /** 다교회 소속자가 활성 교회를 바꾸기 / 첫 멤버십을 발급받은 직후 churchId를 JWT에 박기 */
-  async selectChurch(accountId: number, churchId: number): Promise<{ token: string; role: MembershipRole }> {
+  async selectChurch(accountId: number, churchId: number): Promise<{ token: string; refreshToken: string; role: MembershipRole }> {
     const membership = await DataSources.instance.getRepository(MembershipEntity).findOne({
       where: { accountId, churchId },
     });
     if (!membership) {
       throw new ForbiddenException('해당 교회에 소속되어 있지 않습니다.');
     }
-    const token = await this.signToken({ accountId, churchId, role: membership.role });
-    return { token, role: membership.role };
+    const { accessToken, refreshToken } = await this.issueTokens({ accountId, churchId, role: membership.role });
+    return { token: accessToken, refreshToken, role: membership.role };
+  }
+
+  /** refresh 토큰 검증 → access·refresh 재발급(회전). 무상태. */
+  async refreshSession(refreshToken: string): Promise<AuthTokens> {
+    let payload: JwtPayload;
+    try {
+      payload = await this.jwt.verifyAsync<JwtPayload>(refreshToken, { secret: ConfigProvider.jwt.refresh.secret });
+    } catch {
+      throw new UnauthorizedException('유효하지 않은 refresh 토큰');
+    }
+    return this.issueTokens({ accountId: payload.accountId, churchId: payload.churchId ?? null, role: payload.role ?? null });
   }
 
   async me(auth: AuthContext) {
@@ -120,11 +135,26 @@ export class AuthService {
     return { account, memberships: enrichedMemberships, currentChurch, role: auth.role };
   }
 
+  private async issueTokens(payload: JwtPayload): Promise<AuthTokens> {
+    const [accessToken, refreshToken] = await Promise.all([this.signToken(payload), this.signRefresh(payload)]);
+    return { accessToken, refreshToken };
+  }
+
+  /** access 토큰 — JwtModule 기본(access secret + 2h). */
   private signToken(payload: JwtPayload): Promise<string> {
     return this.jwt.signAsync({
       accountId: payload.accountId,
       churchId: payload.churchId ?? null,
       role: payload.role ?? null,
     });
+  }
+
+  /** refresh 토큰 — 별도 secret + 30d. */
+  private signRefresh(payload: JwtPayload): Promise<string> {
+    return this.jwt.signAsync(
+      { accountId: payload.accountId, churchId: payload.churchId ?? null, role: payload.role ?? null },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      { secret: ConfigProvider.jwt.refresh.secret, expiresIn: ConfigProvider.jwt.refresh.expiresIn as any }
+    );
   }
 }

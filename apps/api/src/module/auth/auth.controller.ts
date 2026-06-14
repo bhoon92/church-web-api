@@ -1,7 +1,7 @@
-import { Body, Controller, ForbiddenException, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import type { CookieOptions, Request, Response } from 'express';
 import { ConfigProvider } from '@src/config';
-import { ACCESS_TOKEN_COOKIE } from './auth.constants';
+import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE } from './auth.constants';
 import { AuthService, SessionResult } from './auth.service';
 import { CurrentAuth } from './decorators/current-auth.decorator';
 import { SelectChurchDto } from './dto/select-church.dto';
@@ -25,7 +25,7 @@ export class AuthController {
   @UseGuards(GoogleAuthGuard)
   async googleCallback(@Req() req: Request & { user: GoogleProfile }, @Res() res: Response) {
     const session = await this.auth.upsertAndIssueSession(req.user);
-    this.setSessionCookie(res, session.token);
+    this.setSessionCookies(res, session.token, session.refreshToken);
     res.redirect(this.nextUrlFor(session));
   }
 
@@ -38,14 +38,31 @@ export class AuthController {
   @Post('logout')
   logout(@Res() res: Response) {
     res.clearCookie(ACCESS_TOKEN_COOKIE, { path: '/' });
+    res.clearCookie(REFRESH_TOKEN_COOKIE, { path: '/' });
     res.status(204).end();
+  }
+
+  /** refresh 쿠키로 access·refresh 재발급(회전). JwtAuthGuard 없음(access 만료 시 호출). */
+  @Post('refresh')
+  async refresh(@Req() req: Request, @Res() res: Response) {
+    const token = req.cookies?.[REFRESH_TOKEN_COOKIE] as string | undefined;
+    if (!token) throw new UnauthorizedException('refresh 토큰 없음');
+    try {
+      const tokens = await this.auth.refreshSession(token);
+      this.setSessionCookies(res, tokens.accessToken, tokens.refreshToken);
+      res.status(204).end();
+    } catch {
+      res.clearCookie(ACCESS_TOKEN_COOKIE, { path: '/' });
+      res.clearCookie(REFRESH_TOKEN_COOKIE, { path: '/' });
+      throw new UnauthorizedException('refresh 실패');
+    }
   }
 
   @Post('select-church')
   @UseGuards(JwtAuthGuard)
   async selectChurch(@CurrentAuth() auth: AuthContext, @Body() body: SelectChurchDto, @Res() res: Response) {
     const result = await this.auth.selectChurch(auth.accountId, body.churchId);
-    this.setSessionCookie(res, result.token);
+    this.setSessionCookies(res, result.token, result.refreshToken);
     res.json({ churchId: body.churchId, role: result.role });
   }
 
@@ -61,7 +78,7 @@ export class AuthController {
       name: body.name ?? body.email.split('@')[0],
     };
     const session = await this.auth.upsertAndIssueSession(profile);
-    this.setSessionCookie(res, session.token);
+    this.setSessionCookies(res, session.token, session.refreshToken);
     res.json({
       account: { id: session.account.id, email: session.account.email, name: session.account.name },
       memberships: session.memberships,
@@ -70,17 +87,19 @@ export class AuthController {
     });
   }
 
-  private setSessionCookie(res: Response, token: string) {
-    res.cookie(ACCESS_TOKEN_COOKIE, token, this.cookieOptions());
+  private setSessionCookies(res: Response, accessToken: string, refreshToken: string) {
+    // access 는 짧게(2h), refresh 는 길게(30d). access 만료 시 /auth/refresh 로 갱신.
+    res.cookie(ACCESS_TOKEN_COOKIE, accessToken, this.cookieOptions(1000 * 60 * 60 * 2));
+    res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, this.cookieOptions(1000 * 60 * 60 * 24 * 30));
   }
 
-  private cookieOptions(): CookieOptions {
+  private cookieOptions(maxAge: number): CookieOptions {
     return {
       httpOnly: true,
       sameSite: 'lax',
       secure: ConfigProvider.cookie.isSecure,
       path: '/',
-      maxAge: 1000 * 60 * 60 * 24 * 7,
+      maxAge,
     };
   }
 
