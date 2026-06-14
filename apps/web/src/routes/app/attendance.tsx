@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 
 import { fetchRoster, markAttendance, type RosterItem } from '@/api/attendance';
-import { STAGE_LABEL } from '@/api/members';
 import { listReferences, type Reference } from '@/api/references';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -161,7 +160,7 @@ function AttendanceRow({ item, worshipServiceId, date }: { item: RosterItem; wor
       <div className="flex-1">
         <div className="text-sm font-medium">{item.name}</div>
       </div>
-      <Badge tone="muted">{STAGE_LABEL[item.lifecycleStage]}</Badge>
+      {item.statusName && <Badge tone="muted">{item.statusName}</Badge>}
       {item.present && <Badge tone="success">출석</Badge>}
     </li>
   );

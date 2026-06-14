@@ -1,24 +1,11 @@
-export type LifecycleStage = 'visitor' | 'new' | 'regular' | 'transferred' | 'deceased' | 'absent' | 'anonymous';
-
-export const LIFECYCLE_STAGES: LifecycleStage[] = ['visitor', 'new', 'regular', 'transferred', 'deceased', 'absent', 'anonymous'];
-
-export const STAGE_LABEL: Record<LifecycleStage, string> = {
-  visitor: '방문',
-  new: '새가족',
-  regular: '정식',
-  transferred: '이명',
-  deceased: '별세',
-  absent: '장기결석',
-  anonymous: '익명',
-};
-
 export type Member = {
   id: number;
   churchId: number;
   name: string;
   phone: string | null;
   birth: string | null;
-  lifecycleStage: LifecycleStage;
+  statusId: number;
+  statusName: string | null;
   note: string | null;
   registeredAt: string | null;
   baptizedAt: string | null;
@@ -33,21 +20,22 @@ export type Member = {
   updatedAt: string;
 };
 
-export type StageCounts = Record<LifecycleStage | 'all', number>;
+export type MemberStatusCount = { id: number; name: string; count: number };
+export type MemberCounts = { all: number; byStatus: MemberStatusCount[] };
 
 export type ListMembersResponse = {
   items: Member[];
   total: number;
   page: number;
   pageSize: number;
-  counts: StageCounts;
+  counts: MemberCounts;
 };
 
 export type AffiliationKind = 'department' | 'ministry' | 'smallGroup';
 
 export type ListMembersQuery = {
   q?: string;
-  stage?: LifecycleStage[];
+  statusId?: number;
   affiliationKind?: AffiliationKind;
   affiliationId?: number;
   page?: number;
@@ -57,7 +45,7 @@ export type ListMembersQuery = {
 export async function listMembers(query: ListMembersQuery): Promise<ListMembersResponse> {
   const params = new URLSearchParams();
   if (query.q) params.set('q', query.q);
-  if (query.stage && query.stage.length > 0) params.set('stage', query.stage.join(','));
+  if (query.statusId) params.set('statusId', String(query.statusId));
   if (query.affiliationKind && query.affiliationId) {
     params.set('affiliationKind', query.affiliationKind);
     params.set('affiliationId', String(query.affiliationId));
@@ -74,7 +62,7 @@ export type CreateMemberPayload = {
   name: string;
   phone?: string;
   birth?: string;
-  lifecycleStage?: LifecycleStage;
+  statusId?: number;
   note?: string;
   previousChurch?: string;
   faithYears?: number;

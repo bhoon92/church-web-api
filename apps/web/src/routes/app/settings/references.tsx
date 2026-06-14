@@ -22,7 +22,7 @@ import { PageHeader } from '@/components/page-header';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/lib/permissions';
 
-const TABS: ReferenceKind[] = ['department', 'ministry', 'smallGroup', 'position', 'worshipService'];
+const TABS: ReferenceKind[] = ['department', 'ministry', 'smallGroup', 'position', 'worshipService', 'memberStatus'];
 
 export function ReferencesPage() {
   const [tab, setTab] = useState<ReferenceKind>('department');
@@ -100,11 +100,13 @@ function ReferenceTab({ kind, year }: { kind: ReferenceKind; year?: number }) {
   const createMut = useMutation({
     mutationFn: (payload: { name: string }) => createReference(kind, payload, year),
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onError: error => window.alert(`추가 실패: ${error instanceof Error ? error.message : String(error)}`),
   });
 
   const deleteMut = useMutation({
     mutationFn: (id: number) => deleteReference(kind, id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onError: error => window.alert(`삭제 실패: ${error instanceof Error ? error.message : String(error)}`),
   });
 
   // 빈 연도에 이전 연도(year-1) 구성을 복제.
@@ -438,5 +440,7 @@ function exampleFor(kind: ReferenceKind): string {
       return '성도 / 집사 / 안수집사 / 장로';
     case 'worshipService':
       return '주일 1부 / 주일 2부 / 수요예배 / 새벽기도';
+    case 'memberStatus':
+      return '방문 / 새가족 / 정식 / 이명';
   }
 }

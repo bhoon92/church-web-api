@@ -4,13 +4,10 @@ import { useEffect, useState } from 'react';
 
 import {
   createMember,
-  LIFECYCLE_STAGES,
   listMembers,
-  STAGE_LABEL,
   type AffiliationKind,
-  type LifecycleStage,
   type Member,
-  type StageCounts,
+  type MemberCounts,
 } from '@/api/members';
 import { listReferences, type Reference } from '@/api/references';
 import { exportMembers } from '@/api/exports';
@@ -22,18 +19,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/page-header';
 import { cn } from '@/lib/utils';
-
-const STAGE_TONE: Record<LifecycleStage, 'neutral' | 'muted' | 'success' | 'warn' | 'danger'> = {
-  visitor: 'muted',
-  new: 'warn',
-  regular: 'success',
-  transferred: 'muted',
-  deceased: 'neutral',
-  absent: 'danger',
-  anonymous: 'neutral',
-};
-
-const FILTER_ORDER: (LifecycleStage | 'all')[] = ['all', 'regular', 'new', 'visitor', 'absent'];
 
 type AffiliationSelection = { kind: AffiliationKind; id: number };
 
@@ -49,7 +34,7 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
 
 export function MembersPage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [stage, setStage] = useState<LifecycleStage | 'all'>('all');
+  const [statusId, setStatusId] = useState<number | null>(null);
   const [affiliation, setAffiliation] = useState<AffiliationSelection | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [openMemberId, setOpenMemberId] = useState<number | null>(null);
@@ -60,11 +45,11 @@ export function MembersPage() {
   const debouncedQuery = useDebouncedValue(searchQuery.trim(), 300);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['members', { q: debouncedQuery, stage, affiliation }],
+    queryKey: ['members', { q: debouncedQuery, statusId, affiliation }],
     queryFn: () =>
       listMembers({
         q: debouncedQuery || undefined,
-        stage: stage === 'all' ? undefined : [stage],
+        statusId: statusId ?? undefined,
         affiliationKind: affiliation?.kind,
         affiliationId: affiliation?.id,
       }),
@@ -100,7 +85,7 @@ export function MembersPage() {
         <AffiliationFilter value={affiliation} onChange={setAffiliation} />
       </div>
 
-      <FilterChips active={stage} onChange={setStage} counts={data?.counts} />
+      <FilterChips active={statusId} onChange={setStatusId} counts={data?.counts} />
 
       <MemberList members={data?.items ?? []} total={data?.total ?? 0} loading={isLoading} onSelect={setOpenMemberId} />
 
@@ -169,20 +154,22 @@ function FilterChips({
   onChange,
   counts,
 }: {
-  active: LifecycleStage | 'all';
-  onChange: (stage: LifecycleStage | 'all') => void;
-  counts?: StageCounts;
+  active: number | null;
+  onChange: (statusId: number | null) => void;
+  counts?: MemberCounts;
 }) {
+  const chips: { key: number | null; label: string; count?: number }[] = [
+    { key: null, label: '전체', count: counts?.all },
+    ...(counts?.byStatus ?? []).map(status => ({ key: status.id, label: status.name, count: status.count })),
+  ];
   return (
     <div className="flex flex-wrap gap-2">
-      {FILTER_ORDER.map(key => {
-        const label = key === 'all' ? '전체' : STAGE_LABEL[key];
-        const count = counts ? counts[key] : undefined;
-        const isActive = active === key;
+      {chips.map(chip => {
+        const isActive = active === chip.key;
         return (
           <button
-            key={key}
-            onClick={() => onChange(key)}
+            key={chip.key ?? 'all'}
+            onClick={() => onChange(chip.key)}
             className={cn(
               'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
               isActive
@@ -190,15 +177,15 @@ function FilterChips({
                 : 'border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]'
             )}
           >
-            {label}
-            {count !== undefined && (
+            {chip.label}
+            {chip.count !== undefined && (
               <span
                 className={cn(
                   'rounded-full px-1.5 text-[10px] tabular-nums',
                   isActive ? 'bg-white/15 text-current' : 'bg-[var(--color-muted)] text-[var(--color-muted-foreground)]'
                 )}
               >
-                {count}
+                {chip.count}
               </span>
             )}
           </button>
@@ -252,7 +239,7 @@ function MemberList({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="truncate text-sm font-semibold">{member.name}</span>
-                  <Badge tone={STAGE_TONE[member.lifecycleStage]}>{STAGE_LABEL[member.lifecycleStage]}</Badge>
+                  <Badge tone="muted">{member.statusName ?? '—'}</Badge>
                 </div>
                 <div className="mt-0.5 flex items-center gap-3 text-xs text-[var(--color-muted-foreground)]">
                   {member.phone && (
@@ -287,8 +274,14 @@ function Avatar({ name }: { name: string }) {
 function CreateMemberModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [stage, setStage] = useState<LifecycleStage>('visitor');
+  const [statusId, setStatusId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const { data: statuses = [] } = useQuery({
+    queryKey: ['references', 'memberStatus'],
+    queryFn: () => listReferences('memberStatus'),
+  });
+  const activeStatuses = statuses.filter(status => status.isActive);
 
   const mutation = useMutation({
     mutationFn: createMember,
@@ -302,7 +295,7 @@ function CreateMemberModal({ onClose, onCreated }: { onClose: () => void; onCrea
     mutation.mutate({
       name,
       phone: phone || undefined,
-      lifecycleStage: stage,
+      statusId: statusId ?? undefined,
     });
   };
 
@@ -325,24 +318,25 @@ function CreateMemberModal({ onClose, onCreated }: { onClose: () => void; onCrea
             <Input value={phone} onChange={event => setPhone(event.target.value)} placeholder="010-1234-5678" />
           </Field>
 
-          <Field label="단계">
+          <Field label="재적상태">
             <div className="flex flex-wrap gap-1.5">
-              {LIFECYCLE_STAGES.map(stageOption => (
+              {activeStatuses.map(status => (
                 <button
                   type="button"
-                  key={stageOption}
-                  onClick={() => setStage(stageOption)}
+                  key={status.id}
+                  onClick={() => setStatusId(status.id)}
                   className={cn(
                     'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
-                    stage === stageOption
+                    statusId === status.id
                       ? 'border-transparent bg-[var(--color-foreground)] text-[var(--color-background)]'
                       : 'border-[var(--color-border)] text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]'
                   )}
                 >
-                  {STAGE_LABEL[stageOption]}
+                  {status.name}
                 </button>
               ))}
             </div>
+            <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">미선택 시 기본 상태로 등록됩니다. 설정 &gt; 참조에서 관리.</p>
           </Field>
 
           {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p>}

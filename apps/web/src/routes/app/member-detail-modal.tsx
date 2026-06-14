@@ -6,23 +6,12 @@ import { assignAffiliation, type AffiliationKind, endAffiliation, setAffiliation
 import { fetchMember, type AffiliationSummary, type PositionHistoryEntry } from '@/api/members';
 import { endCurrentPosition, promotePosition } from '@/api/positions';
 import { listReferences, REFERENCE_LABEL, type Reference } from '@/api/references';
-import { STAGE_LABEL, type LifecycleStage } from '@/api/members';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/lib/permissions';
 import { PastoralRecordSection } from './pastoral-record-section';
 import { ReceiptSection } from './receipt-section';
-
-const STAGE_TONE: Record<LifecycleStage, 'neutral' | 'muted' | 'success' | 'warn' | 'danger'> = {
-  visitor: 'muted',
-  new: 'warn',
-  regular: 'success',
-  transferred: 'muted',
-  deceased: 'neutral',
-  absent: 'danger',
-  anonymous: 'neutral',
-};
 
 const KINDS: AffiliationKind[] = ['department', 'ministry', 'smallGroup'];
 
@@ -54,7 +43,7 @@ export function MemberDetailModal({ memberId, onClose }: { memberId: number; onC
               <>
                 <div className="flex items-center gap-2">
                   <h2 className="text-xl font-semibold tracking-tight">{member.name}</h2>
-                  <Badge tone={STAGE_TONE[member.lifecycleStage]}>{STAGE_LABEL[member.lifecycleStage]}</Badge>
+                  <Badge tone="muted">{member.statusName ?? '—'}</Badge>
                 </div>
                 {member.phone && (
                   <div className="mt-1 inline-flex items-center gap-1 text-xs text-[var(--color-muted-foreground)]">

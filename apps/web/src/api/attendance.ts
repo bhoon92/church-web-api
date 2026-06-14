@@ -1,9 +1,7 @@
-import type { LifecycleStage } from '@/api/members';
-
 export type RosterItem = {
   memberId: number;
   name: string;
-  lifecycleStage: LifecycleStage;
+  statusName: string | null;
   present: boolean;
 };
 
