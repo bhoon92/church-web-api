@@ -132,6 +132,7 @@ function AffiliationSection({ kind, memberId, items }: { kind: AffiliationKind; 
       queryClient.invalidateQueries({ queryKey: ['members'] });
       setAdding(false);
     },
+    onError: (error: Error) => alert(`소속 추가 실패: ${error.message}`),
   });
 
   const endMut = useMutation({
@@ -140,6 +141,7 @@ function AffiliationSection({ kind, memberId, items }: { kind: AffiliationKind; 
       queryClient.invalidateQueries({ queryKey: ['member', memberId] });
       queryClient.invalidateQueries({ queryKey: ['members'] });
     },
+    onError: (error: Error) => alert(`소속 종료 실패: ${error.message}`),
   });
 
   const leaderMut = useMutation({
@@ -148,6 +150,7 @@ function AffiliationSection({ kind, memberId, items }: { kind: AffiliationKind; 
       queryClient.invalidateQueries({ queryKey: ['member', memberId] });
       queryClient.invalidateQueries({ queryKey: ['members'] });
     },
+    onError: (error: Error) => alert(`리더 설정 실패: ${error.message}`),
   });
 
   const assignedIds = new Set(items.map(item => item.referenceId));
