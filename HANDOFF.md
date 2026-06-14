@@ -8,7 +8,7 @@
 
 ## 0. 현재 상태 한 줄
 
-이번 세션은 **헌금 수정/삭제 기능 신규 + 헌금분류·계정과목 인라인 관리(편집/삭제) UI + 대시보드 하드코딩 데모 제거 + 앱 전역 UTC 날짜 버그 수정 + 재정 mutation onError 일괄 보강 + API↔프론트 커버리지 전수 점검**. **전부 커밋 완료, 워킹 트리 깨끗.**
+이번 세션은 **헌금 수정/삭제 + 헌금분류·계정과목 인라인 관리 UI + 대시보드 하드코딩 데모 제거 후 실데이터 연동(GET /dashboard 신규) + 앱 전역 UTC 날짜 버그 수정 + 재정 onError 보강 + API↔프론트 커버리지 점검**. **전부 커밋 완료, 워킹 트리 깨끗.**
 
 > ✅ 미커밋 없음. 이번 세션 커밋 9개(§1.6 목록).
 > ⚠️ dev:api는 빌드 때문에 여러 번 재기동함. 현재 백그라운드 기동 중(포트 3030). 다음 세션은 본인 터미널로 다시 띄우는 게 깔끔.
@@ -42,6 +42,16 @@
 - `new Date().toISOString().slice(0,10)`은 **UTC** → KST 저녁/밤엔 **어제 날짜**가 기본값(헌금 폼이 6/14인데 6/13으로 뜬 원인). attendance `shiftDate`도 로컬자정→UTC 변환이라 날짜 이동 오작동.
 - **`lib/date.ts` 신규**(`toDateString`/`todayString`, 로컬 컴포넌트 기반). 헌금·운영재정·출석(shiftDate+today)·심방 **5곳 + 1함수** 전부 교체.
 
+### 1.7 대시보드 실데이터 연동 (홈) ✅
+- **`GET /dashboard` 신규**(`module/home`, HomeService/Controller/Module). 4역할 모두 read 권한이라 `JwtAuthGuard`만으로 접근.
+  - stats: **이번 주 출석**(일~토 distinct 성도), **이번 달 헌금**(`OfferingService.sumBetween` 재사용), **이번 달 새가족**(`registeredAt` 이번 달), **예산 집행률**(`FiscalYearService.current`+`BudgetService.executionRate` 재사용, FY 없으면 null).
+  - schedule: **오늘 시작 일정** + 달력 이름(layer)·색(color).
+  - activity: **헌금·신규성도·운영거래** 최신 6건씩 조회 후 createdAt 시간순 병합 top 6. who/what/at(ISO) 서버 조립.
+  - 재정만 FinanceModule 서비스 주입, 나머지는 `DataSources` 직접 조회로 모듈 결합 최소화.
+- **프론트** `api/dashboard.ts` + `dashboard.tsx`: useQuery 연결. 일정 시각/종일 포맷, 최근활동 상대시간(`timeAgo`), kind별 색 점. **가짜 비교(delta) 제거**(비교 데이터 없음), 로딩 중 `—`. 헤더/섹션 액션을 실제 라우트(`/app/calendar`·`/app/finance`)로 연결(`Button asChild`+`Link`).
+- curl 전구간 검증: 빈 상태 200 + 임시 이벤트로 schedule 렌더 경로까지 확인 후 정리.
+- ⚠️ **타임존 주의**(§3.3): 주/월/오늘 범위 계산이 **서버 로컬타임** 기준. localdev(KST)는 정확하나 prod 서버가 UTC면 경계가 9h 어긋남. 기존 `finance/dashboard.service`도 동일 가정. 배포 시 서버 TZ=Asia/Seoul 고정 또는 tz-aware 처리 필요.
+
 ### 1.6 이번 세션 커밋 (오래된→최신)
 ```
 53608b2 [FIX] reference partial PATCH 허용 (UpdateReferenceDto)   # 직전 세션 작업 커밋
@@ -54,6 +64,9 @@ c9b1e96 [FEAT] 헌금 내역 수정/삭제 + 분류 인라인 관리 UI
 285841d [FIX] 날짜 기본값 UTC→로컬 (한국 밤 시간 하루 밀림)
 2c42bc5 [FEAT] 운영재정 계정과목 수정/삭제 UI 연결
 98ae12d [FIX] 예산 화면 mutation onError 알림 추가
+9e5617d [DOCS] 핸드오프 갱신 (중간)
+d1e1b7e [FEAT] 홈 대시보드 집계 API (GET /dashboard)
+2e19a5e [FEAT] 대시보드 실데이터 연동
 ```
 > 앞 3개(53608b2~e7ac3ae)와 8e8e2a9는 **직전 세션의 연도별 편성 작업을 이번 세션 초반에 커밋**한 것. 나머지가 이번 세션 신규 작업.
 
@@ -68,7 +81,8 @@ c9b1e96 [FEAT] 헌금 내역 수정/삭제 + 분류 인라인 관리 UI
 ## 3. 남은 TODO
 
 ### 3.1 다음에 바로 할 만한 것
-- **대시보드 API 연동**: 현재 빈 껍데기(STATS `—`, 일정/활동 빈 상태). 출석/헌금/새가족/예산 실데이터 + 오늘 일정 + 최근 활동 연결.
+- **대시보드 실시간 갱신(선택)**: 현재 `['home','dashboard']`는 페이지 mount 시 refetch라 홈 재진입 시 최신. 헌금/거래/멤버 추가 mutation에서 `['home','dashboard']`까지 invalidate하면 더 즉각적. (project_real_time_dashboard 가치)
+- **새가족 정의 확인**: 대시보드 "이번 달 새가족"은 `registeredAt`이 이번 달인 멤버 수. registeredAt이 null인 멤버(방문/미등록)는 제외. 의도와 다르면 lifecycleStage=NEW 기준 등으로 조정.
 - **AllocationForm 예산 picker = 현재 달력연도 단순화**(직전 세션 이월): 예산은 `fiscalYearId`에 묶이는데 폼이 `new Date().getFullYear()`로 조직을 조회 → 과거 회계연도 예산 입력 시 올해 조직이 뜸. 정확히 묶으려면 FiscalYear의 연도를 폼까지 내려야 함.
 - **드래그앤드롭 터치 미지원**(이월): references 정렬이 네이티브 DnD라 마우스 전용. 태블릿 필요 시 dnd-kit.
 
@@ -85,6 +99,7 @@ c9b1e96 [FEAT] 헌금 내역 수정/삭제 + 분류 인라인 관리 UI
 - **Google Calendar push 라이브 검증**(로그인 통과): 동의화면 calendar 스코프 + 테스트 사용자 등록.
 - **refreshToken 암호화**: 현재 평문(localdev). production 전 필수.
 - **배포(Railway Hobby ~$5/월 결정됨)**: prod 도메인 전환 시 OAuth redirect 2개 등록, env 세팅, 마이그레이션 8개 run, JWT/S3 키 prod화. [[project_deployment_railway]]
+- **⚠️ 서버 타임존**: 대시보드(주/월/오늘 범위)·`finance/dashboard`(월 범위)가 **서버 로컬타임** 기준. prod 서버 UTC면 KST와 9h 경계 어긋남 → 헌금월합계/오늘일정이 틀어질 수 있음. 배포 시 `TZ=Asia/Seoul` 고정(Railway env) 또는 tz-aware 계산으로 교체.
 - S3 갤러리 `.envrc` 키 + 버킷 CORS.
 - FK `ON DELETE` 미결, super admin 분리, Postgres RLS, 자동 테스트, apps/api eslint flat config 이전.
 
@@ -158,6 +173,6 @@ curl -s -b /tmp/cj.txt "http://localhost:3030/finance/offerings?date=2026-06-14"
 
 ## 7. 이전 세션 누적 (참고)
 
-기반(멀티테넌트·OAuth·디자인) → 재적/소속/직분 → 심방 → 출석 → 재정(헌금·운영·예산·대시보드) → 영수증 PDF → Excel → 갤러리+S3 → 달력+iCal → RBAC/팀원 → 조직도+Google Calendar push → Google 로그인 검증 + 배포(Railway) 결정 → references CRUD 개선 + 드래그 정렬 + partial PATCH 픽스 + 연도별 편성 + 예산·소속·조직도 연도 인지화 → **(이번) 헌금 수정/삭제 + 분류·계정과목 인라인 관리 + 대시보드 데모 제거 + UTC 날짜 버그 수정 + 재정 onError 보강 + API 커버리지 점검**.
+기반(멀티테넌트·OAuth·디자인) → 재적/소속/직분 → 심방 → 출석 → 재정(헌금·운영·예산·대시보드) → 영수증 PDF → Excel → 갤러리+S3 → 달력+iCal → RBAC/팀원 → 조직도+Google Calendar push → Google 로그인 검증 + 배포(Railway) 결정 → references CRUD 개선 + 드래그 정렬 + partial PATCH 픽스 + 연도별 편성 + 예산·소속·조직도 연도 인지화 → **(이번) 헌금 수정/삭제 + 분류·계정과목 인라인 관리 + 대시보드 데모 제거→실데이터 연동(GET /dashboard) + UTC 날짜 버그 수정 + 재정 onError 보강 + API 커버리지 점검**.
 
 planning.md = 살아있는 기획서(결정 출처). 도메인 모델/필드 상세는 planning.md + git log.
