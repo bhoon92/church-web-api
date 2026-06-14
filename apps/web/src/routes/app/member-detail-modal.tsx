@@ -43,14 +43,9 @@ export function MemberDetailModal({ memberId, onClose }: { memberId: number; onC
               <>
                 <div className="flex items-center gap-2">
                   <EditableName memberId={memberId} name={member.name} />
-                  <Badge tone="muted">{member.statusName ?? '—'}</Badge>
+                  <EditableStatus memberId={memberId} statusName={member.statusName} />
                 </div>
-                {member.phone && (
-                  <div className="mt-1 inline-flex items-center gap-1 text-xs text-[var(--color-muted-foreground)]">
-                    <Phone className="size-3" />
-                    {member.phone}
-                  </div>
-                )}
+                <EditablePhone memberId={memberId} phone={member.phone} />
               </>
             )}
           </div>
@@ -147,6 +142,137 @@ function EditableName({ memberId, name }: { memberId: number; name: string }) {
       <h2 className="text-xl font-semibold tracking-tight">{name}</h2>
       <Pencil className="size-3.5 text-[var(--color-muted-foreground)] opacity-0 transition-opacity group-hover:opacity-100" />
     </button>
+  );
+}
+
+function EditablePhone({ memberId, phone }: { memberId: number; phone: string | null }) {
+  const queryClient = useQueryClient();
+  const { can } = usePermissions();
+  const canWrite = can('member:write');
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(phone ?? '');
+  const cancelRef = useRef(false);
+
+  const mutation = useMutation({
+    mutationFn: (newPhone: string) => updateMember(memberId, { phone: newPhone || null }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['member', memberId] });
+      queryClient.invalidateQueries({ queryKey: ['members'] });
+    },
+    onError: (error: Error) => window.alert(`전화번호 수정 실패: ${error.message}`),
+  });
+
+  const commit = () => {
+    setEditing(false);
+    if (cancelRef.current) {
+      cancelRef.current = false;
+      return;
+    }
+    const trimmed = value.trim();
+    if (trimmed !== (phone ?? '')) mutation.mutate(trimmed);
+  };
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={value}
+        maxLength={30}
+        inputMode="tel"
+        placeholder="010-1234-5678"
+        onChange={event => setValue(event.target.value)}
+        onBlur={commit}
+        onKeyDown={event => {
+          if (event.key === 'Enter') event.currentTarget.blur();
+          if (event.key === 'Escape') {
+            event.stopPropagation();
+            cancelRef.current = true;
+            event.currentTarget.blur();
+          }
+        }}
+        className="mt-1 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-0.5 text-xs"
+      />
+    );
+  }
+
+  if (!canWrite) {
+    return phone ? (
+      <div className="mt-1 inline-flex items-center gap-1 text-xs text-[var(--color-muted-foreground)]">
+        <Phone className="size-3" />
+        {phone}
+      </div>
+    ) : null;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setValue(phone ?? '');
+        setEditing(true);
+      }}
+      className="group mt-1 inline-flex items-center gap-1 text-xs text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+      title="전화번호 수정"
+    >
+      <Phone className="size-3" />
+      {phone ?? '전화번호 추가'}
+      <Pencil className="size-3 opacity-0 transition-opacity group-hover:opacity-100" />
+    </button>
+  );
+}
+
+function EditableStatus({ memberId, statusName }: { memberId: number; statusName: string | null }) {
+  const queryClient = useQueryClient();
+  const { can } = usePermissions();
+  const canWrite = can('member:write');
+  const [open, setOpen] = useState(false);
+
+  const { data: statuses = [] } = useQuery({
+    queryKey: ['references', 'memberStatus'],
+    queryFn: () => listReferences('memberStatus'),
+    enabled: open,
+  });
+  const activeStatuses = statuses.filter(status => status.isActive);
+
+  const mutation = useMutation({
+    mutationFn: (statusId: number) => updateMember(memberId, { statusId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['member', memberId] });
+      queryClient.invalidateQueries({ queryKey: ['members'] });
+      setOpen(false);
+    },
+    onError: (error: Error) => window.alert(`재적상태 수정 실패: ${error.message}`),
+  });
+
+  if (!canWrite) return <Badge tone="muted">{statusName ?? '—'}</Badge>;
+
+  return (
+    <div className="relative">
+      <button type="button" onClick={() => setOpen(value => !value)} className="inline-flex items-center gap-0.5" title="재적상태 변경">
+        <Badge tone="muted">{statusName ?? '—'}</Badge>
+        <ChevronDown className="size-3 text-[var(--color-muted-foreground)]" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute z-20 mt-1 min-w-28 rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] p-1 shadow-md">
+            {activeStatuses.map(status => (
+              <button
+                key={status.id}
+                type="button"
+                onClick={() => mutation.mutate(status.id)}
+                className={cn(
+                  'block w-full rounded-md px-3 py-1.5 text-left text-xs transition-colors hover:bg-[var(--color-muted)]',
+                  status.name === statusName && 'font-semibold'
+                )}
+              >
+                {status.name}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

@@ -85,7 +85,7 @@ export async function createMember(payload: CreateMemberPayload): Promise<Member
   return res.json();
 }
 
-export type UpdateMemberPayload = Partial<CreateMemberPayload>;
+export type UpdateMemberPayload = Partial<Omit<CreateMemberPayload, 'phone'>> & { phone?: string | null };
 
 export async function updateMember(id: number, payload: UpdateMemberPayload): Promise<Member> {
   const res = await fetch(`/api/members/${id}`, {
