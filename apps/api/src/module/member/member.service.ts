@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { Brackets } from 'typeorm';
+import { Brackets, SelectQueryBuilder } from 'typeorm';
 import { DataSources } from '@src/database/data-sources';
 import { LifecycleStage, MemberEntity } from '@src/database/entities/member.entity';
 import { AffiliationService } from '@src/module/affiliation/affiliation.service';
@@ -34,18 +34,10 @@ export class MemberService {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
 
-    const qb = this.repo().createQueryBuilder('m').where('m.churchId = :churchId', { churchId });
+    const affiliationMemberIds = await this.resolveAffiliationMemberIds(churchId, query);
 
-    if (query.q) {
-      qb.andWhere(
-        new Brackets(builder => {
-          builder
-            .where('m.name ILIKE :q', { q: `%${query.q}%` })
-            .orWhere('m.phone ILIKE :q', { q: `%${query.q}%` })
-            .orWhere('m.previousChurch ILIKE :q', { q: `%${query.q}%` });
-        })
-      );
-    }
+    const qb = this.repo().createQueryBuilder('m').where('m.churchId = :churchId', { churchId });
+    this.applySearchFilters(qb, query.q, affiliationMemberIds);
 
     if (query.stage && query.stage.length > 0) {
       qb.andWhere('m.lifecycleStage IN (:...stages)', { stages: query.stage });
@@ -56,9 +48,30 @@ export class MemberService {
       .take(pageSize);
 
     const [items, total] = await qb.getManyAndCount();
-    const counts = await this.countByStage(churchId, query.q);
+    const counts = await this.countByStage(churchId, query.q, affiliationMemberIds);
 
     return { items, total, page, pageSize, counts };
+  }
+
+  /** 소속(부서/사역팀/목장) 필터가 있으면 해당 활성 소속 성도 id 목록, 없으면 null. */
+  private async resolveAffiliationMemberIds(churchId: number, query: ListMemberQueryDto): Promise<number[] | null> {
+    if (!query.affiliationKind || !query.affiliationId) return null;
+    return this.affiliations.memberIdsFor(query.affiliationKind, churchId, query.affiliationId);
+  }
+
+  /** 이름·전화 부분일치 + 소속 성도 id 필터를 쿼리에 적용 (list/countByStage 공용). */
+  private applySearchFilters(qb: SelectQueryBuilder<MemberEntity>, q?: string, affiliationMemberIds?: number[] | null): void {
+    if (q) {
+      qb.andWhere(
+        new Brackets(builder => {
+          builder.where('m.name ILIKE :q', { q: `%${q}%` }).orWhere('m.phone ILIKE :q', { q: `%${q}%` });
+        })
+      );
+    }
+    if (affiliationMemberIds) {
+      if (affiliationMemberIds.length === 0) qb.andWhere('1 = 0');
+      else qb.andWhere('m.id IN (:...affiliationMemberIds)', { affiliationMemberIds });
+    }
   }
 
   /** 엑셀 내보내기용 — 전체 재적 (이름 오름차순). */
@@ -88,23 +101,14 @@ export class MemberService {
   }
 
   /** UI filter chip 카운트 */
-  private async countByStage(churchId: number, q?: string): Promise<StageCount> {
+  private async countByStage(churchId: number, q?: string, affiliationMemberIds?: number[] | null): Promise<StageCount> {
     const qb = this.repo()
       .createQueryBuilder('m')
       .select('m.lifecycleStage', 'stage')
       .addSelect('COUNT(*)', 'cnt')
       .where('m.churchId = :churchId', { churchId });
 
-    if (q) {
-      qb.andWhere(
-        new Brackets(builder => {
-          builder
-            .where('m.name ILIKE :q', { q: `%${q}%` })
-            .orWhere('m.phone ILIKE :q', { q: `%${q}%` })
-            .orWhere('m.previousChurch ILIKE :q', { q: `%${q}%` });
-        })
-      );
-    }
+    this.applySearchFilters(qb, q, affiliationMemberIds);
 
     qb.groupBy('m.lifecycleStage');
 

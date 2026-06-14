@@ -126,6 +126,16 @@ export class AffiliationService {
     return (await joinRepo.findOne({ where: { id: existing.id } as never }))!;
   }
 
+  /** 특정 소속(reference)에 활성으로 속한 성도 id 목록 (성도 검색 필터용). */
+  async memberIdsFor(kind: AffiliationKind, churchId: number, referenceId: number): Promise<number[]> {
+    const config = CONFIGS[kind] as Config<JoinRow, ObjectLiteral>;
+    const joinRepo = DataSources.instance.getRepository(config.joinEntity) as Repository<JoinRow>;
+    const rows = await joinRepo.find({
+      where: { churchId, [config.referenceKey]: referenceId, endDate: IsNull() } as never,
+    });
+    return Array.from(new Set(rows.map(joinRow => joinRow.memberId)));
+  }
+
   async listForMember(churchId: number, memberId: number) {
     const [departments, ministries, smallGroups] = await Promise.all([
       this.currentJoins('department', churchId, memberId),
