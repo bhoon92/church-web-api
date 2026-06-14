@@ -85,6 +85,22 @@ export async function createMember(payload: CreateMemberPayload): Promise<Member
   return res.json();
 }
 
+export type UpdateMemberPayload = Partial<CreateMemberPayload>;
+
+export async function updateMember(id: number, payload: UpdateMemberPayload): Promise<Member> {
+  const res = await fetch(`/api/members/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`update member ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
 export async function deleteMember(id: number): Promise<void> {
   const res = await fetch(`/api/members/${id}`, {
     method: 'DELETE',

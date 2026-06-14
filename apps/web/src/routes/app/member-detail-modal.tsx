@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight, Phone, Plus, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { ChevronDown, ChevronRight, Pencil, Phone, Plus, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 import { assignAffiliation, type AffiliationKind, endAffiliation, setAffiliationLeader } from '@/api/affiliations';
-import { fetchMember, type AffiliationSummary, type PositionHistoryEntry } from '@/api/members';
+import { fetchMember, updateMember, type AffiliationSummary, type PositionHistoryEntry } from '@/api/members';
 import { endCurrentPosition, promotePosition } from '@/api/positions';
 import { listReferences, REFERENCE_LABEL, type Reference } from '@/api/references';
 import { Badge } from '@/components/ui/badge';
@@ -42,7 +42,7 @@ export function MemberDetailModal({ memberId, onClose }: { memberId: number; onC
             ) : (
               <>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-semibold tracking-tight">{member.name}</h2>
+                  <EditableName memberId={memberId} name={member.name} />
                   <Badge tone="muted">{member.statusName ?? '—'}</Badge>
                 </div>
                 {member.phone && (
@@ -80,6 +80,73 @@ export function MemberDetailModal({ memberId, onClose }: { memberId: number; onC
         </div>
       </div>
     </div>
+  );
+}
+
+function EditableName({ memberId, name }: { memberId: number; name: string }) {
+  const queryClient = useQueryClient();
+  const { can } = usePermissions();
+  const canWrite = can('member:write');
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(name);
+  const cancelRef = useRef(false);
+
+  const mutation = useMutation({
+    mutationFn: (newName: string) => updateMember(memberId, { name: newName }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['member', memberId] });
+      queryClient.invalidateQueries({ queryKey: ['members'] });
+    },
+    onError: (error: Error) => window.alert(`이름 수정 실패: ${error.message}`),
+  });
+
+  // blur 한 곳에서만 커밋(Enter는 blur로 수렴). Escape는 취소 + 모달 닫힘 방지(stopPropagation).
+  const commit = () => {
+    setEditing(false);
+    const trimmed = value.trim();
+    if (cancelRef.current) {
+      cancelRef.current = false;
+      return;
+    }
+    if (trimmed && trimmed !== name) mutation.mutate(trimmed);
+  };
+
+  if (!canWrite) return <h2 className="text-xl font-semibold tracking-tight">{name}</h2>;
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={value}
+        maxLength={40}
+        onChange={event => setValue(event.target.value)}
+        onBlur={commit}
+        onKeyDown={event => {
+          if (event.key === 'Enter') event.currentTarget.blur();
+          if (event.key === 'Escape') {
+            event.stopPropagation();
+            cancelRef.current = true;
+            event.currentTarget.blur();
+          }
+        }}
+        className="rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-0.5 text-xl font-semibold tracking-tight"
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setValue(name);
+        setEditing(true);
+      }}
+      className="group inline-flex items-center gap-1.5"
+      title="이름 수정"
+    >
+      <h2 className="text-xl font-semibold tracking-tight">{name}</h2>
+      <Pencil className="size-3.5 text-[var(--color-muted-foreground)] opacity-0 transition-opacity group-hover:opacity-100" />
+    </button>
   );
 }
 
