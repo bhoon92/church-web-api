@@ -52,6 +52,16 @@
 - curl 전구간 검증: 빈 상태 200 + 임시 이벤트로 schedule 렌더 경로까지 확인 후 정리.
 - ⚠️ **타임존 주의**(§3.3): 주/월/오늘 범위 계산이 **서버 로컬타임** 기준. localdev(KST)는 정확하나 prod 서버가 UTC면 경계가 9h 어긋남. 기존 `finance/dashboard.service`도 동일 가정. 배포 시 서버 TZ=Asia/Seoul 고정 또는 tz-aware 처리 필요.
 
+### 1.9 성도 '단계'(enum) → '재적상태'(교회별 편집 reference) 전환 ✅
+- 사용자 요청: 단계 값(정식/이명/별세)을 교회가 직접 추가/편집, "단계" 명칭 변경(→**재적상태**, 별세·이명이 자연스러워짐).
+- **enum `lifecycleStage` → `member_status` 참조테이블**(교회별). 컬럼: name·sortOrder·isActive + `systemKey`('anonymous'|'new')·`countsInRoster`.
+  - 마이그레이션 `AddMemberStatus`(적용됨, id 10): 테이블+교회별 기본값 시드(방문/새가족/정식/이명/별세/장기결석/익명) + `member.status_id` 백필. **기존 `lifecycle_stage` enum 컬럼은 롤백 안전 위해 보존(미사용)**.
+  - `MemberStatusService/Controller`(member 모듈): CRUD + **가드**(systemKey 상태·사용중 상태 삭제 409, 익명은 목록 제외).
+  - 소비처 재배선: 출석 제외=`countsInRoster=false`(별세/이명/익명), 영수증 익명=`systemKey='anonymous'`, 대시보드 새가족 라벨=`systemKey='new'`, 성도 카운트=상태별 동적(`{all, byStatus:[{id,name,count}]}`), export 라벨=상태명. DTO `lifecycleStage/stage`→`statusId`.
+  - 프론트: `references.ts`에 **'memberStatus' kind 추가** → 설정>참조에 "재적상태" 탭 그대로 재사용. 성도 필터칩·생성폼 picker 동적화, 배지=statusName.
+- curl 검증: 목록(익명 제외)·커스텀 추가·시스템삭제 409·사용중삭제 409·미사용삭제 204·statusId 생성 ✅.
+- ⚠️ v1: 익명은 내부용(무명헌금)이라 UI 비노출. 신규 성도 미지정 시 sortOrder 최소 활성상태(방문) 기본. `lifecycle_stage` enum 컬럼은 다음 정리 때 drop 가능.
+
 ### 1.8 달력 반복 일정 (애플 캘린더식) ✅
 - **5종**: 매일/매주/2주마다/매월/매년. 일정 추가 모달에 반복 선택 pill.
 - **아키텍처**: 한 행에 `recurrence` 토큰만 저장 → **조회 시 occurrence 펼침**(materialize 안 함). 행 폭증·Google 과다호출 회피, iCal/Google은 RRULE 네이티브 활용.
@@ -144,7 +154,7 @@ a6ae1ac [FEAT] 달력 반복 일정 (매일/매주/2주마다/매월/매년)
 ### 5.1 환경/상태
 - **Postgres**: Homebrew `postgresql@14`, DB `yakirim`(`root`/`root1234`). **church id 1** = dev-login(`bhoon92@gmail.com`) 교회(owner) = 스모크 데이터. 성도 1명(박병훈, id 3).
 - **헌금 분류**: church 1에 사용자가 만든 테스트 분류 다수(`헌금`·`감사`·`건축`·`테스트`·`1`·`test2` 등). 이제 헌금 폼 **편집**으로 정리 가능.
-- **마이그레이션 9개**: AddReferenceYear + AddCalendarEventRecurrence 포함 전부 적용됨. `year` 컬럼 3개 테이블 NOT NULL(기존 2026), `calendar_event.recurrence` nullable.
+- **마이그레이션 10개**: AddReferenceYear·AddCalendarEventRecurrence·AddMemberStatus 포함 전부 적용됨. `member_status` 테이블+교회별 시드, `member.status_id` NOT NULL(`lifecycle_stage` enum 컬럼은 미사용 보존).
 - **포트**: API `PORT`(기본 3030). 프론트 Vite 5173. 둘 다 기동 중.
 
 ### 5.2 ⚠️ 중요 gotchas (여전히 유효)
