@@ -10,6 +10,7 @@ import { ExportModule } from './module/export/export.module';
 import { FinanceModule } from './module/finance/finance.module';
 import { GalleryModule } from './module/gallery/gallery.module';
 import { GoogleCalendarModule } from './module/google-calendar/google-calendar.module';
+import { HomeModule } from './module/home/home.module';
 import { MemberModule } from './module/member/member.module';
 import { OrganizationChartModule } from './module/organization-chart/organization-chart.module';
 import { PastoralRecordModule } from './module/pastoral-record/pastoral-record.module';
@@ -34,6 +35,7 @@ import { TeamModule } from './module/team/team.module';
     CalendarModule,
     GoogleCalendarModule,
     TeamModule,
+    HomeModule,
   ],
   controllers: [AppController],
   providers: [AppService],
