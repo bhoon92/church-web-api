@@ -1,9 +1,20 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { randomUUID } from 'crypto';
+import { randomBytes } from 'crypto';
 import { In } from 'typeorm';
 import { DataSources } from '@src/database/data-sources';
 import { CalendarEntity } from '@src/database/entities/calendar.entity';
 import { CalendarSubscriptionEntity } from '@src/database/entities/calendar-subscription.entity';
+
+const TOKEN_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+const TOKEN_LENGTH = 14;
+
+/** URL 단축용 짧은 토큰 (base62 14자 ≈ 83비트, 추측 불가). UUID(36자) 대체. */
+function shortToken(): string {
+  const bytes = randomBytes(TOKEN_LENGTH);
+  let token = '';
+  for (let i = 0; i < TOKEN_LENGTH; i++) token += TOKEN_ALPHABET[bytes[i] % TOKEN_ALPHABET.length];
+  return token;
+}
 
 @Injectable()
 export class SubscriptionService {
@@ -20,7 +31,7 @@ export class SubscriptionService {
     const row = this.repo().create({
       churchId,
       accountId,
-      feedToken: randomUUID(),
+      feedToken: shortToken(),
       calendarIds: calendars.map(calendar => calendar.id),
     });
     return this.repo().save(row);
@@ -40,7 +51,7 @@ export class SubscriptionService {
   /** 피드 토큰 재발급 (기존 구독 URL 무효화). */
   async regenerate(churchId: number, accountId: number): Promise<CalendarSubscriptionEntity> {
     const sub = await this.getOrCreate(churchId, accountId);
-    sub.feedToken = randomUUID();
+    sub.feedToken = shortToken();
     return this.repo().save(sub);
   }
 

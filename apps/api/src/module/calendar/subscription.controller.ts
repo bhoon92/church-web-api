@@ -31,7 +31,7 @@ export class SubscriptionController {
     return {
       feedToken: sub.feedToken,
       calendarIds: sub.calendarIds,
-      feedPath: `/api/calendar/feed/${sub.feedToken}.ics`,
+      feedPath: `/api/c/${sub.feedToken}.ics`,
     };
   }
 }

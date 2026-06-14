@@ -4,9 +4,9 @@ import { FeedService } from './feed.service';
 
 /**
  * 공개 iCal 피드 — 캘린더 앱(구글/애플)이 쿠키 없이 토큰 URL 로 구독.
- * JwtAuthGuard 없음 (토큰이 곧 인증).
+ * JwtAuthGuard 없음 (토큰이 곧 인증). 경로는 단축 위해 '/c/:token'.
  */
-@Controller('calendar/feed')
+@Controller('c')
 export class FeedController {
   constructor(private readonly feed: FeedService) {}
 
