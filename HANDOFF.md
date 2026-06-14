@@ -52,6 +52,14 @@
 - curl 전구간 검증: 빈 상태 200 + 임시 이벤트로 schedule 렌더 경로까지 확인 후 정리.
 - ⚠️ **타임존 주의**(§3.3): 주/월/오늘 범위 계산이 **서버 로컬타임** 기준. localdev(KST)는 정확하나 prod 서버가 UTC면 경계가 9h 어긋남. 기존 `finance/dashboard.service`도 동일 가정. 배포 시 서버 TZ=Asia/Seoul 고정 또는 tz-aware 처리 필요.
 
+### 1.10 access/refresh 토큰 분리 (무상태 refresh) ✅
+- 기존: access JWT 단일(2h) + 갱신 없음 → 2시간마다 강제 재로그인. config의 `jwt.refresh`(별도 secret, 30d)는 정의만 있고 미사용이었음.
+- 로그인/교회선택 시 **access(2h)·refresh(30d) 둘 다 발급**, httpOnly 쿠키 2개(`yakirim_session` 2h, `yakirim_refresh` 30d).
+- `POST /auth/refresh`(guard 없음): refresh 쿠키 검증(refresh secret) → access·refresh 재발급(회전). 실패 시 쿠키 정리 + 401. logout은 두 쿠키 모두 제거.
+- 프론트 `lib/auth-refresh.ts`: **전역 fetch 인터셉터** — /api 401 시 /auth/refresh 후 원 요청 1회 재시도(single-flight, 재시도는 원 fetch라 무한루프 방지). `main.tsx`에서 `installAuthRefresh()`.
+- 검증: 두 쿠키 발급/refresh 204/재발급 후 me 200/무쿠키 401/**access를 refresh로 위조 시 401**(secret 분리 확인).
+- ⚠️ prod: `JWT_CMS_ACCESS/REFRESH_SECRET_KEY` 둘 다 prod 값 세팅 필수(이미 JWT 키 prod화 TODO에 포함). 무상태라 개별 세션 강제 폐기는 불가(필요 시 DB 저장 refresh로 확장).
+
 ### 1.9 성도 '단계'(enum) → '재적상태'(교회별 편집 reference) 전환 ✅
 - 사용자 요청: 단계 값(정식/이명/별세)을 교회가 직접 추가/편집, "단계" 명칭 변경(→**재적상태**, 별세·이명이 자연스러워짐).
 - **enum `lifecycleStage` → `member_status` 참조테이블**(교회별). 컬럼: name·sortOrder·isActive + `systemKey`('anonymous'|'new')·`countsInRoster`.
