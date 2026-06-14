@@ -1,6 +1,6 @@
 # 세션 핸드오프
 
-> 최종 갱신: 2026-06-14
+> 최종 갱신: 2026-06-15
 > 브랜치: `develop` (CI/CD 없이 develop 직접 커밋, 사용자가 수동 커밋)
 > 다음 세션이 가장 먼저 읽어야 할 문서.
 
@@ -8,11 +8,12 @@
 
 ## 0. 현재 상태 한 줄
 
-이번 세션은 **헌금 수정/삭제 + 헌금분류·계정과목 인라인 관리 UI + 대시보드 하드코딩 데모 제거 후 실데이터 연동(GET /dashboard 신규) + 앱 전역 UTC 날짜 버그 수정 + 재정 onError 보강 + API↔프론트 커버리지 점검**. **전부 커밋 완료, 워킹 트리 깨끗.**
+긴 세션이었음. **대시보드 실데이터 연동 → 헌금/분류/계정과목 수정·삭제 → 달력 반복일정(애플식) → iCal URL 단축 → 성도 검색(소속필터·디바운스·이전교회제외) + 모달 Esc → 성도 '단계'를 교회별 '재적상태' reference로 전환 → 소속 다중배정 크래시 픽스 → access/refresh 토큰 분리(무상태)**. 상세는 §1. **전부 커밋 완료, 워킹 트리 깨끗.**
 
-> ✅ 미커밋 없음. 이번 세션 커밋 9개(§1.6 목록).
+> ✅ 미커밋 없음. 커밋 목록은 `git log --oneline` (이번 세션 ~20+ 커밋, 최신: `41f1b00`).
+> ⏳ **진행 중(다음 세션 1순위)**: 재적 상세 모달에서 **이름(및 기타 필드) 수정** — 백엔드 PATCH는 있고 프론트 미연결. §2 참고.
 > ⚠️ dev:api는 빌드 때문에 여러 번 재기동함. 현재 백그라운드 기동 중(포트 3030). 다음 세션은 본인 터미널로 다시 띄우는 게 깔끔.
-> ⚠️ §3.2에 **백엔드는 있으나 프론트 미연결인 엔드포인트 목록**(의도된 미래 기능/문서화만 함, 무감독 구현 보류).
+> ⚠️ §3.2에 **백엔드는 있으나 프론트 미연결인 엔드포인트 목록**(의도된 미래 기능).
 
 ---
 
@@ -59,6 +60,12 @@
 - 프론트 `lib/auth-refresh.ts`: **전역 fetch 인터셉터** — /api 401 시 /auth/refresh 후 원 요청 1회 재시도(single-flight, 재시도는 원 fetch라 무한루프 방지). `main.tsx`에서 `installAuthRefresh()`.
 - 검증: 두 쿠키 발급/refresh 204/재발급 후 me 200/무쿠키 401/**access를 refresh로 위조 시 401**(secret 분리 확인).
 - ⚠️ prod: `JWT_CMS_ACCESS/REFRESH_SECRET_KEY` 둘 다 prod 값 세팅 필수(이미 JWT 키 prod화 TODO에 포함). 무상태라 개별 세션 강제 폐기는 불가(필요 시 DB 저장 refresh로 확장).
+
+### 1.11 성도 검색 개선 + iCal URL 단축 + 소속 크래시 픽스 ✅
+- **성도 검색**: 이름·전화 검색에서 **이전교회 매칭 제거**(placeholder도). **소속(부서/사역팀/목장) 필터** 드롭다운 추가 — `?affiliationKind=&affiliationId=` → 해당 활성 소속 성도만(`AffiliationService.memberIdsFor` 역방향 조회). 검색 입력 **300ms 디바운스**(키 입력마다 쿼리 방지). 성능: 한 교회 규모(수백~수천)면 ILIKE 순차스캔도 충분, 필요 시 pg_trgm GIN.
+- **모달 Esc 닫기**: 달력·성도 상세 모달 모두 Escape로 닫힘(ModalShell/useEffect keydown).
+- **iCal 구독 URL 단축**: 토큰 UUID(36자)→base62 14자(~83비트), 경로 `/calendar/feed/`→`/c/`. feedPath는 백엔드가 내려줌. 기존 토큰도 새 경로 동작, 재발급 시 짧은 토큰.
+- **⭐ 소속 다중배정 크래시 픽스(`01bbdbe`)**: `AffiliationService.currentJoins`가 reference id 배열을 `where:{id:배열}`로 넣어 `id=$1`에 배열 바인딩 → `invalid input syntax for integer`(500). **같은 종류 소속 2개 이상이면 성도 상세 조회가 깨졌음**(사용자 "A설정 후 B설정 시 에러"의 실제 원인). `In(referenceIds)`로 수정. dept/ministry/smallGroup 전부 영향받았음.
 
 ### 1.9 성도 '단계'(enum) → '재적상태'(교회별 편집 reference) 전환 ✅
 - 사용자 요청: 단계 값(정식/이명/별세)을 교회가 직접 추가/편집, "단계" 명칭 변경(→**재적상태**, 별세·이명이 자연스러워짐).
@@ -107,13 +114,17 @@ a6ae1ac [FEAT] 달력 반복 일정 (매일/매주/2주마다/매월/매년)
 
 ## 2. 진행 중인 작업
 
-없음. 모든 슬라이스 완료 + 커밋 완료.
+**재적 상세 모달에서 성도 이름(및 기타 필드) 수정** — 사용자 요청, 미착수(직전에 조사만 함).
+- **백엔드 준비됨**: `PATCH /members/:id`(member.controller:35) + `UpdateMemberDto`(=PartialType(CreateMemberDto), name/phone/statusId/birth/등 전부 optional). 추가 작업 불필요.
+- **프론트 할 일**: ① `api/members.ts`에 `updateMember(id, payload)` 추가(`PATCH /api/members/:id`). ② `member-detail-modal.tsx` 헤더 `<h2>{member.name}</h2>`(line 45)를 인라인 편집 가능하게(연필/더블클릭 → input → blur/Enter 저장, Escape 취소). ③ mutation `onError` + invalidate `['member', id]`·`['members']`.
+- 이름만 할지, 전화·재적상태 등도 같이 편집할지는 사용자에게 확인(요청은 "이름 수정"이었지만 모달에 전화·상태도 있음).
 
 ---
 
 ## 3. 남은 TODO
 
 ### 3.1 다음에 바로 할 만한 것
+- **⏳ 성도 이름/필드 수정** (진행 중, §2) — 다음 세션 1순위. 백엔드 완비, 프론트만.
 - **반복 일정 후속**(v1 한계, §1.8): ①반복 종료일(UNTIL) 옵션 ②per-occurrence 편집/삭제(EXDATE + 이 일정만/이후 모두) ③일정 **편집 모달**(현재 생성·삭제만, PATCH 엔드포인트는 있음). 편집 모달 만들 때 반복 변경 UX 함께 설계.
 - **대시보드 실시간 갱신(선택)**: 현재 `['home','dashboard']`는 페이지 mount 시 refetch라 홈 재진입 시 최신. 헌금/거래/멤버 추가 mutation에서 `['home','dashboard']`까지 invalidate하면 더 즉각적. (project_real_time_dashboard 가치)
 - **새가족 정의 확인**: 대시보드 "이번 달 새가족"은 `registeredAt`이 이번 달인 멤버 수. registeredAt이 null인 멤버(방문/미등록)는 제외. 의도와 다르면 lifecycleStage=NEW 기준 등으로 조정.
@@ -202,11 +213,14 @@ curl -s -b /tmp/cj.txt "http://localhost:3030/finance/offerings?date=2026-06-14"
 - **신규 차원/기능은 소비처 전수 grep**: 이번엔 반대로 **백엔드 라우트 112개 vs 프론트 호출 전수 대조**로 미연결 엔드포인트를 찾음(§3.2). orphan 엔드포인트 = 미완 기능 신호.
 - **공용 컴포넌트 확장은 optional prop**: CategorySelect의 onCreate/onUpdate/onDelete를 optional로 두니 폼(관리 노출)·행편집(선택만)·운영재정(관리) 한 컴포넌트로 재사용.
 - **blur 커밋 + Enter는 단일 경로로**: Enter가 setState(unmount)하면 blur가 또 발동 → 이중 생성. Enter를 `blur()`로 수렴시키고 생성은 onBlur 한 곳에서만.
+- **TypeORM `where: { id: 배열 }`은 `IN`이 아니다**: 배열을 그대로 넣으면 `id = $1`에 배열이 통째 바인딩 → Postgres `22P02 invalid input syntax for integer`. 반드시 `In(배열)`. (소속 2개 이상 크래시 원인, §1.11)
+- **단서를 게으르게 넘기지 말 것**: "A설정 후 B설정 시 에러"를 재현하려 curl로 GET /members/:id 했을 때 나온 "KeyError affiliations"를 **서버 리로드 탓으로 오판**하고 넘겼는데, 그게 바로 500 크래시(위 In 버그)였음. 예상 못한 응답은 그 자체가 버그 신호 — 끝까지 파야 함.
+- **enum→reference 전환은 시스템 의존을 전수 grep**: lifecycleStage가 출석 제외·영수증 익명·대시보드·export까지 박혀 있었음. "사용자 편집 가능"으로 바꿀 땐 systemKey/플래그로 시스템 동작을 보존(삭제 가드 포함).
 
 ---
 
 ## 7. 이전 세션 누적 (참고)
 
-기반(멀티테넌트·OAuth·디자인) → 재적/소속/직분 → 심방 → 출석 → 재정(헌금·운영·예산·대시보드) → 영수증 PDF → Excel → 갤러리+S3 → 달력+iCal → RBAC/팀원 → 조직도+Google Calendar push → Google 로그인 검증 + 배포(Railway) 결정 → references CRUD 개선 + 드래그 정렬 + partial PATCH 픽스 + 연도별 편성 + 예산·소속·조직도 연도 인지화 → **(이번) 헌금 수정/삭제 + 분류·계정과목 인라인 관리 + 대시보드 데모 제거→실데이터 연동(GET /dashboard) + UTC 날짜 버그 수정 + 재정 onError 보강 + API 커버리지 점검**.
+기반(멀티테넌트·OAuth·디자인) → 재적/소속/직분 → 심방 → 출석 → 재정(헌금·운영·예산·대시보드) → 영수증 PDF → Excel → 갤러리+S3 → 달력+iCal → RBAC/팀원 → 조직도+Google Calendar push → Google 로그인 검증 + 배포(Railway) 결정 → references CRUD 개선 + 드래그 정렬 + partial PATCH 픽스 + 연도별 편성 + 예산·소속·조직도 연도 인지화 → **(이번 긴 세션) 대시보드 실데이터(GET /dashboard) + 헌금/분류/계정과목 수정·삭제 + UTC 날짜 픽스 + 달력 반복일정 + iCal URL 단축 + 성도 검색(소속필터·디바운스) + 재적상태(단계 enum→교회별 reference) + 소속 다중배정 크래시 픽스 + access/refresh 토큰 분리. 다음: 성도 이름 수정(진행중)**.
 
 planning.md = 살아있는 기획서(결정 출처). 도메인 모델/필드 상세는 planning.md + git log.
