@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, Phone, Plus, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { assignAffiliation, type AffiliationKind, endAffiliation, setAffiliationLeader } from '@/api/affiliations';
 import { fetchMember, type AffiliationSummary, type PositionHistoryEntry } from '@/api/members';
@@ -31,6 +31,14 @@ export function MemberDetailModal({ memberId, onClose }: { memberId: number; onC
     queryKey: ['member', memberId],
     queryFn: () => fetchMember(memberId),
   });
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>

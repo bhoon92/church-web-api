@@ -1,16 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, Phone, Plus, Search, UserPlus, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   createMember,
   LIFECYCLE_STAGES,
   listMembers,
   STAGE_LABEL,
+  type AffiliationKind,
   type LifecycleStage,
   type Member,
   type StageCounts,
 } from '@/api/members';
+import { listReferences, type Reference } from '@/api/references';
 import { exportMembers } from '@/api/exports';
 import { usePermissions } from '@/lib/permissions';
 import { MemberDetailModal } from '@/routes/app/member-detail-modal';
@@ -33,21 +35,38 @@ const STAGE_TONE: Record<LifecycleStage, 'neutral' | 'muted' | 'success' | 'warn
 
 const FILTER_ORDER: (LifecycleStage | 'all')[] = ['all', 'regular', 'new', 'visitor', 'absent'];
 
+type AffiliationSelection = { kind: AffiliationKind; id: number };
+
+/** 입력이 멈춘 뒤에만 값을 갱신 — 키 입력마다 쿼리 나가는 것 방지. */
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
+
 export function MembersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [stage, setStage] = useState<LifecycleStage | 'all'>('all');
+  const [affiliation, setAffiliation] = useState<AffiliationSelection | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [openMemberId, setOpenMemberId] = useState<number | null>(null);
 
   const { can } = usePermissions();
   const queryClient = useQueryClient();
 
+  const debouncedQuery = useDebouncedValue(searchQuery.trim(), 300);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['members', { q: searchQuery, stage }],
+    queryKey: ['members', { q: debouncedQuery, stage, affiliation }],
     queryFn: () =>
       listMembers({
-        q: searchQuery || undefined,
+        q: debouncedQuery || undefined,
         stage: stage === 'all' ? undefined : [stage],
+        affiliationKind: affiliation?.kind,
+        affiliationId: affiliation?.id,
       }),
   });
 
@@ -76,8 +95,9 @@ export function MembersPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
-          <Input placeholder="이름·전화번호·이전교회로 검색" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} className="pl-10" />
+          <Input placeholder="이름·전화번호로 검색" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} className="pl-10" />
         </div>
+        <AffiliationFilter value={affiliation} onChange={setAffiliation} />
       </div>
 
       <FilterChips active={stage} onChange={setStage} counts={data?.counts} />
@@ -96,6 +116,51 @@ export function MembersPage() {
 
       {openMemberId !== null && <MemberDetailModal memberId={openMemberId} onClose={() => setOpenMemberId(null)} />}
     </div>
+  );
+}
+
+function AffiliationFilter({
+  value,
+  onChange,
+}: {
+  value: AffiliationSelection | null;
+  onChange: (value: AffiliationSelection | null) => void;
+}) {
+  const year = new Date().getFullYear();
+  const departments = useQuery({ queryKey: ['references', 'department', year], queryFn: () => listReferences('department', year) }).data;
+  const ministries = useQuery({ queryKey: ['references', 'ministry', year], queryFn: () => listReferences('ministry', year) }).data;
+  const smallGroups = useQuery({ queryKey: ['references', 'smallGroup', year], queryFn: () => listReferences('smallGroup', year) }).data;
+
+  const groups: { kind: AffiliationKind; label: string; items: Reference[] }[] = [
+    { kind: 'department', label: '부서', items: departments ?? [] },
+    { kind: 'ministry', label: '사역팀', items: ministries ?? [] },
+    { kind: 'smallGroup', label: '목장', items: smallGroups ?? [] },
+  ];
+
+  return (
+    <select
+      value={value ? `${value.kind}:${value.id}` : ''}
+      onChange={event => {
+        const raw = event.target.value;
+        if (!raw) return onChange(null);
+        const [kind, id] = raw.split(':');
+        onChange({ kind: kind as AffiliationKind, id: Number(id) });
+      }}
+      className="h-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-sm text-[var(--color-foreground)] sm:w-48"
+    >
+      <option value="">소속 전체</option>
+      {groups.map(group =>
+        group.items.length > 0 ? (
+          <optgroup key={group.kind} label={group.label}>
+            {group.items.map(item => (
+              <option key={`${group.kind}:${item.id}`} value={`${group.kind}:${item.id}`}>
+                {item.name}
+              </option>
+            ))}
+          </optgroup>
+        ) : null
+      )}
+    </select>
   );
 }
 

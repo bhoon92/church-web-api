@@ -43,9 +43,13 @@ export type ListMembersResponse = {
   counts: StageCounts;
 };
 
+export type AffiliationKind = 'department' | 'ministry' | 'smallGroup';
+
 export type ListMembersQuery = {
   q?: string;
   stage?: LifecycleStage[];
+  affiliationKind?: AffiliationKind;
+  affiliationId?: number;
   page?: number;
   pageSize?: number;
 };
@@ -54,6 +58,10 @@ export async function listMembers(query: ListMembersQuery): Promise<ListMembersR
   const params = new URLSearchParams();
   if (query.q) params.set('q', query.q);
   if (query.stage && query.stage.length > 0) params.set('stage', query.stage.join(','));
+  if (query.affiliationKind && query.affiliationId) {
+    params.set('affiliationKind', query.affiliationKind);
+    params.set('affiliationId', String(query.affiliationId));
+  }
   if (query.page) params.set('page', String(query.page));
   if (query.pageSize) params.set('pageSize', String(query.pageSize));
 
