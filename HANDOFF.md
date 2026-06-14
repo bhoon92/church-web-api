@@ -52,6 +52,18 @@
 - curl 전구간 검증: 빈 상태 200 + 임시 이벤트로 schedule 렌더 경로까지 확인 후 정리.
 - ⚠️ **타임존 주의**(§3.3): 주/월/오늘 범위 계산이 **서버 로컬타임** 기준. localdev(KST)는 정확하나 prod 서버가 UTC면 경계가 9h 어긋남. 기존 `finance/dashboard.service`도 동일 가정. 배포 시 서버 TZ=Asia/Seoul 고정 또는 tz-aware 처리 필요.
 
+### 1.8 달력 반복 일정 (애플 캘린더식) ✅
+- **5종**: 매일/매주/2주마다/매월/매년. 일정 추가 모달에 반복 선택 pill.
+- **아키텍처**: 한 행에 `recurrence` 토큰만 저장 → **조회 시 occurrence 펼침**(materialize 안 함). 행 폭증·Google 과다호출 회피, iCal/Google은 RRULE 네이티브 활용.
+  - `calendar_event.recurrence` varchar nullable + 마이그레이션 `AddCalendarEventRecurrence`(적용됨, id 9).
+  - `module/calendar/recurrence.ts`: 토큰↔RRULE↔ical repeating 매핑 + `nextOccurrence`.
+  - `CalendarEventService.list`: 반복 일정을 `[from,to]` occurrence 로 펼침(과거 시작분 포함, `MAX_OCCURRENCES=750` 가드). 반환 타입 `CalendarEventView`(ISO 문자열).
+  - iCal 피드: `repeating`(RRULE) 한 줄. Google 동기화: `recurrence:['RRULE:...']`.
+  - 홈 대시보드 오늘 일정도 `CalendarEventService.list` 재사용 → 달력과 일관(반복 occurrence 표시).
+- 프론트: 반복 pill 선택, 반복 일정에 `Repeat` 아이콘, 삭제 시 "전체 반복 삭제" 경고.
+- curl 검증: 매주(6월 4건)·격주(2건)·매월(6~9월 4건)·시리즈 삭제(204) ✅.
+- ⚠️ **v1 한계**(§3.1): per-occurrence 예외/편집 없음(삭제=시리즈 전체). 반복 종료일(UNTIL) 없음(무한, 조회 범위로 bound). 매월 31일 등은 JS `setMonth` 오버플로 동작(다음달로 밀림). 일정 **편집 UI 자체가 아직 없음**(PATCH 엔드포인트만 존재).
+
 ### 1.6 이번 세션 커밋 (오래된→최신)
 ```
 53608b2 [FIX] reference partial PATCH 허용 (UpdateReferenceDto)   # 직전 세션 작업 커밋
@@ -67,6 +79,9 @@ c9b1e96 [FEAT] 헌금 내역 수정/삭제 + 분류 인라인 관리 UI
 9e5617d [DOCS] 핸드오프 갱신 (중간)
 d1e1b7e [FEAT] 홈 대시보드 집계 API (GET /dashboard)
 2e19a5e [FEAT] 대시보드 실데이터 연동
+935228f [DOCS] 핸드오프 (중간)
+a6ae1ac [FEAT] 달력 반복 일정 (매일/매주/2주마다/매월/매년)
+8533410 [FEAT] 달력 반복 일정 추가 UI
 ```
 > 앞 3개(53608b2~e7ac3ae)와 8e8e2a9는 **직전 세션의 연도별 편성 작업을 이번 세션 초반에 커밋**한 것. 나머지가 이번 세션 신규 작업.
 
@@ -81,6 +96,7 @@ d1e1b7e [FEAT] 홈 대시보드 집계 API (GET /dashboard)
 ## 3. 남은 TODO
 
 ### 3.1 다음에 바로 할 만한 것
+- **반복 일정 후속**(v1 한계, §1.8): ①반복 종료일(UNTIL) 옵션 ②per-occurrence 편집/삭제(EXDATE + 이 일정만/이후 모두) ③일정 **편집 모달**(현재 생성·삭제만, PATCH 엔드포인트는 있음). 편집 모달 만들 때 반복 변경 UX 함께 설계.
 - **대시보드 실시간 갱신(선택)**: 현재 `['home','dashboard']`는 페이지 mount 시 refetch라 홈 재진입 시 최신. 헌금/거래/멤버 추가 mutation에서 `['home','dashboard']`까지 invalidate하면 더 즉각적. (project_real_time_dashboard 가치)
 - **새가족 정의 확인**: 대시보드 "이번 달 새가족"은 `registeredAt`이 이번 달인 멤버 수. registeredAt이 null인 멤버(방문/미등록)는 제외. 의도와 다르면 lifecycleStage=NEW 기준 등으로 조정.
 - **AllocationForm 예산 picker = 현재 달력연도 단순화**(직전 세션 이월): 예산은 `fiscalYearId`에 묶이는데 폼이 `new Date().getFullYear()`로 조직을 조회 → 과거 회계연도 예산 입력 시 올해 조직이 뜸. 정확히 묶으려면 FiscalYear의 연도를 폼까지 내려야 함.
@@ -128,7 +144,7 @@ d1e1b7e [FEAT] 홈 대시보드 집계 API (GET /dashboard)
 ### 5.1 환경/상태
 - **Postgres**: Homebrew `postgresql@14`, DB `yakirim`(`root`/`root1234`). **church id 1** = dev-login(`bhoon92@gmail.com`) 교회(owner) = 스모크 데이터. 성도 1명(박병훈, id 3).
 - **헌금 분류**: church 1에 사용자가 만든 테스트 분류 다수(`헌금`·`감사`·`건축`·`테스트`·`1`·`test2` 등). 이제 헌금 폼 **편집**으로 정리 가능.
-- **마이그레이션 8개**: AddReferenceYear 포함 전부 적용됨. `year` 컬럼 3개 테이블 NOT NULL(기존 2026).
+- **마이그레이션 9개**: AddReferenceYear + AddCalendarEventRecurrence 포함 전부 적용됨. `year` 컬럼 3개 테이블 NOT NULL(기존 2026), `calendar_event.recurrence` nullable.
 - **포트**: API `PORT`(기본 3030). 프론트 Vite 5173. 둘 다 기동 중.
 
 ### 5.2 ⚠️ 중요 gotchas (여전히 유효)
