@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { IsNull, ObjectLiteral, Repository } from 'typeorm';
+import { In, IsNull, ObjectLiteral, Repository } from 'typeorm';
 import { DataSources } from '@src/database/data-sources';
 import { DepartmentEntity } from '@src/database/entities/department.entity';
 import { MemberDepartmentEntity } from '@src/database/entities/member-department.entity';
@@ -158,7 +158,7 @@ export class AffiliationService {
 
     const referenceIds = joins.map(joinRow => joinRow[config.referenceKey] as number);
     const references = (await referenceRepo.find({
-      where: { id: referenceIds.length === 1 ? referenceIds[0] : (referenceIds as never) } as never,
+      where: { id: In(referenceIds) } as never,
     })) as { id: number; name: string }[];
     const referenceMap = new Map(references.map(reference => [reference.id, reference]));
 
