@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import ical from 'ical-generator';
+import ical, { ICalEventRepeatingFreq } from 'ical-generator';
 import { In } from 'typeorm';
 import { DataSources } from '@src/database/data-sources';
 import { CalendarEntity } from '@src/database/entities/calendar.entity';
 import { CalendarEventEntity } from '@src/database/entities/calendar-event.entity';
 import { ChurchEntity } from '@src/database/entities/church.entity';
 import { SubscriptionService } from './subscription.service';
+import { isRecurrence, toRepeating } from './recurrence';
 
 const TIMEZONE = 'Asia/Seoul';
 
@@ -46,13 +47,18 @@ export class FeedService {
     });
 
     for (const calendarEvent of events) {
-      if (calendarEvent.startAt < from || calendarEvent.startAt > to) continue;
+      // 반복 일정은 RRULE 로 시리즈 전체를 표현하므로 과거 시작분도 포함(미래 to 초과만 제외).
+      const rule = isRecurrence(calendarEvent.recurrence) ? toRepeating(calendarEvent.recurrence) : undefined;
+      const repeating = rule ? { freq: ICalEventRepeatingFreq[rule.freq], interval: rule.interval } : undefined;
+      if (calendarEvent.startAt > to) continue;
+      if (!repeating && calendarEvent.startAt < from) continue;
       const end = calendarEvent.endAt ?? (calendarEvent.allDay ? undefined : new Date(calendarEvent.startAt.getTime() + 60 * 60 * 1000));
       cal.createEvent({
         id: `event-${calendarEvent.id}@yakirim`,
         start: calendarEvent.startAt,
         end,
         allDay: calendarEvent.allDay,
+        repeating,
         summary: calendarEvent.title,
         location: calendarEvent.location ?? undefined,
         description:

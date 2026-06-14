@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
+import { In } from 'typeorm';
 import { DataSources } from '@src/database/data-sources';
 import { AttendanceEntity } from '@src/database/entities/attendance.entity';
 import { CalendarEntity } from '@src/database/entities/calendar.entity';
-import { CalendarEventEntity } from '@src/database/entities/calendar-event.entity';
 import { FinanceTransactionEntity, TransactionFlow } from '@src/database/entities/finance-transaction.entity';
 import { LifecycleStage, MemberEntity } from '@src/database/entities/member.entity';
 import { OfferingCategoryEntity } from '@src/database/entities/offering-category.entity';
 import { OfferingEntity } from '@src/database/entities/offering.entity';
+import { CalendarEventService } from '@src/module/calendar/calendar-event.service';
 import { BudgetService } from '@src/module/finance/budget.service';
 import { FiscalYearService } from '@src/module/finance/fiscal-year.service';
 import { OfferingService } from '@src/module/finance/offering.service';
@@ -43,7 +44,8 @@ export class HomeService {
   constructor(
     private readonly offerings: OfferingService,
     private readonly budgets: BudgetService,
-    private readonly fiscalYears: FiscalYearService
+    private readonly fiscalYears: FiscalYearService,
+    private readonly calendarEvents: CalendarEventService
   ) {}
 
   async summary(churchId: number): Promise<HomeDashboard> {
@@ -93,20 +95,14 @@ export class HomeService {
     return budget?.rate ?? null;
   }
 
-  /** 오늘 시작하는 일정 (시작 시각 오름차순). */
+  /** 오늘 시작하는 일정 (반복 occurrence 포함, 시작 시각 오름차순). */
   private async todaySchedule(churchId: number, start: Date, end: Date): Promise<HomeScheduleItem[]> {
-    const events = await DataSources.instance
-      .getRepository(CalendarEventEntity)
-      .createQueryBuilder('e')
-      .where('e.church_id = :churchId', { churchId })
-      .andWhere('e.start_at >= :start AND e.start_at < :end', { start, end })
-      .orderBy('e.start_at', 'ASC')
-      .limit(8)
-      .getMany();
+    // CalendarEventService.list 가 반복 일정을 occurrence 로 펼쳐줌 → 달력 화면과 일관.
+    const events = (await this.calendarEvents.list(churchId, start.toISOString(), end.toISOString())).slice(0, 8);
     if (events.length === 0) return [];
 
     const calendarIds = Array.from(new Set(events.map(event => event.calendarId)));
-    const calendars = await DataSources.instance.getRepository(CalendarEntity).find({ where: calendarIds.map(id => ({ id, churchId })) });
+    const calendars = await DataSources.instance.getRepository(CalendarEntity).find({ where: { id: In(calendarIds), churchId } });
     const calendarMap = new Map(calendars.map(calendar => [calendar.id, calendar]));
 
     return events.map(event => {
@@ -114,7 +110,7 @@ export class HomeService {
       return {
         id: event.id,
         title: event.title,
-        startAt: event.startAt.toISOString(),
+        startAt: event.startAt,
         allDay: event.allDay,
         layer: calendar?.name ?? '일정',
         color: calendar?.color ?? 'oklch(0.6 0.14 250)',

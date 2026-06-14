@@ -33,4 +33,7 @@ export class CalendarEventEntity extends BaseDateEntityWithDeletedAt {
 
   @Column({ type: 'timestamptz', nullable: true })
   endAt?: Date;
+
+  @Column({ type: 'varchar', nullable: true, comment: '반복 규칙 토큰 (daily/weekly/biweekly/monthly/yearly), null=반복없음' })
+  recurrence?: string;
 }

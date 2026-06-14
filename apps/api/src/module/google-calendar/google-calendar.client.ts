@@ -11,6 +11,8 @@ export type GoogleEventResource = {
   description?: string;
   start: GoogleEventTime;
   end: GoogleEventTime;
+  /** RFC5545 RRULE 배열 (반복 일정). 예: ['RRULE:FREQ=WEEKLY;INTERVAL=2'] */
+  recurrence?: string[];
 };
 
 export type GoogleEventTime = { date: string } | { dateTime: string; timeZone?: string };

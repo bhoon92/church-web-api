@@ -1,5 +1,6 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { IsBoolean, IsInt, IsISO8601, IsOptional, IsString, Length, Min } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsISO8601, IsOptional, IsString, Length, Min } from 'class-validator';
+import { RECURRENCE_VALUES } from '../recurrence';
 
 export class CreateCalendarEventDto {
   @IsInt()
@@ -30,6 +31,10 @@ export class CreateCalendarEventDto {
   @IsOptional()
   @IsISO8601()
   endAt?: string;
+
+  @IsOptional()
+  @IsIn(RECURRENCE_VALUES)
+  recurrence?: (typeof RECURRENCE_VALUES)[number];
 }
 
 export class UpdateCalendarEventDto extends PartialType(CreateCalendarEventDto) {}

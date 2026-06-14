@@ -5,6 +5,7 @@ import { GoogleCalendarConnectionEntity } from '@src/database/entities/google-ca
 import { GoogleCalendarEventLinkEntity } from '@src/database/entities/google-calendar-event-link.entity';
 import { GoogleCalendarConnectionService } from './connection.service';
 import { GoogleCalendarClient, GoogleEventResource } from './google-calendar.client';
+import { isRecurrence, toRRule } from '@src/module/calendar/recurrence';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -115,7 +116,8 @@ export class GoogleCalendarSyncService {
 
   /** CalendarEventEntity → Google Calendar event resource. */
   private toResource(event: CalendarEventEntity): GoogleEventResource {
-    const base = { summary: event.title, location: event.location, description: event.description };
+    const recurrence = isRecurrence(event.recurrence) ? [toRRule(event.recurrence)] : undefined;
+    const base = { summary: event.title, location: event.location, description: event.description, recurrence };
     if (event.allDay) {
       const start = this.toIsoDate(event.startAt);
       // Google 종일 일정의 end.date 는 배타적(exclusive) → 종료일 + 1일.
