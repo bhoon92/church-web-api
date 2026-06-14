@@ -4,7 +4,8 @@ import { DataSources } from '@src/database/data-sources';
 import { AttendanceEntity } from '@src/database/entities/attendance.entity';
 import { CalendarEntity } from '@src/database/entities/calendar.entity';
 import { FinanceTransactionEntity, TransactionFlow } from '@src/database/entities/finance-transaction.entity';
-import { LifecycleStage, MemberEntity } from '@src/database/entities/member.entity';
+import { MemberEntity } from '@src/database/entities/member.entity';
+import { MemberStatusEntity } from '@src/database/entities/member-status.entity';
 import { OfferingCategoryEntity } from '@src/database/entities/offering-category.entity';
 import { OfferingEntity } from '@src/database/entities/offering.entity';
 import { CalendarEventService } from '@src/module/calendar/calendar-event.service';
@@ -126,6 +127,9 @@ export class HomeService {
       DataSources.instance.getRepository(FinanceTransactionEntity).find({ where: { churchId }, order: { createdAt: 'DESC' }, take: 6 }),
     ]);
 
+    const newStatus = await DataSources.instance.getRepository(MemberStatusEntity).findOne({ where: { churchId, systemKey: 'new' } });
+    const newStatusId = newStatus?.id ?? null;
+
     const memberIds = Array.from(new Set(offerings.map(offering => offering.memberId)));
     const categoryIds = Array.from(new Set(offerings.map(offering => offering.offeringCategoryId)));
     const [offeringMembers, categories] = await Promise.all([
@@ -149,7 +153,7 @@ export class HomeService {
       ...members.map(member => ({
         kind: 'member' as const,
         who: member.name,
-        what: member.lifecycleStage === LifecycleStage.NEW ? '새가족 등록' : '성도 등록',
+        what: newStatusId !== null && member.statusId === newStatusId ? '새가족 등록' : '성도 등록',
         at: member.createdAt.toISOString(),
       })),
       ...transactions.map(transaction => ({

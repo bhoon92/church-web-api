@@ -1,17 +1,15 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { DataSources } from '@src/database/data-sources';
 import { AttendanceEntity } from '@src/database/entities/attendance.entity';
-import { LifecycleStage, MemberEntity } from '@src/database/entities/member.entity';
+import { MemberEntity } from '@src/database/entities/member.entity';
+import { MemberStatusEntity } from '@src/database/entities/member-status.entity';
 import { WorshipServiceEntity } from '@src/database/entities/worship-service.entity';
 import { MarkAttendanceDto } from './dto/mark-attendance.dto';
-
-/** 출석 명단에서 제외할 lifecycle stage (별세/이명/익명). */
-const EXCLUDED_STAGES: LifecycleStage[] = [LifecycleStage.DECEASED, LifecycleStage.TRANSFERRED, LifecycleStage.ANONYMOUS];
 
 export type RosterItem = {
   memberId: number;
   name: string;
-  lifecycleStage: LifecycleStage;
+  statusName: string | null;
   present: boolean;
 };
 
@@ -38,7 +36,10 @@ export class AttendanceService {
       where: { churchId },
       order: { name: 'ASC', id: 'ASC' },
     });
-    const roster = members.filter(member => !EXCLUDED_STAGES.includes(member.lifecycleStage));
+    const statuses = await DataSources.instance.getRepository(MemberStatusEntity).find({ where: { churchId } });
+    const statusMap = new Map(statuses.map(status => [status.id, status]));
+    // 출석 명단에서 제외 = countsInRoster=false 인 상태(별세/이명/익명).
+    const roster = members.filter(member => statusMap.get(member.statusId)?.countsInRoster !== false);
 
     const rows = await this.repo().find({ where: { churchId, worshipServiceId, date } });
     const presentSet = new Set(rows.map(attendance => attendance.memberId));
@@ -46,7 +47,7 @@ export class AttendanceService {
     const items: RosterItem[] = roster.map(member => ({
       memberId: member.id,
       name: member.name,
-      lifecycleStage: member.lifecycleStage,
+      statusName: statusMap.get(member.statusId)?.name ?? null,
       present: presentSet.has(member.id),
     }));
 

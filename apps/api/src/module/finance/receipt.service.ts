@@ -3,7 +3,8 @@ import PDFDocument from 'pdfkit';
 import { PRETENDARD_BOLD, PRETENDARD_REGULAR } from '@src/assets/asset-path';
 import { DataSources } from '@src/database/data-sources';
 import { ChurchEntity } from '@src/database/entities/church.entity';
-import { LifecycleStage, MemberEntity } from '@src/database/entities/member.entity';
+import { MemberEntity } from '@src/database/entities/member.entity';
+import { MemberStatusEntity } from '@src/database/entities/member-status.entity';
 import { OfferingService } from './offering.service';
 
 @Injectable()
@@ -17,7 +18,8 @@ export class ReceiptService {
 
     const member = await DataSources.instance.getRepository(MemberEntity).findOne({ where: { id: memberId, churchId } });
     if (!member) throw new NotFoundException('성도를 찾을 수 없습니다.');
-    if (member.lifecycleStage === LifecycleStage.ANONYMOUS) {
+    const status = await DataSources.instance.getRepository(MemberStatusEntity).findOne({ where: { id: member.statusId, churchId } });
+    if (status?.systemKey === 'anonymous') {
       throw new BadRequestException('익명 성도는 영수증을 발급할 수 없습니다.');
     }
 

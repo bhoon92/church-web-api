@@ -1,20 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Workbook, Worksheet } from 'exceljs';
-import { LifecycleStage } from '@src/database/entities/member.entity';
+import { DataSources } from '@src/database/data-sources';
+import { MemberStatusEntity } from '@src/database/entities/member-status.entity';
 import { BudgetService } from '@src/module/finance/budget.service';
 import { OfferingService } from '@src/module/finance/offering.service';
 import { TransactionService } from '@src/module/finance/transaction.service';
 import { MemberService } from '@src/module/member/member.service';
-
-const STAGE_LABEL: Record<LifecycleStage, string> = {
-  [LifecycleStage.VISITOR]: '방문',
-  [LifecycleStage.NEW]: '새가족',
-  [LifecycleStage.REGULAR]: '정식',
-  [LifecycleStage.TRANSFERRED]: '이명',
-  [LifecycleStage.DECEASED]: '별세',
-  [LifecycleStage.ABSENT]: '장기결석',
-  [LifecycleStage.ANONYMOUS]: '익명',
-};
 
 const KIND_LABEL: Record<string, string> = { department: '부서', ministry: '사역팀', small_group: '목장' };
 
@@ -113,13 +104,15 @@ export class ExportService {
   /** 재적 명부. */
   async members_xlsx(churchId: number): Promise<Buffer> {
     const rows = await this.members.listAll(churchId);
+    const statuses = await DataSources.instance.getRepository(MemberStatusEntity).find({ where: { churchId } });
+    const statusName = new Map(statuses.map(status => [status.id, status.name]));
     const wb = new Workbook();
     const ws = wb.addWorksheet('재적 명부');
     this.setColumns(ws, [
       { header: '이름', key: 'name', width: 14 },
       { header: '연락처', key: 'phone', width: 16 },
       { header: '생년월일', key: 'birth', width: 14 },
-      { header: '단계', key: 'stage', width: 10 },
+      { header: '재적상태', key: 'stage', width: 10 },
       { header: '등록일', key: 'registeredAt', width: 14 },
       { header: '세례일', key: 'baptizedAt', width: 14 },
       { header: '직업', key: 'occupation', width: 14 },
@@ -130,7 +123,7 @@ export class ExportService {
         name: member.name,
         phone: member.phone ?? '',
         birth: member.birth ?? '',
-        stage: STAGE_LABEL[member.lifecycleStage],
+        stage: statusName.get(member.statusId) ?? '',
         registeredAt: member.registeredAt ?? '',
         baptizedAt: member.baptizedAt ?? '',
         occupation: member.occupation ?? '',

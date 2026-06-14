@@ -1,20 +1,10 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { BaseDateEntityWithDeletedAt } from './base-date.entity';
 
-export enum LifecycleStage {
-  VISITOR = 'visitor', // 방문
-  NEW = 'new', // 새가족
-  REGULAR = 'regular', // 정식
-  TRANSFERRED = 'transferred', // 이명
-  DECEASED = 'deceased', // 별세
-  ABSENT = 'absent', // 장기결석
-  ANONYMOUS = 'anonymous', // 익명 (무명 헌금 묶음용)
-}
-
 /** 성도 — 도메인 모델 root (헌금·출석·사역기록 1:N). */
 @Entity('member')
 @Index(['churchId'])
-@Index(['churchId', 'lifecycleStage'])
+@Index(['churchId', 'statusId'])
 export class MemberEntity extends BaseDateEntityWithDeletedAt {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -31,8 +21,8 @@ export class MemberEntity extends BaseDateEntityWithDeletedAt {
   @Column({ type: 'date', nullable: true })
   birth?: string;
 
-  @Column({ type: 'enum', enum: LifecycleStage, default: LifecycleStage.VISITOR })
-  lifecycleStage!: LifecycleStage;
+  @Column()
+  statusId!: number;
 
   @Column({ comment: '비고/노트', type: 'text', nullable: true })
   note?: string;

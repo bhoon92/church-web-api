@@ -1,5 +1,4 @@
-import { IsEnum, IsInt, IsOptional, IsString, Length, Matches, Max, Min } from 'class-validator';
-import { LifecycleStage } from '@src/database/entities/member.entity';
+import { IsInt, IsOptional, IsString, Length, Matches, Max, Min } from 'class-validator';
 
 export class CreateMemberDto {
   @IsString()
@@ -15,9 +14,11 @@ export class CreateMemberDto {
   @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'birth must be YYYY-MM-DD' })
   birth?: string;
 
+  /** 재적상태 id (미지정 시 서버가 기본 상태로 설정) */
   @IsOptional()
-  @IsEnum(LifecycleStage)
-  lifecycleStage?: LifecycleStage;
+  @IsInt()
+  @Min(1)
+  statusId?: number;
 
   @IsOptional()
   @IsString()

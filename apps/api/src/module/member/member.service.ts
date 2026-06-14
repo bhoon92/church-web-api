@@ -1,14 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Brackets, SelectQueryBuilder } from 'typeorm';
 import { DataSources } from '@src/database/data-sources';
-import { LifecycleStage, MemberEntity } from '@src/database/entities/member.entity';
+import { MemberEntity } from '@src/database/entities/member.entity';
+import { MemberStatusEntity } from '@src/database/entities/member-status.entity';
 import { AffiliationService } from '@src/module/affiliation/affiliation.service';
 import { MemberPositionService } from '@src/module/position/member-position.service';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { ListMemberQueryDto } from './dto/list-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 
-export type StageCount = Record<LifecycleStage | 'all', number>;
+export type MemberStatusCount = { id: number; name: string; count: number };
+export type MemberListCounts = { all: number; byStatus: MemberStatusCount[] };
+export type MemberView = MemberEntity & { statusName: string | null };
 
 @Injectable()
 export class MemberService {
@@ -21,16 +24,20 @@ export class MemberService {
     return DataSources.instance.getRepository(MemberEntity);
   }
 
+  private statusRepo() {
+    return DataSources.instance.getRepository(MemberStatusEntity);
+  }
+
   async create(churchId: number, dto: CreateMemberDto): Promise<MemberEntity> {
-    const repo = this.repo();
-    const member = repo.create({ ...dto, churchId });
-    return repo.save(member);
+    const statusId = dto.statusId ?? (await this.defaultStatusId(churchId));
+    const member = this.repo().create({ ...dto, statusId, churchId });
+    return this.repo().save(member);
   }
 
   async list(
     churchId: number,
     query: ListMemberQueryDto
-  ): Promise<{ items: MemberEntity[]; total: number; page: number; pageSize: number; counts: StageCount }> {
+  ): Promise<{ items: MemberView[]; total: number; page: number; pageSize: number; counts: MemberListCounts }> {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 20;
 
@@ -39,8 +46,8 @@ export class MemberService {
     const qb = this.repo().createQueryBuilder('m').where('m.churchId = :churchId', { churchId });
     this.applySearchFilters(qb, query.q, affiliationMemberIds);
 
-    if (query.stage && query.stage.length > 0) {
-      qb.andWhere('m.lifecycleStage IN (:...stages)', { stages: query.stage });
+    if (query.statusId) {
+      qb.andWhere('m.statusId = :statusId', { statusId: query.statusId });
     }
 
     qb.orderBy('m.createdAt', 'DESC')
@@ -48,9 +55,11 @@ export class MemberService {
       .take(pageSize);
 
     const [items, total] = await qb.getManyAndCount();
-    const counts = await this.countByStage(churchId, query.q, affiliationMemberIds);
+    const statusMap = await this.statusMap(churchId);
+    const view = items.map(member => ({ ...member, statusName: statusMap.get(member.statusId)?.name ?? null }));
+    const counts = await this.countByStatus(churchId, query.q, affiliationMemberIds, statusMap);
 
-    return { items, total, page, pageSize, counts };
+    return { items: view, total, page, pageSize, counts };
   }
 
   /** 소속(부서/사역팀/목장) 필터가 있으면 해당 활성 소속 성도 id 목록, 없으면 null. */
@@ -59,7 +68,7 @@ export class MemberService {
     return this.affiliations.memberIdsFor(query.affiliationKind, churchId, query.affiliationId);
   }
 
-  /** 이름·전화 부분일치 + 소속 성도 id 필터를 쿼리에 적용 (list/countByStage 공용). */
+  /** 이름·전화 부분일치 + 소속 성도 id 필터를 쿼리에 적용 (list/countByStatus 공용). */
   private applySearchFilters(qb: SelectQueryBuilder<MemberEntity>, q?: string, affiliationMemberIds?: number[] | null): void {
     if (q) {
       qb.andWhere(
@@ -82,11 +91,12 @@ export class MemberService {
   async findById(churchId: number, id: number) {
     const member = await this.repo().findOne({ where: { id, churchId } });
     if (!member) throw new NotFoundException('Member not found');
-    const [affiliations, position] = await Promise.all([
+    const [affiliations, position, statusMap] = await Promise.all([
       this.affiliations.listForMember(churchId, id),
       this.positions.history(churchId, id),
+      this.statusMap(churchId),
     ]);
-    return { ...member, affiliations, position };
+    return { ...member, statusName: statusMap.get(member.statusId)?.name ?? null, affiliations, position };
   }
 
   async update(churchId: number, id: number, dto: UpdateMemberDto) {
@@ -100,37 +110,47 @@ export class MemberService {
     if (!result.affected) throw new NotFoundException('Member not found');
   }
 
-  /** UI filter chip 카운트 */
-  private async countByStage(churchId: number, q?: string, affiliationMemberIds?: number[] | null): Promise<StageCount> {
+  /** 교회 재적상태 map (id → 상태). */
+  private async statusMap(churchId: number): Promise<Map<number, MemberStatusEntity>> {
+    const statuses = await this.statusRepo().find({ where: { churchId } });
+    return new Map(statuses.map(status => [status.id, status]));
+  }
+
+  /** 신규 성도 기본 상태 = 활성 상태 중 sortOrder 최소(보통 '방문'). */
+  private async defaultStatusId(churchId: number): Promise<number> {
+    const status = await this.statusRepo().findOne({
+      where: { churchId, isActive: true },
+      order: { sortOrder: 'ASC', id: 'ASC' },
+    });
+    if (!status) throw new NotFoundException('재적상태가 설정되지 않았습니다.');
+    return status.id;
+  }
+
+  /** UI filter chip 카운트 — 활성 상태별(0 포함) + 전체. */
+  private async countByStatus(
+    churchId: number,
+    q: string | undefined,
+    affiliationMemberIds: number[] | null | undefined,
+    statusMap: Map<number, MemberStatusEntity>
+  ): Promise<MemberListCounts> {
     const qb = this.repo()
       .createQueryBuilder('m')
-      .select('m.lifecycleStage', 'stage')
+      .select('m.statusId', 'statusId')
       .addSelect('COUNT(*)', 'cnt')
       .where('m.churchId = :churchId', { churchId });
 
     this.applySearchFilters(qb, q, affiliationMemberIds);
+    qb.groupBy('m.statusId');
 
-    qb.groupBy('m.lifecycleStage');
+    const rows = (await qb.getRawMany()) as { statusId: number; cnt: string }[];
+    const countById = new Map(rows.map(row => [Number(row.statusId), Number(row.cnt)]));
+    const all = rows.reduce((sum, row) => sum + Number(row.cnt), 0);
 
-    const rows = (await qb.getRawMany()) as { stage: LifecycleStage; cnt: string }[];
+    const byStatus = Array.from(statusMap.values())
+      .filter(status => status.isActive)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)
+      .map(status => ({ id: status.id, name: status.name, count: countById.get(status.id) ?? 0 }));
 
-    const counts = {
-      all: 0,
-      [LifecycleStage.VISITOR]: 0,
-      [LifecycleStage.NEW]: 0,
-      [LifecycleStage.REGULAR]: 0,
-      [LifecycleStage.TRANSFERRED]: 0,
-      [LifecycleStage.DECEASED]: 0,
-      [LifecycleStage.ABSENT]: 0,
-      [LifecycleStage.ANONYMOUS]: 0,
-    } as StageCount;
-
-    for (const row of rows) {
-      const c = Number(row.cnt);
-      counts[row.stage] = c;
-      counts.all += c;
-    }
-
-    return counts;
+    return { all, byStatus };
   }
 }
