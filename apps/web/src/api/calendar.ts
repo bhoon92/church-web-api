@@ -16,6 +16,17 @@ export type CalendarEvent = {
   allDay: boolean;
   startAt: string;
   endAt: string | null;
+  recurrence: Recurrence | null;
+};
+
+export type Recurrence = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'yearly';
+
+export const RECURRENCE_LABEL: Record<Recurrence, string> = {
+  daily: '매일',
+  weekly: '매주',
+  biweekly: '2주마다',
+  monthly: '매월',
+  yearly: '매년',
 };
 
 export type Subscription = {
@@ -60,6 +71,7 @@ export const createEvent = (body: {
   allDay?: boolean;
   startAt: string;
   endAt?: string;
+  recurrence?: Recurrence;
 }) => send<CalendarEvent>('POST', '/api/calendar/events', body);
 export const deleteEvent = (id: number) => send<void>('DELETE', `/api/calendar/events/${id}`);
 

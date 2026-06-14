@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ChevronLeft, ChevronRight, Copy, Plus, RefreshCw, Share2, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Copy, Plus, RefreshCw, Repeat, Share2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import {
@@ -10,10 +10,12 @@ import {
   getSubscription,
   listCalendars,
   listEvents,
+  RECURRENCE_LABEL,
   regenerateSubscription,
   updateSubscription,
   type Calendar,
   type CalendarEvent,
+  type Recurrence,
 } from '@/api/calendar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -214,7 +216,10 @@ function EventPill({ event, color, canWrite }: { event: CalendarEvent; color?: s
     <div
       onClick={clickEvent => {
         clickEvent.stopPropagation();
-        if (canWrite && window.confirm(`"${event.title}" 일정을 삭제할까요?`)) deleteMut.mutate();
+        const message = event.recurrence
+          ? `"${event.title}"은(는) 반복 일정입니다. 전체 반복을 삭제할까요?`
+          : `"${event.title}" 일정을 삭제할까요?`;
+        if (canWrite && window.confirm(message)) deleteMut.mutate();
       }}
       className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px]"
       style={{
@@ -225,6 +230,7 @@ function EventPill({ event, color, canWrite }: { event: CalendarEvent; color?: s
       <span className="inline-block size-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
       {time && <span className="shrink-0 tabular-nums opacity-80">{time}</span>}
       <span className="truncate font-medium">{event.title}</span>
+      {event.recurrence && <Repeat className="ml-auto size-2.5 shrink-0 opacity-70" />}
     </div>
   );
 }
@@ -330,6 +336,7 @@ function EventModal({ date, calendars, onClose }: { date: string; calendars: Cal
   const [startTime, setStartTime] = useState('11:00');
   const [endTime, setEndTime] = useState('12:00');
   const [location, setLocation] = useState('');
+  const [recurrence, setRecurrence] = useState<Recurrence | null>(null);
 
   const createMut = useMutation({
     mutationFn: () => {
@@ -342,12 +349,14 @@ function EventModal({ date, calendars, onClose }: { date: string; calendars: Cal
         allDay,
         startAt: startAt.toISOString(),
         endAt: endAt?.toISOString(),
+        recurrence: recurrence ?? undefined,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
       onClose();
     },
+    onError: (error: Error) => alert(`일정 추가 실패: ${error.message}`),
   });
 
   return (
@@ -387,6 +396,29 @@ function EventModal({ date, calendars, onClose }: { date: string; calendars: Cal
         )}
 
         <Input placeholder="장소 (선택)" value={location} onChange={event => setLocation(event.target.value)} />
+
+        <div>
+          <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[var(--color-muted-foreground)]">
+            <Repeat className="size-3.5" />
+            반복
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {([null, 'daily', 'weekly', 'biweekly', 'monthly', 'yearly'] as const).map(option => (
+              <button
+                key={option ?? 'none'}
+                onClick={() => setRecurrence(option)}
+                className={cn(
+                  'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                  recurrence === option
+                    ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
+                    : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]'
+                )}
+              >
+                {option ? RECURRENCE_LABEL[option] : '안 함'}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="ghost" onClick={onClose}>
