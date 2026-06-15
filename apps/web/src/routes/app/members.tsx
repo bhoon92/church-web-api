@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, Phone, Plus, Search, UserPlus, X } from 'lucide-react';
+import { Download, Phone, Plus, Search, Settings2, UserPlus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import {
@@ -12,6 +12,7 @@ import {
 import { listReferences, type Reference } from '@/api/references';
 import { exportMembers } from '@/api/exports';
 import { usePermissions } from '@/lib/permissions';
+import { ReferenceManagerModal } from '@/components/reference-manager';
 import { MemberDetailModal } from '@/routes/app/member-detail-modal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,6 +39,7 @@ export function MembersPage() {
   const [affiliation, setAffiliation] = useState<AffiliationSelection | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [openMemberId, setOpenMemberId] = useState<number | null>(null);
+  const [managing, setManaging] = useState(false);
 
   const { can } = usePermissions();
   const queryClient = useQueryClient();
@@ -63,6 +65,12 @@ export function MembersPage() {
         description="등록된 성도와 새가족을 관리합니다."
         actions={
           <>
+            {can('settings:write') && (
+              <Button variant="outline" onClick={() => setManaging(true)}>
+                <Settings2 />
+                재적상태·직분
+              </Button>
+            )}
             <Button variant="outline" onClick={() => void exportMembers()}>
               <Download />
               내보내기
@@ -76,6 +84,10 @@ export function MembersPage() {
           </>
         }
       />
+
+      {managing && (
+        <ReferenceManagerModal title="재적상태·직분 관리" kinds={['memberStatus', 'position']} onClose={() => setManaging(false)} />
+      )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">

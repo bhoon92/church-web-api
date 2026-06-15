@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Check, Eye, EyeOff, GripVertical, Plus, Trash2, X } from 'lucide-react';
-import { useState } from 'react';
-import { Link } from 'react-router';
+import { Check, Eye, EyeOff, GripVertical, Plus, Trash2, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 import {
   copyReferenceYear,
@@ -18,47 +17,40 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { PageHeader } from '@/components/page-header';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/lib/permissions';
 
-const TABS: ReferenceKind[] = ['department', 'ministry', 'smallGroup', 'position', 'worshipService', 'memberStatus'];
-
-export function ReferencesPage() {
-  const [tab, setTab] = useState<ReferenceKind>('department');
+/** 참조(부서·사역팀·목장·직분·예배·재적상태) 관리 — 탭 + 연도 + CRUD. 각 도메인 페이지에서 재사용. */
+export function ReferenceManager({ kinds }: { kinds: ReferenceKind[] }) {
+  const [tab, setTab] = useState<ReferenceKind>(kinds[0]);
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
   const isYearScoped = YEAR_SCOPED_KINDS.has(tab);
   const yearOptions = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]">
-        <Link to="/app/settings" className="inline-flex items-center gap-1 hover:text-[var(--color-foreground)]">
-          <ArrowLeft className="size-3.5" />
-          설정으로
-        </Link>
-      </div>
-
-      <PageHeader eyebrow="설정" title="부서·사역팀·목장·직분·예배" description="교회마다 다른 명칭과 구성을 자유롭게 관리합니다." />
-
+    <div className="space-y-4">
       <div className="flex items-end justify-between gap-4 border-b border-[var(--color-border)]">
-        <div className="flex gap-4">
-          {TABS.map(tabOption => (
-            <button
-              key={tabOption}
-              onClick={() => setTab(tabOption)}
-              className={cn(
-                'relative -mb-px border-b-2 px-1 py-2.5 text-sm font-medium transition-colors',
-                tab === tabOption
-                  ? 'border-[var(--color-foreground)] text-[var(--color-foreground)]'
-                  : 'border-transparent text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]'
-              )}
-            >
-              {REFERENCE_LABEL[tabOption]}
-            </button>
-          ))}
-        </div>
+        {kinds.length > 1 ? (
+          <div className="flex flex-wrap gap-4">
+            {kinds.map(tabOption => (
+              <button
+                key={tabOption}
+                onClick={() => setTab(tabOption)}
+                className={cn(
+                  'relative -mb-px border-b-2 px-1 py-2.5 text-sm font-medium transition-colors',
+                  tab === tabOption
+                    ? 'border-[var(--color-foreground)] text-[var(--color-foreground)]'
+                    : 'border-transparent text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]'
+                )}
+              >
+                {REFERENCE_LABEL[tabOption]}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="-mb-px border-b-2 border-[var(--color-foreground)] px-1 py-2.5 text-sm font-medium">{REFERENCE_LABEL[tab]}</div>
+        )}
 
         {isYearScoped && (
           <div className="flex items-center gap-2 pb-1.5">
@@ -82,6 +74,36 @@ export function ReferencesPage() {
       </div>
 
       <ReferenceTab kind={tab} year={isYearScoped ? year : undefined} />
+    </div>
+  );
+}
+
+/** 모달로 띄우는 참조 관리. 페이지의 "관리" 버튼에서 사용. */
+export function ReferenceManagerModal({ title, kinds, onClose }: { title: string; kinds: ReferenceKind[]; onClose: () => void }) {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
+      <div
+        className="flex max-h-[85vh] w-full max-w-xl flex-col rounded-2xl bg-[var(--color-background)] shadow-md"
+        onClick={event => event.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-[var(--color-border)] px-5 py-3.5">
+          <h2 className="text-base font-semibold">{title}</h2>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="닫기">
+            <X />
+          </Button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-5">
+          <ReferenceManager kinds={kinds} />
+        </div>
+      </div>
     </div>
   );
 }

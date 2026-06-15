@@ -56,7 +56,7 @@ export class GoogleCalendarController {
   /** Google redirect 콜백 — 가드 없음(state 서명으로 인증). 토큰 교환 → 전용 캘린더 생성 → 연결 저장. */
   @Get('callback')
   async callback(@Query('code') code: string, @Query('state') state: string, @Res() res: Response) {
-    const back = (status: string) => res.redirect(`${ConfigProvider.web.baseUrl}/app/settings/integrations?gcal=${status}`);
+    const back = (status: string) => res.redirect(`${ConfigProvider.web.baseUrl}/app/calendar?gcal=${status}`);
     let payload: StatePayload;
     try {
       payload = this.jwt.verify<StatePayload>(state);

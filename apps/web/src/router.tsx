@@ -10,8 +10,6 @@ import { GalleryPage } from '@/routes/app/gallery'
 import { MembersPage } from '@/routes/app/members'
 import { OrganizationChartPage } from '@/routes/app/organization-chart'
 import { SettingsPage } from '@/routes/app/settings'
-import { IntegrationsPage } from '@/routes/app/settings/integrations'
-import { ReferencesPage } from '@/routes/app/settings/references'
 import { TeamPage } from '@/routes/app/settings/team'
 import { ChurchSelectPage } from '@/routes/church-select'
 import { HomePage } from '@/routes/home'
@@ -38,9 +36,7 @@ export const router = createBrowserRouter([
           { path: 'calendar', element: <CalendarPage /> },
           { path: 'gallery', element: <GalleryPage /> },
           { path: 'settings', element: <SettingsPage /> },
-          { path: 'settings/references', element: <ReferencesPage /> },
           { path: 'settings/team', element: <TeamPage /> },
-          { path: 'settings/integrations', element: <IntegrationsPage /> },
         ],
       },
     ],

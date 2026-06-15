@@ -21,8 +21,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/page-header';
+import { GoogleCalendarPanel } from '@/components/google-calendar-panel';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/lib/permissions';
+import { useSearchParams } from 'react-router';
+import { Plug } from 'lucide-react';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -51,6 +54,8 @@ export function CalendarPage() {
   const [hidden, setHidden] = useState<Set<number>>(new Set());
   const [addFor, setAddFor] = useState<string | null>(null);
   const [showSub, setShowSub] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [showGoogle, setShowGoogle] = useState(searchParams.get('gcal') != null);
   const { can } = usePermissions();
   const canWrite = can('calendar:write');
 
@@ -88,6 +93,10 @@ export function CalendarPage() {
         description="공지·부서·개인 일정을 한 화면에서 확인합니다."
         actions={
           <>
+            <Button variant="outline" onClick={() => setShowGoogle(true)}>
+              <Plug />
+              Google 연동
+            </Button>
             <Button variant="outline" onClick={() => setShowSub(true)}>
               <Share2 />
               구독
@@ -198,6 +207,11 @@ export function CalendarPage() {
 
       {addFor && <EventModal date={addFor} calendars={calendars} onClose={() => setAddFor(null)} />}
       {showSub && <SubscriptionModal calendars={calendars} onClose={() => setShowSub(false)} />}
+      {showGoogle && (
+        <ModalShell title="Google Calendar 연동" onClose={() => setShowGoogle(false)}>
+          <GoogleCalendarPanel canWrite={canWrite} />
+        </ModalShell>
+      )}
     </div>
   );
 }

@@ -1,17 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
-import { Crown, Users } from 'lucide-react';
+import { Crown, Settings2, Users } from 'lucide-react';
 import { useState } from 'react';
 
 import { fetchOrganizationChart, ORGANIZATION_KIND, ORGANIZATION_KIND_LABEL, type OrganizationKind, type OrganizationPerson, type OrganizationUnit } from '@/api/organization-chart';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/page-header';
+import { ReferenceManagerModal } from '@/components/reference-manager';
 import { cn } from '@/lib/utils';
+import { usePermissions } from '@/lib/permissions';
 
 export function OrganizationChartPage() {
   const [kind, setKind] = useState<OrganizationKind>('department');
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
+  const [managing, setManaging] = useState(false);
+  const { can } = usePermissions();
   const yearOptions = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1];
 
   const { data, isLoading, isError } = useQuery({
@@ -27,7 +32,19 @@ export function OrganizationChartPage() {
         eyebrow="조직도"
         title="조직도"
         description="재적의 소속 정보에서 부서·사역팀·목장별 구성을 보여줍니다. 편집은 재적 상세에서 합니다."
+        actions={
+          can('settings:write') && (
+            <Button variant="outline" onClick={() => setManaging(true)}>
+              <Settings2 />
+              구성 관리
+            </Button>
+          )
+        }
       />
+
+      {managing && (
+        <ReferenceManagerModal title="부서·사역팀·목장 관리" kinds={['department', 'ministry', 'smallGroup']} onClose={() => setManaging(false)} />
+      )}
 
       <div className="flex items-center justify-between gap-4">
         <KindTabs kind={kind} onSelect={setKind} />
@@ -55,7 +72,7 @@ export function OrganizationChartPage() {
       ) : isError ? (
         <EmptyCard text="조직도를 불러오지 못했습니다." />
       ) : unit.length === 0 ? (
-        <EmptyCard text={`등록된 ${ORGANIZATION_KIND_LABEL[kind]}가 없습니다. 설정에서 먼저 등록하세요.`} />
+        <EmptyCard text={`등록된 ${ORGANIZATION_KIND_LABEL[kind]}가 없습니다. 우측 상단 '구성 관리'에서 등록하세요.`} />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {unit.map(organizationUnit => (

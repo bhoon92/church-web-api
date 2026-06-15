@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Settings2 } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router';
 
 import { fetchRoster, markAttendance, type RosterItem } from '@/api/attendance';
 import { listReferences, type Reference } from '@/api/references';
@@ -10,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/page-header';
+import { ReferenceManagerModal } from '@/components/reference-manager';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/lib/permissions';
 import { todayString, toDateString } from '@/lib/date';
@@ -30,6 +30,8 @@ export function AttendancePage() {
   const today = todayString();
   const [date, setDate] = useState(today);
   const [serviceId, setServiceId] = useState<number | null>(null);
+  const [managing, setManaging] = useState(false);
+  const { can } = usePermissions();
 
   const { data: services = [] } = useQuery({
     queryKey: ['references', 'worshipService'],
@@ -41,15 +43,31 @@ export function AttendancePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="출석" title="출석 체크" description="예배별 출석을 기록하고 출석률을 확인합니다." />
+      <PageHeader
+        eyebrow="출석"
+        title="출석 체크"
+        description="예배별 출석을 기록하고 출석률을 확인합니다."
+        actions={
+          can('settings:write') && (
+            <Button variant="outline" onClick={() => setManaging(true)}>
+              <Settings2 />
+              예배 관리
+            </Button>
+          )
+        }
+      />
+
+      {managing && <ReferenceManagerModal title="예배 관리" kinds={['worshipService']} onClose={() => setManaging(false)} />}
 
       {services.length === 0 ? (
         <Card>
           <CardContent className="space-y-3 py-12 text-center">
             <p className="text-sm text-[var(--color-muted-foreground)]">등록된 예배가 없습니다. 먼저 예배를 등록하세요.</p>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/app/settings/references">설정에서 예배 등록</Link>
-            </Button>
+            {can('settings:write') && (
+              <Button variant="outline" size="sm" onClick={() => setManaging(true)}>
+                예배 등록
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (

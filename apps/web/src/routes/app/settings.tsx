@@ -1,12 +1,4 @@
-import {
-  Building2,
-  CalendarRange,
-  ChevronRight,
-  FolderTree,
-  ListChecks,
-  Plug,
-  Users2,
-} from 'lucide-react'
+import { Building2, ChevronRight, Users2 } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { Link } from 'react-router'
 
@@ -34,32 +26,6 @@ const SECTIONS: SettingSection[] = [
     description: '이메일로 팀원을 초대하고 역할(소유자/관리자/실무자/조회)을 부여합니다.',
     hint: 'OWNER·ADMIN 전용',
     to: '/app/settings/team',
-  },
-  {
-    icon: FolderTree,
-    title: '부서·사역팀·목장',
-    description: '연령 부서, 사역 단위, 생활 소그룹을 관리합니다.',
-    hint: '교회별 사용자 정의',
-    to: '/app/settings/references',
-  },
-  {
-    icon: Plug,
-    title: '외부 연동',
-    description: '달력 일정을 Google Calendar로 내보냅니다(단방향 push).',
-    hint: 'Google Calendar',
-    to: '/app/settings/integrations',
-  },
-  {
-    icon: CalendarRange,
-    title: '회계연도 (FiscalYear)',
-    description: '교회 회계 기간을 설정합니다. 예산·결산은 이 기간에 묶입니다.',
-    hint: '2026년 1월 ~ 12월',
-  },
-  {
-    icon: ListChecks,
-    title: '카테고리',
-    description: '헌금 종류, 계정과목, 예배 종류, 직분 등 reference 데이터.',
-    hint: '교회별 사용자 정의',
   },
 ]
 
@@ -112,6 +78,14 @@ export function SettingsPage() {
           )
         })}
       </div>
+
+      <Card>
+        <CardContent className="space-y-1.5 p-5 text-sm text-[var(--color-muted-foreground)]">
+          <p className="font-medium text-[var(--color-foreground)]">나머지 설정은 각 메뉴에서 바로 관리해요</p>
+          <p>· 부서·사역팀·목장 → 조직도 · 재적상태·직분 → 성도 · 예배 → 출석</p>
+          <p>· 헌금 분류·계정과목·회계연도 → 재정 · 달력 연동(Google) → 달력</p>
+        </CardContent>
+      </Card>
     </div>
   )
 }

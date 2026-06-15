@@ -1,78 +1,54 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, CalendarDays, Check, RefreshCw, Unplug } from 'lucide-react'
-import { useState } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CalendarDays, Check, RefreshCw, Unplug } from 'lucide-react';
+import { useState } from 'react';
+import { useSearchParams } from 'react-router';
 
 import {
   disconnectGoogleCalendar,
   fetchGoogleCalendarConnectUrl,
   fetchGoogleCalendarStatus,
   syncGoogleCalendar,
-} from '@/api/google-calendar'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { PageHeader } from '@/components/page-header'
-import { usePermissions } from '@/lib/permissions'
+} from '@/api/google-calendar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
-export function IntegrationsPage() {
-  const { can } = usePermissions()
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]">
-        <Link to="/app/settings" className="inline-flex items-center gap-1 hover:text-[var(--color-foreground)]">
-          <ArrowLeft className="size-3.5" />
-          설정으로
-        </Link>
-      </div>
-
-      <PageHeader
-        eyebrow="설정"
-        title="외부 연동"
-        description="달력 일정을 외부 서비스로 내보냅니다."
-      />
-
-      <GoogleCalendarCard canWrite={can('calendar:write')} />
-    </div>
-  )
-}
-
-function GoogleCalendarCard({ canWrite }: { canWrite: boolean }) {
-  const queryClient = useQueryClient()
-  const [params, setParams] = useSearchParams()
-  const callbackResult = params.get('gcal')
+/** Google Calendar 단방향 연동 패널 (달력 페이지의 "Google 연동"에서 사용). */
+export function GoogleCalendarPanel({ canWrite }: { canWrite: boolean }) {
+  const queryClient = useQueryClient();
+  const [params, setParams] = useSearchParams();
+  const callbackResult = params.get('gcal');
 
   const { data: status, isLoading } = useQuery({
     queryKey: ['google-calendar-status'],
     queryFn: fetchGoogleCalendarStatus,
-  })
+  });
 
-  const [pushed, setPushed] = useState<number | null>(null)
+  const [pushed, setPushed] = useState<number | null>(null);
 
   const connect = useMutation({
     mutationFn: fetchGoogleCalendarConnectUrl,
-    onSuccess: (url) => {
-      window.location.href = url
+    onSuccess: url => {
+      window.location.href = url;
     },
-  })
+  });
 
   const disconnect = useMutation({
     mutationFn: disconnectGoogleCalendar,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['google-calendar-status'] }),
-  })
+  });
 
   const sync = useMutation({
     mutationFn: syncGoogleCalendar,
-    onSuccess: (result) => setPushed(result.pushed),
-  })
+    onSuccess: result => setPushed(result.pushed),
+  });
 
-  const connected = status?.connected === true
+  const connected = status?.connected === true;
 
   const dismissBanner = () => {
-    params.delete('gcal')
-    setParams(params, { replace: true })
-  }
+    params.delete('gcal');
+    setParams(params, { replace: true });
+  };
 
   return (
     <Card>
@@ -127,11 +103,7 @@ function GoogleCalendarCard({ canWrite }: { canWrite: boolean }) {
               </div>
             </dl>
 
-            {pushed !== null && (
-              <p className="text-sm text-[var(--color-muted-foreground)]">
-                기존 일정 {pushed}건을 전송했습니다.
-              </p>
-            )}
+            {pushed !== null && <p className="text-sm text-[var(--color-muted-foreground)]">기존 일정 {pushed}건을 전송했습니다.</p>}
 
             {canWrite && (
               <div className="flex flex-wrap gap-2">
@@ -154,27 +126,14 @@ function GoogleCalendarCard({ canWrite }: { canWrite: boolean }) {
           )
         )}
 
-        {!canWrite && (
-          <p className="text-sm text-[var(--color-muted-foreground)]">
-            연동 설정은 달력 쓰기 권한이 있는 사용자만 가능합니다.
-          </p>
-        )}
+        {!canWrite && <p className="text-sm text-[var(--color-muted-foreground)]">연동 설정은 달력 쓰기 권한이 있는 사용자만 가능합니다.</p>}
       </CardContent>
     </Card>
-  )
+  );
 }
 
-function Banner({
-  tone,
-  children,
-  onClose,
-}: {
-  tone: 'success' | 'danger'
-  children: React.ReactNode
-  onClose: () => void
-}) {
-  const cls =
-    tone === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+function Banner({ tone, children, onClose }: { tone: 'success' | 'danger'; children: React.ReactNode; onClose: () => void }) {
+  const cls = tone === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700';
   return (
     <div className={`flex items-center justify-between gap-3 rounded-xl px-4 py-3 text-sm ${cls}`}>
       <span>{children}</span>
@@ -182,5 +141,5 @@ function Banner({
         닫기
       </button>
     </div>
-  )
+  );
 }
