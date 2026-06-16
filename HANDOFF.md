@@ -1,6 +1,6 @@
 # 세션 핸드오프
 
-> 최종 갱신: 2026-06-15
+> 최종 갱신: 2026-06-16
 > 브랜치: `develop` (CI/CD 없이 develop 직접 커밋, 사용자가 수동 커밋)
 > 다음 세션이 가장 먼저 읽어야 할 문서.
 
@@ -8,16 +8,35 @@
 
 ## 0. 현재 상태 한 줄
 
-긴 세션이었음. **대시보드 실데이터 연동 → 헌금/분류/계정과목 수정·삭제 → 달력 반복일정(애플식) → iCal URL 단축 → 성도 검색(소속필터·디바운스·이전교회제외) + 모달 Esc → 성도 '단계'를 교회별 '재적상태' reference로 전환 → 소속 다중배정 크래시 픽스 → access/refresh 토큰 분리(무상태)**. 상세는 §1. **전부 커밋 완료, 워킹 트리 깨끗.**
+달력 이벤트 편집 모달 + 조직도 게시판 스타일 + 갤러리 드래그 앤 드롭 추가. **전부 커밋 완료, 워킹 트리 깨끗.**
 
-> ✅ 미커밋 없음. 커밋 목록은 `git log --oneline` (이번 세션 ~25+ 커밋, 최신: `56cb0cc`).
-> ✅ 재적 상세 모달 **이름·전화번호·재적상태 인라인 수정** 완료(§1.12). 진행 중 작업 없음.
-> ⚠️ dev:api는 빌드 때문에 여러 번 재기동함. 현재 백그라운드 기동 중(포트 3030). 다음 세션은 본인 터미널로 다시 띄우는 게 깔끔.
+> ✅ 미커밋 없음. 최신 커밋: `git log --oneline` 확인. 진행 중 작업 없음.
+> 🔴 **dev 서버 안 떠 있음**: 다음 세션은 **본인 터미널에서 `pnpm dev:api`/`pnpm dev:web` 한 번만** 띄울 것. [[feedback_devapi_background_restart]]
 > ⚠️ §3.2에 **백엔드는 있으나 프론트 미연결인 엔드포인트 목록**(의도된 미래 기능).
 
 ---
 
 ## 1. 완료된 작업 (이번 세션)
+
+### 1.14 달력 이벤트 편집 모달 ✅
+- `PATCH /calendar/events/:id` 엔드포인트 있었으나 프론트 미연결이었음.
+- `api/calendar.ts`: `updateEvent(id, body)` 추가.
+- `EventPill` 클릭: 삭제 confirm 직접 → `onEdit(event)` 호출로 변경 (hover opacity 피드백 추가).
+- `EventEditModal` 신규: 기존 데이터 pre-populated (제목·달력·종일·날짜·시간·장소·반복). 반복 일정이면 노란 경고 배너("저장 시 모든 반복 일정 수정"). 저장(PATCH) / 삭제(DELETE+confirm) / 취소.
+- `['home','dashboard']` invalidate 포함(대시보드 오늘 일정 반영).
+
+### 1.15 조직도 게시판 스타일 + 역할 표시 ✅
+- 카드 그리드 2열 → 단일 Card 안 아코디언 리스트로 교체.
+- 접힌 행: 조직명 + "목장장 박병훈 · 팀장 김철수" 형식 (roleLabel 있으면 역할명 우선, 없으면 이름만).
+- 펼친 행: 리더/구성원 섹션 분리, roleLabel을 뮤트 텍스트 → accent/neutral 배지로 강조.
+- 여러 행 동시 펼치기 가능(각 행 자체 open state).
+
+### 1.16 갤러리 드래그 앤 드롭 업로드 ✅
+- `EventDetail` 사진 영역에 drag-and-drop 추가.
+- 파일 진입 시: 파란 점선 테두리 + 업로드 아이콘 + "여기에 놓으세요" 오버레이.
+- 드롭 시 기존 `onFiles` 그대로 호출 → presign→S3→confirm 순차 업로드 (다중 파일).
+- `relatedTarget` 기반 dragLeave 처리로 자식 요소 이동 시 깜빡임 없음.
+- `canWrite` 없으면 드래그·드롭 모두 무동작.
 
 ### 1.1 대시보드 하드코딩 데모 데이터 제거 ✅
 - `dashboard.tsx`가 전부 가짜 데이터(출석 248·헌금 12.4M·일정·최근활동·고정날짜)였음. 웹 실데이터 테스트 위해 정리.
@@ -60,6 +79,14 @@
 - 프론트 `lib/auth-refresh.ts`: **전역 fetch 인터셉터** — /api 401 시 /auth/refresh 후 원 요청 1회 재시도(single-flight, 재시도는 원 fetch라 무한루프 방지). `main.tsx`에서 `installAuthRefresh()`.
 - 검증: 두 쿠키 발급/refresh 204/재발급 후 me 200/무쿠키 401/**access를 refresh로 위조 시 401**(secret 분리 확인).
 - ⚠️ prod: `JWT_CMS_ACCESS/REFRESH_SECRET_KEY` 둘 다 prod 값 세팅 필수(이미 JWT 키 prod화 TODO에 포함). 무상태라 개별 세션 강제 폐기는 불가(필요 시 DB 저장 refresh로 확장).
+
+### 1.13 설정 → 각 기능 페이지로 분산 (허들 낮추기) ✅
+- 사용자 요청: 설정 한 곳에 모으지 말고 **쓰는 곳에서 바로 관리**(40-50대 사용성). 방식 = 각 페이지 "관리" 버튼 → 모달.
+- **`components/reference-manager.tsx` 신규**: 기존 references 페이지의 CRUD(ReferenceTab+탭+연도+드래그정렬)를 `ReferenceManager({ kinds })` / `ReferenceManagerModal({ title, kinds, onClose })`로 추출.
+- 배치: **조직도** '구성 관리'(부서·사역팀·목장) / **성도** '재적상태·직분' / **출석** '예배 관리' / **달력** 'Google 연동'(GoogleCalendarPanel 모달). 헌금분류·계정과목·회계연도는 이미 재정에 인라인.
+- **`components/google-calendar-panel.tsx` 신규**: integrations 페이지의 GoogleCalendarCard 추출. OAuth 콜백 리다이렉트 `/app/settings/integrations` → **`/app/calendar?gcal=`** 로 변경(google-calendar.controller), 달력에서 `?gcal` 있으면 모달 자동 열림.
+- **삭제**: `settings/references.tsx`·`settings/integrations.tsx` 페이지 + 라우트. 설정 페이지는 교회정보·팀원/권한만 + "나머지는 각 메뉴에서" 안내 카드. 죽은 카드(회계연도·카테고리) 제거. 잔존 링크 0 확인.
+- 검증: web tsc·eslint 통과, API 빌드 통과. (단 라이브 검증은 dev:api FD 이슈로 못 함 — §5.2 gotcha.)
 
 ### 1.12 재적 상세 모달 인라인 수정 (이름·전화·재적상태) ✅
 - 백엔드 `PATCH /members/:id`(UpdateMemberDto=전 필드 optional)는 있었고 프론트만 연결.
@@ -187,7 +214,8 @@ a6ae1ac [FEAT] 달력 반복 일정 (매일/매주/2주마다/매월/매년)
 ### 5.2 ⚠️ 중요 gotchas (여전히 유효)
 - **Vite 프록시가 `/api`를 떼고 보냄**(`rewrite: /^\/api/ → ''`). API는 글로벌 프리픽스 없음 → **curl 테스트 시 `/api` 붙이면 404**. 예: 헌금은 `/finance/offerings`(프론트는 `/api/finance/offerings`).
 - **dev-login**: `POST http://localhost:3030/auth/dev-login -d '{"email":"bhoon92@gmail.com"}'` → 쿠키 jar. localdev 전용, 바로 church 1.
-- **`nest build`(build:api)가 `dev:api`(watch)를 죽인다**: 타입체크/마이그레이션 후 dev:api 재기동 필요. 좀비 점유 시 `lsof -ti:3030 | xargs kill -9`.
+- **`nest build`(build:api)가 `dev:api`(watch)를 죽인다**: 타입체크/마이그레이션 후 dev:api 재기동 필요.
+- **🔴 dev:api 백그라운드 반복 기동 금지**: `lsof -ti:3030 | xargs kill -9`는 **포트(nest 자식)만** 죽이고 `pnpm dev:api` 부모 + 파일워처는 남음. 반복하면 누적 → 시스템 전역 **"too many open files in system"**(EMFILE)으로 curl·ps까지 실패. **검증은 `pnpm build:api`로 충분**, 라이브 필요 시 하나만. 끝낼 땐 `pkill -f "dev:api"`/`pkill -f "nest start"`로 부모까지. [[feedback_devapi_background_restart]]
 - **migration:generate는 `dist/**/*.entity.js`를 읽음** → 반드시 `build:api` 먼저. `ADD COLUMN NOT NULL`을 그대로 뱉으므로 기존 데이터 있으면 nullable→UPDATE 백필→NOT NULL 수동 3단계.
 - **`ValidationPipe({whitelist:true})`**: 알 수 없는 필드 무시 + 필수 누락 시 400. partial 업데이트는 PartialType DTO.
 - **`@Query('year', ParseIntPipe)`는 필수**(누락 400). optional은 수동 파싱(org-chart 방식).
@@ -226,11 +254,13 @@ curl -s -b /tmp/cj.txt "http://localhost:3030/finance/offerings?date=2026-06-14"
 - **enum→reference 전환은 시스템 의존을 전수 grep**: lifecycleStage가 출석 제외·영수증 익명·대시보드·export까지 박혀 있었음. "사용자 편집 가능"으로 바꿀 땐 systemKey/플래그로 시스템 동작을 보존(삭제 가드 포함).
 - **모달 안 인라인 편집의 Escape는 stopPropagation**: 모달이 `window` keydown으로 Escape 닫기를 걸어두면, 안쪽 input의 Escape(취소)가 모달까지 닫아버림. input onKeyDown에서 `event.stopPropagation()` 필요(React root에서 native 전파 차단 → window 리스너 미도달).
 - **필드 클리어는 null**: TypeORM `repo.update`는 `undefined` 필드를 무시 → 값 비우기 불가. 비우려면 `null` 전송(@IsOptional이 null 통과). 빈 문자열은 @Length(1,..)에 걸려 400.
+- **dev:api 백그라운드 누적 = 시스템 FD 고갈**: `& > log`로 반복 기동 + 포트만 kill하면 pnpm 부모/파일워처가 쌓여 "too many open files"로 전 시스템 마비. build로 검증하고, 띄웠으면 pkill로 부모까지 정리. [[feedback_devapi_background_restart]]
+- **공용 CRUD는 컴포넌트로 추출해 모달 재사용**: references 페이지를 통째로 옮기지 않고 ReferenceTab을 `ReferenceManager`로 추출 → 각 도메인 페이지 모달에서 재사용(설정 분산). IA 바꿀 때 페이지 이동 대신 추출+임베드가 깔끔.
 
 ---
 
 ## 7. 이전 세션 누적 (참고)
 
-기반(멀티테넌트·OAuth·디자인) → 재적/소속/직분 → 심방 → 출석 → 재정(헌금·운영·예산·대시보드) → 영수증 PDF → Excel → 갤러리+S3 → 달력+iCal → RBAC/팀원 → 조직도+Google Calendar push → Google 로그인 검증 + 배포(Railway) 결정 → references CRUD 개선 + 드래그 정렬 + partial PATCH 픽스 + 연도별 편성 + 예산·소속·조직도 연도 인지화 → **(이번 긴 세션) 대시보드 실데이터(GET /dashboard) + 헌금/분류/계정과목 수정·삭제 + UTC 날짜 픽스 + 달력 반복일정 + iCal URL 단축 + 성도 검색(소속필터·디바운스) + 재적상태(단계 enum→교회별 reference) + 소속 다중배정 크래시 픽스 + access/refresh 토큰 분리 + 재적 모달 이름·전화·재적상태 인라인 수정**.
+기반(멀티테넌트·OAuth·디자인) → 재적/소속/직분 → 심방 → 출석 → 재정(헌금·운영·예산·대시보드) → 영수증 PDF → Excel → 갤러리+S3 → 달력+iCal → RBAC/팀원 → 조직도+Google Calendar push → Google 로그인 검증 + 배포(Railway) 결정 → references CRUD 개선 + 드래그 정렬 + partial PATCH 픽스 + 연도별 편성 + 예산·소속·조직도 연도 인지화 → **(이번 긴 세션) 대시보드 실데이터(GET /dashboard) + 헌금/분류/계정과목 수정·삭제 + UTC 날짜 픽스 + 달력 반복일정 + iCal URL 단축 + 성도 검색(소속필터·디바운스) + 재적상태(단계 enum→교회별 reference) + 소속 다중배정 크래시 픽스 + access/refresh 토큰 분리 + 재적 모달 인라인 수정 + 설정을 각 기능 페이지로 분산(조직도·성도·출석·달력에 관리 모달)**.
 
 planning.md = 살아있는 기획서(결정 출처). 도메인 모델/필드 상세는 planning.md + git log.
