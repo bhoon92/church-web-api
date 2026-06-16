@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { Crown, Settings2, Users } from 'lucide-react';
+import { ChevronDown, Crown, Settings2, Users } from 'lucide-react';
 import { useState } from 'react';
 
 import { fetchOrganizationChart, ORGANIZATION_KIND, ORGANIZATION_KIND_LABEL, type OrganizationKind, type OrganizationPerson, type OrganizationUnit } from '@/api/organization-chart';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/page-header';
 import { ReferenceManagerModal } from '@/components/reference-manager';
 import { cn } from '@/lib/utils';
@@ -24,7 +24,7 @@ export function OrganizationChartPage() {
     queryFn: () => fetchOrganizationChart(year),
   });
 
-  const unit = data?.[kind] ?? [];
+  const units = data?.[kind] ?? [];
 
   return (
     <div className="space-y-6">
@@ -68,17 +68,17 @@ export function OrganizationChartPage() {
       </div>
 
       {isLoading ? (
-        <EmptyCard text="불러오는 중…" />
+        <EmptyState text="불러오는 중…" />
       ) : isError ? (
-        <EmptyCard text="조직도를 불러오지 못했습니다." />
-      ) : unit.length === 0 ? (
-        <EmptyCard text={`등록된 ${ORGANIZATION_KIND_LABEL[kind]}가 없습니다. 우측 상단 '구성 관리'에서 등록하세요.`} />
+        <EmptyState text="조직도를 불러오지 못했습니다." />
+      ) : units.length === 0 ? (
+        <EmptyState text={`등록된 ${ORGANIZATION_KIND_LABEL[kind]}가 없습니다. 우측 상단 '구성 관리'에서 등록하세요.`} />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {unit.map(organizationUnit => (
-            <UnitCard key={organizationUnit.referenceId} unit={organizationUnit} />
+        <Card className="divide-y divide-[var(--color-border)] overflow-hidden">
+          {units.map(unit => (
+            <UnitRow key={unit.referenceId} unit={unit} />
           ))}
-        </div>
+        </Card>
       )}
     </div>
   );
@@ -105,61 +105,94 @@ function KindTabs({ kind, onSelect }: { kind: OrganizationKind; onSelect: (kind:
   );
 }
 
-function UnitCard({ unit }: { unit: OrganizationUnit }) {
-  return (
-    <Card>
-      <CardContent className="space-y-4 py-5">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="font-semibold tracking-tight">{unit.referenceName}</h3>
-          <Badge tone="muted">
-            <Users className="size-3" />
-            {unit.total}
-          </Badge>
-        </div>
+function UnitRow({ unit }: { unit: OrganizationUnit }) {
+  const [open, setOpen] = useState(false);
 
-        {unit.total === 0 ? (
-          <p className="text-sm text-[var(--color-muted-foreground)]">구성원 없음</p>
-        ) : (
-          <div className="space-y-3">
-            {unit.leader.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {unit.leader.map(person => (
-                  <LeaderChip key={person.memberId} person={person} />
-                ))}
-              </div>
-            )}
-            {unit.member.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {unit.member.map(person => (
-                  <Badge key={person.memberId} tone="neutral">
-                    {person.name}
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
+  const leaderSummary = unit.leader
+    .slice(0, 2)
+    .map(person => (person.roleLabel ? `${person.roleLabel} ${person.name}` : person.name))
+    .join(' · ')
+    .concat(unit.leader.length > 2 ? ` 외 ${unit.leader.length - 2}명` : '');
+
+  return (
+    <div>
+      <button
+        className={cn(
+          'flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[var(--color-muted)]/50',
+          open && 'bg-[var(--color-muted)]/40'
         )}
-      </CardContent>
-    </Card>
+        onClick={() => setOpen(prev => !prev)}
+      >
+        <div className="min-w-0 flex-1">
+          <span className="font-semibold">{unit.referenceName}</span>
+          {leaderSummary && (
+            <span className="ml-3 text-sm text-[var(--color-muted-foreground)]">
+              {leaderSummary}
+            </span>
+          )}
+        </div>
+        <Badge tone="muted" className="shrink-0">
+          <Users className="size-3" />
+          {unit.total}명
+        </Badge>
+        <ChevronDown
+          className={cn('size-4 shrink-0 text-[var(--color-muted-foreground)] transition-transform duration-200', open && 'rotate-180')}
+        />
+      </button>
+
+      {open && (
+        <div className="border-t border-[var(--color-border)] bg-[var(--color-muted)]/20 px-5 py-4">
+          {unit.total === 0 ? (
+            <p className="text-sm text-[var(--color-muted-foreground)]">구성원이 없습니다.</p>
+          ) : (
+            <div className="space-y-5">
+              {unit.leader.length > 0 && (
+                <section className="space-y-1">
+                  <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
+                    <Crown className="size-3.5" />
+                    리더
+                  </div>
+                  <MemberList persons={unit.leader} isLeader />
+                </section>
+              )}
+              {unit.member.length > 0 && (
+                <section className="space-y-1">
+                  <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
+                    <Users className="size-3.5" />
+                    구성원
+                  </div>
+                  <MemberList persons={unit.member} isLeader={false} />
+                </section>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
-function LeaderChip({ person }: { person: OrganizationPerson }) {
+function MemberList({ persons, isLeader }: { persons: OrganizationPerson[]; isLeader: boolean }) {
   return (
-    <Badge tone="accent">
-      <Crown className="size-3" />
-      {person.name}
-      {person.roleLabel && <span className="opacity-70">· {person.roleLabel}</span>}
-    </Badge>
+    <div className="divide-y divide-[var(--color-border)] rounded-lg border border-[var(--color-border)] bg-[var(--color-background)]">
+      {persons.map(person => (
+        <div key={person.memberId} className="flex items-center justify-between px-4 py-2.5">
+          <span className={cn('text-sm', isLeader && 'font-medium')}>{person.name}</span>
+          {person.roleLabel && (
+            <Badge tone={isLeader ? 'accent' : 'neutral'}>{person.roleLabel}</Badge>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
 
-function EmptyCard({ text }: { text: string }) {
+function EmptyState({ text }: { text: string }) {
   return (
     <Card>
-      <CardContent className="py-12 text-center">
+      <div className="py-12 text-center">
         <p className="text-sm text-[var(--color-muted-foreground)]">{text}</p>
-      </CardContent>
+      </div>
     </Card>
   );
 }
