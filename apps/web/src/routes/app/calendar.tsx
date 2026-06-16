@@ -12,6 +12,7 @@ import {
   listEvents,
   RECURRENCE_LABEL,
   regenerateSubscription,
+  updateEvent,
   updateSubscription,
   type Calendar,
   type CalendarEvent,
@@ -53,6 +54,7 @@ export function CalendarPage() {
   const [month, setMonth] = useState(today.getMonth());
   const [hidden, setHidden] = useState<Set<number>>(new Set());
   const [addFor, setAddFor] = useState<string | null>(null);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [showSub, setShowSub] = useState(false);
   const [searchParams] = useSearchParams();
   const [showGoogle, setShowGoogle] = useState(searchParams.get('gcal') != null);
@@ -191,7 +193,13 @@ export function CalendarPage() {
                     </div>
                     <div className="space-y-1">
                       {dayEvents.slice(0, 3).map(event => (
-                        <EventPill key={event.id} event={event} color={calById.get(event.calendarId)?.color} canWrite={canWrite} />
+                        <EventPill
+                          key={`${event.id}-${event.startAt}`}
+                          event={event}
+                          color={calById.get(event.calendarId)?.color}
+                          canWrite={canWrite}
+                          onEdit={setEditingEvent}
+                        />
                       ))}
                       {dayEvents.length > 3 && (
                         <div className="px-1.5 text-[10px] text-[var(--color-muted-foreground)]">+{dayEvents.length - 3}</div>
@@ -206,6 +214,9 @@ export function CalendarPage() {
       </div>
 
       {addFor && <EventModal date={addFor} calendars={calendars} onClose={() => setAddFor(null)} />}
+      {editingEvent && (
+        <EventEditModal event={editingEvent} calendars={calendars} onClose={() => setEditingEvent(null)} />
+      )}
       {showSub && <SubscriptionModal calendars={calendars} onClose={() => setShowSub(false)} />}
       {showGoogle && (
         <ModalShell title="Google Calendar 연동" onClose={() => setShowGoogle(false)}>
@@ -216,12 +227,17 @@ export function CalendarPage() {
   );
 }
 
-function EventPill({ event, color, canWrite }: { event: CalendarEvent; color?: string; canWrite: boolean }) {
-  const queryClient = useQueryClient();
-  const deleteMut = useMutation({
-    mutationFn: () => deleteEvent(event.id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['calendar-events'] }),
-  });
+function EventPill({
+  event,
+  color,
+  canWrite,
+  onEdit,
+}: {
+  event: CalendarEvent;
+  color?: string;
+  canWrite: boolean;
+  onEdit: (event: CalendarEvent) => void;
+}) {
   const time = event.allDay
     ? null
     : new Date(event.startAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -230,12 +246,9 @@ function EventPill({ event, color, canWrite }: { event: CalendarEvent; color?: s
     <div
       onClick={clickEvent => {
         clickEvent.stopPropagation();
-        const message = event.recurrence
-          ? `"${event.title}"은(는) 반복 일정입니다. 전체 반복을 삭제할까요?`
-          : `"${event.title}" 일정을 삭제할까요?`;
-        if (canWrite && window.confirm(message)) deleteMut.mutate();
+        if (canWrite) onEdit(event);
       }}
-      className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px]"
+      className="flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] transition-opacity hover:opacity-75"
       style={{
         backgroundColor: color ? `color-mix(in oklch, ${color} 14%, transparent)` : 'var(--color-muted)',
         color: color ?? 'inherit',
@@ -441,6 +454,152 @@ function EventModal({ date, calendars, onClose }: { date: string; calendars: Cal
           <Button onClick={() => createMut.mutate()} disabled={!title.trim() || !calendarId || createMut.isPending}>
             추가
           </Button>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
+
+function EventEditModal({ event, calendars, onClose }: { event: CalendarEvent; calendars: Calendar[]; onClose: () => void }) {
+  const queryClient = useQueryClient();
+
+  const startDate = new Date(event.startAt);
+  const endDate = event.endAt ? new Date(event.endAt) : null;
+
+  const [title, setTitle] = useState(event.title);
+  const [calendarId, setCalendarId] = useState(event.calendarId);
+  const [allDay, setAllDay] = useState(event.allDay);
+  const [date, setDate] = useState(formatDate(startDate));
+  const [startTime, setStartTime] = useState(
+    event.allDay ? '11:00' : `${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`
+  );
+  const [endTime, setEndTime] = useState(
+    endDate ? `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}` : '12:00'
+  );
+  const [location, setLocation] = useState(event.location ?? '');
+  const [recurrence, setRecurrence] = useState<Recurrence | null>(event.recurrence as Recurrence | null);
+
+  const updateMut = useMutation({
+    mutationFn: () => {
+      const startAt = allDay ? new Date(`${date}T00:00:00`) : new Date(`${date}T${startTime}`);
+      const endAt = allDay ? null : new Date(`${date}T${endTime}`);
+      return updateEvent(event.id, {
+        calendarId,
+        title: title.trim(),
+        location: location.trim() || null,
+        allDay,
+        startAt: startAt.toISOString(),
+        endAt: endAt?.toISOString() ?? null,
+        recurrence: recurrence ?? null,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+      queryClient.invalidateQueries({ queryKey: ['home', 'dashboard'] });
+      onClose();
+    },
+    onError: (error: Error) => alert(`수정 실패: ${error.message}`),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: () => deleteEvent(event.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+      queryClient.invalidateQueries({ queryKey: ['home', 'dashboard'] });
+      onClose();
+    },
+    onError: (error: Error) => alert(`삭제 실패: ${error.message}`),
+  });
+
+  return (
+    <ModalShell title="일정 수정" onClose={onClose}>
+      <div className="space-y-3">
+        {event.recurrence && (
+          <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+            반복 일정입니다. 저장하면 모든 반복 일정이 수정됩니다.
+          </div>
+        )}
+
+        <Input placeholder="일정 제목" value={title} onChange={e => setTitle(e.target.value)} autoFocus />
+
+        <div className="flex flex-wrap gap-1.5">
+          {calendars.map(calendar => (
+            <button
+              key={calendar.id}
+              onClick={() => setCalendarId(calendar.id)}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                calendarId === calendar.id
+                  ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
+                  : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]'
+              )}
+            >
+              <span className="size-2 rounded-full" style={{ backgroundColor: calendar.color }} />
+              {calendar.name}
+            </button>
+          ))}
+        </div>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={allDay} onChange={e => setAllDay(e.target.checked)} />
+          종일
+        </label>
+
+        <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
+
+        {!allDay && (
+          <div className="flex items-center gap-2">
+            <Input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-32" />
+            <span className="text-[var(--color-muted-foreground)]">~</span>
+            <Input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-32" />
+          </div>
+        )}
+
+        <Input placeholder="장소 (선택)" value={location} onChange={e => setLocation(e.target.value)} />
+
+        <div>
+          <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-[var(--color-muted-foreground)]">
+            <Repeat className="size-3.5" />
+            반복
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {([null, 'daily', 'weekly', 'biweekly', 'monthly', 'yearly'] as const).map(option => (
+              <button
+                key={option ?? 'none'}
+                onClick={() => setRecurrence(option)}
+                className={cn(
+                  'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                  recurrence === option
+                    ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
+                    : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]'
+                )}
+              >
+                {option ? RECURRENCE_LABEL[option] : '안 함'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between pt-1">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => {
+              const message = event.recurrence ? '전체 반복 일정을 삭제할까요?' : '이 일정을 삭제할까요?';
+              if (window.confirm(message)) deleteMut.mutate();
+            }}
+            disabled={deleteMut.isPending || updateMut.isPending}
+          >
+            삭제
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={onClose}>
+              취소
+            </Button>
+            <Button onClick={() => updateMut.mutate()} disabled={!title.trim() || updateMut.isPending || deleteMut.isPending}>
+              저장
+            </Button>
+          </div>
         </div>
       </div>
     </ModalShell>

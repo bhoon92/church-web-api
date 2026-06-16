@@ -73,6 +73,19 @@ export const createEvent = (body: {
   endAt?: string;
   recurrence?: Recurrence;
 }) => send<CalendarEvent>('POST', '/api/calendar/events', body);
+export const updateEvent = (
+  id: number,
+  body: {
+    calendarId?: number;
+    title?: string;
+    location?: string | null;
+    description?: string | null;
+    allDay?: boolean;
+    startAt?: string;
+    endAt?: string | null;
+    recurrence?: Recurrence | null;
+  }
+) => send<CalendarEvent>('PATCH', `/api/calendar/events/${id}`, body);
 export const deleteEvent = (id: number) => send<void>('DELETE', `/api/calendar/events/${id}`);
 
 // ── 구독 (iCal) ──────────────────────────
