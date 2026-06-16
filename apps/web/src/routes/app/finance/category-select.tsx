@@ -41,7 +41,7 @@ export function CategorySelect({
       cancelRef.current = false
       return
     }
-    if (trimmed) onCreate(trimmed)
+    if (trimmed) onCreate?.(trimmed)
   }
 
   const commitRename = () => {

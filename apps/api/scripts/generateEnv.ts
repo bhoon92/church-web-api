@@ -12,6 +12,12 @@ const KEYS = [
   'JWT_CMS_REFRESH_SECRET_KEY',
   'GOOGLE_CLIENT_ID',
   'GOOGLE_CLIENT_SECRET',
+  'GOOGLE_REDIRECT_URI',
+  'WEB_BASE_URL',
+  'AWS_REGION',
+  'AWS_S3_BUCKET',
+  'AWS_ACCESS_KEY_ID',
+  'AWS_SECRET_ACCESS_KEY',
 ];
 
 const lines = KEYS.filter(k => process.env[k] !== undefined).map(k => `${k}=${process.env[k]}`);

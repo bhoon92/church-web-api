@@ -19,6 +19,12 @@ async function bootstrap() {
   setValidationPipe(app);
   setTransformInterceptor(app);
   await setupSwagger(app);
+
+  // production: Vite 프록시 없이 NestJS가 직접 /api/* 처리
+  if (process.env.NODE_ENV === 'production') {
+    app.setGlobalPrefix('api');
+  }
+
   const port = process.env.PORT || 3030;
   await app.listen(port);
 

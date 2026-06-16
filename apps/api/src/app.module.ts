@@ -1,4 +1,6 @@
+import { join } from 'path';
 import { Module } from '@nestjs/common';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AffiliationModule } from './module/affiliation/affiliation.module';
@@ -18,8 +20,19 @@ import { MemberPositionModule } from './module/position/member-position.module';
 import { ReferenceModule } from './module/reference/reference.module';
 import { TeamModule } from './module/team/team.module';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 @Module({
   imports: [
+    // production: apps/web/dist 정적 파일 서빙 (SPA 폴백 포함). /api* 는 제외.
+    ...(isProduction
+      ? [
+          ServeStaticModule.forRoot({
+            rootPath: join(__dirname, '..', '..', '..', '..', 'apps', 'web', 'dist'),
+            exclude: ['/api*'],
+          }),
+        ]
+      : []),
     AuthModule,
     ChurchModule,
     MemberModule,
