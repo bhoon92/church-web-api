@@ -126,6 +126,7 @@ function EventDetail({ event, canWrite, onBack }: { event: ChurchEvent; canWrite
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
 
   const { data: photos = [], isLoading } = useQuery({
     queryKey: ['photos', event.id],
@@ -183,41 +184,59 @@ function EventDetail({ event, canWrite, onBack }: { event: ChurchEvent; canWrite
 
       {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p>}
 
-      {isLoading ? (
-        <div className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">불러오는 중…</div>
-      ) : photos.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-2 py-16 text-sm text-[var(--color-muted-foreground)]">
-            <ImageOff className="size-8 opacity-40" />
-            아직 사진이 없습니다. 우측 상단에서 업로드하세요.
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-          {photos.map(photo => (
-            <div
-              key={photo.id}
-              className="group relative aspect-square overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-muted)]"
-            >
-              <img src={photo.url} alt={photo.originalName} loading="lazy" className="size-full object-cover" />
-              {canWrite && (
-                <button
-                  onClick={() => {
-                    if (window.confirm('이 사진을 삭제할까요?')) deleteMut.mutate(photo.id);
-                  }}
-                  className={cn(
-                    'absolute top-1.5 right-1.5 rounded-full bg-black/50 p-1.5 text-white opacity-0 transition-opacity',
-                    'hover:bg-black/70 group-hover:opacity-100'
-                  )}
-                  aria-label="삭제"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      <div
+        className="relative"
+        onDragOver={e => { e.preventDefault(); if (canWrite) setDragOver(true); }}
+        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false); }}
+        onDrop={e => {
+          e.preventDefault();
+          setDragOver(false);
+          if (canWrite) void onFiles(e.dataTransfer.files);
+        }}
+      >
+        {dragOver && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-[var(--color-primary)] bg-[var(--color-primary)]/5">
+            <Upload className="size-8 text-[var(--color-primary)]" />
+            <span className="text-sm font-medium text-[var(--color-primary)]">여기에 놓으세요</span>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">불러오는 중…</div>
+        ) : photos.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center gap-2 py-16 text-sm text-[var(--color-muted-foreground)]">
+              <ImageOff className="size-8 opacity-40" />
+              아직 사진이 없습니다.{canWrite ? ' 끌어다 놓거나 우측 상단에서 업로드하세요.' : ''}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            {photos.map(photo => (
+              <div
+                key={photo.id}
+                className="group relative aspect-square overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-muted)]"
+              >
+                <img src={photo.url} alt={photo.originalName} loading="lazy" className="size-full object-cover" />
+                {canWrite && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm('이 사진을 삭제할까요?')) deleteMut.mutate(photo.id);
+                    }}
+                    className={cn(
+                      'absolute top-1.5 right-1.5 rounded-full bg-black/50 p-1.5 text-white opacity-0 transition-opacity',
+                      'hover:bg-black/70 group-hover:opacity-100'
+                    )}
+                    aria-label="삭제"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
