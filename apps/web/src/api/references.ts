@@ -10,15 +10,15 @@ export const REFERENCE_PATH: Record<ReferenceKind, string> = {
 };
 
 export const REFERENCE_LABEL: Record<ReferenceKind, string> = {
-  department: '부서',
+  department: '기관',
   ministry: '사역팀',
-  smallGroup: '목장',
-  position: '직분',
+  smallGroup: '공동체',
+  position: '사역 역할',
   worshipService: '예배',
   memberStatus: '재적상태',
 };
 
-// 연도별로 편성하는 reference (해마다 재편성). 나머지(직분·예배)는 연도 무관 공통.
+// 연도별로 편성하는 reference (해마다 재편성). 나머지(사역 역할·예배)는 연도 무관 공통.
 export const YEAR_SCOPED_KINDS = new Set<ReferenceKind>(['department', 'ministry', 'smallGroup']);
 
 export type Reference = {

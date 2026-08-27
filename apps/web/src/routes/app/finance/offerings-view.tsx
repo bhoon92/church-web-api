@@ -79,7 +79,7 @@ export function OfferingsView() {
       <Card>
         <CardContent className="p-0">
           <div className="grid grid-cols-12 gap-4 border-b border-[var(--color-border)] bg-[var(--color-muted)] px-5 py-2 text-xs font-medium text-[var(--color-muted-foreground)]">
-            <div className="col-span-5">성도</div>
+            <div className="col-span-5">교인</div>
             <div className="col-span-3">분류</div>
             <div className="col-span-4 text-right">금액</div>
           </div>

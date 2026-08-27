@@ -31,7 +31,7 @@ export function OrganizationChartPage() {
       <PageHeader
         eyebrow="조직도"
         title="조직도"
-        description="재적의 소속 정보에서 부서·사역팀·목장별 구성을 보여줍니다. 편집은 재적 상세에서 합니다."
+        description="교인의 소속 정보에서 기관·사역팀·공동체별 구성을 보여줍니다. 편집은 교인 상세에서 합니다."
         actions={
           can('settings:write') && (
             <Button variant="outline" onClick={() => setManaging(true)}>
@@ -43,7 +43,7 @@ export function OrganizationChartPage() {
       />
 
       {managing && (
-        <ReferenceManagerModal title="부서·사역팀·목장 관리" kinds={['department', 'ministry', 'smallGroup']} onClose={() => setManaging(false)} />
+        <ReferenceManagerModal title="기관·사역팀·공동체 관리" kinds={['department', 'ministry', 'smallGroup']} onClose={() => setManaging(false)} />
       )}
 
       <div className="flex items-center justify-between gap-4">

@@ -8,8 +8,10 @@ import { DashboardPage } from '@/routes/app/dashboard'
 import { FinancePage } from '@/routes/app/finance'
 import { GalleryPage } from '@/routes/app/gallery'
 import { MembersPage } from '@/routes/app/members'
+import { MissionariesPage } from '@/routes/app/missionaries'
 import { OrganizationChartPage } from '@/routes/app/organization-chart'
 import { SettingsPage } from '@/routes/app/settings'
+import { TrainingPage } from '@/routes/app/training'
 import { TeamPage } from '@/routes/app/settings/team'
 import { ChurchSelectPage } from '@/routes/church-select'
 import { HomePage } from '@/routes/home'
@@ -30,6 +32,8 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <DashboardPage /> },
           { path: 'members', element: <MembersPage /> },
+          { path: 'training', element: <TrainingPage /> },
+          { path: 'missionaries', element: <MissionariesPage /> },
           { path: 'organization-chart', element: <OrganizationChartPage /> },
           { path: 'attendance', element: <AttendancePage /> },
           { path: 'finance', element: <FinancePage /> },

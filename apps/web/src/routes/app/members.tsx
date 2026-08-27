@@ -60,15 +60,15 @@ export function MembersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="재적"
-        title="성도 명부"
-        description="등록된 성도와 새가족을 관리합니다."
+        eyebrow="교인"
+        title="교인 명부"
+        description="양성 파이프라인 단계별로 교인을 관리합니다."
         actions={
           <>
             {can('settings:write') && (
               <Button variant="outline" onClick={() => setManaging(true)}>
                 <Settings2 />
-                재적상태·직분
+                재적상태·역할
               </Button>
             )}
             <Button variant="outline" onClick={() => void exportMembers()}>
@@ -78,7 +78,7 @@ export function MembersPage() {
             {can('member:write') && (
               <Button onClick={() => setShowCreate(true)}>
                 <Plus />
-                성도 추가
+                교인 추가
               </Button>
             )}
           </>
@@ -86,7 +86,7 @@ export function MembersPage() {
       />
 
       {managing && (
-        <ReferenceManagerModal title="재적상태·직분 관리" kinds={['memberStatus', 'position']} onClose={() => setManaging(false)} />
+        <ReferenceManagerModal title="재적상태·사역 역할 관리" kinds={['memberStatus', 'position']} onClose={() => setManaging(false)} />
       )}
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -231,8 +231,8 @@ function MemberList({
       <Card>
         <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
           <UserPlus className="size-6 text-[var(--color-muted-foreground)]" />
-          <p className="text-sm font-medium">아직 등록된 성도가 없어요</p>
-          <p className="text-xs text-[var(--color-muted-foreground)]">우측 상단 "성도 추가" 버튼으로 시작하세요.</p>
+          <p className="text-sm font-medium">아직 등록된 교인이 없어요</p>
+          <p className="text-xs text-[var(--color-muted-foreground)]">우측 상단 "교인 추가" 버튼으로 시작하세요.</p>
         </CardContent>
       </Card>
     );
@@ -315,7 +315,7 @@ function CreateMemberModal({ onClose, onCreated }: { onClose: () => void; onCrea
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
       <div className="w-full max-w-md rounded-2xl bg-[var(--color-background)] p-6 shadow-md" onClick={event => event.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold tracking-tight">성도 추가</h2>
+          <h2 className="text-lg font-semibold tracking-tight">교인 추가</h2>
           <Button variant="ghost" size="icon" onClick={onClose} aria-label="닫기">
             <X />
           </Button>

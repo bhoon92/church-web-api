@@ -135,9 +135,9 @@ export const deleteTransaction = (id: number) => del(`/api/finance/transactions/
 export type BudgetTargetKind = 'department' | 'ministry' | 'small_group';
 
 export const BUDGET_KIND_LABEL: Record<BudgetTargetKind, string> = {
-  department: '부서',
+  department: '기관',
   ministry: '사역팀',
-  small_group: '목장',
+  small_group: '공동체',
 };
 
 export type Budget = {

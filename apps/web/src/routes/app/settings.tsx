@@ -82,7 +82,7 @@ export function SettingsPage() {
       <Card>
         <CardContent className="space-y-1.5 p-5 text-sm text-[var(--color-muted-foreground)]">
           <p className="font-medium text-[var(--color-foreground)]">나머지 설정은 각 메뉴에서 바로 관리해요</p>
-          <p>· 부서·사역팀·목장 → 조직도 · 재적상태·직분 → 성도 · 예배 → 출석</p>
+          <p>· 기관·사역팀·공동체 → 조직도 · 재적상태·사역 역할 → 교인 · 예배 → 출석 · 훈련 과정 → 훈련</p>
           <p>· 헌금 분류·계정과목·회계연도 → 재정 · 달력 연동(Google) → 달력</p>
         </CardContent>
       </Card>

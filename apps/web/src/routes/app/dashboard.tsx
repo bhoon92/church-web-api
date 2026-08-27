@@ -1,11 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { CalendarCheck, CalendarDays, ChevronRight, TrendingUp, UserPlus, Wallet } from 'lucide-react';
+import { CalendarDays, ChevronRight, GraduationCap, Globe2, PlaneTakeoff, Sprout } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { ComponentType } from 'react';
 import { Link } from 'react-router';
 
 import { fetchHomeDashboard, type HomeActivityItem, type HomeScheduleItem } from '@/api/dashboard';
-import { formatKRW } from '@/api/finance';
 import { useChurchBranding } from '@/branding/church-branding';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -43,8 +42,10 @@ function timeAgo(iso: string): string {
 }
 
 const ACTIVITY_DOT: Record<HomeActivityItem['kind'], string> = {
+  training: 'oklch(0.65 0.15 150)',
+  missionary: 'oklch(0.62 0.19 260)',
   offering: 'var(--color-primary)',
-  member: 'oklch(0.65 0.15 150)',
+  member: 'oklch(0.7 0.1 200)',
   transaction: 'oklch(0.7 0.13 60)',
 };
 
@@ -59,24 +60,23 @@ export function DashboardPage() {
 
   const placeholder = data === undefined;
   const stats: Stat[] = [
-    { label: '이번 주 출석', value: placeholder ? '—' : `${data.stats.weeklyAttendance}명`, icon: CalendarCheck },
-    { label: '이번 달 헌금', value: placeholder ? '—' : formatKRW(data.stats.monthlyOffering), icon: Wallet },
-    { label: '이번 달 새가족', value: placeholder ? '—' : `${data.stats.newMembers}명`, icon: UserPlus },
-    {
-      label: '예산 집행률',
-      value: placeholder || data.stats.budgetRate === null ? '—' : `${data.stats.budgetRate}%`,
-      icon: TrendingUp,
-    },
+    { label: '현재 파송', value: placeholder ? '—' : `${data.stats.activeMissionaries}명`, icon: Globe2 },
+    { label: '올해 파송 확정', value: placeholder ? '—' : `${data.stats.commissionedThisYear}명`, icon: PlaneTakeoff },
+    { label: '진행 중 훈련', value: placeholder ? '—' : `${data.stats.ongoingCohorts}개 기수`, icon: GraduationCap },
+    { label: '올해 수료', value: placeholder ? '—' : `${data.stats.completedThisYear}명`, icon: Sprout },
   ];
+  const pipeline = data?.pipeline ?? [];
+  const training = data?.training ?? [];
   const schedule = data?.schedule ?? [];
   const activity = data?.activity ?? [];
+  const pipelineTotal = pipeline.reduce((sum, stage) => sum + stage.count, 0);
 
   return (
     <div className="space-y-8">
       <PageHeader
         eyebrow={branding.name}
-        title="오늘의 교회 현황"
-        description={`${today} · 주요 지표를 한눈에 확인하세요.`}
+        title="양성 현황"
+        description={`${today} · 훈련과 파송을 한눈에 확인하세요.`}
         actions={
           <>
             <Button variant="outline" asChild>
@@ -86,7 +86,7 @@ export function DashboardPage() {
               </Link>
             </Button>
             <Button asChild>
-              <Link to="/app/finance">오늘 입력하기</Link>
+              <Link to="/app/training">훈련 관리</Link>
             </Button>
           </>
         }
@@ -101,6 +101,52 @@ export function DashboardPage() {
           </CardContent>
         </Card>
       </motion.div>
+
+      <div className="grid gap-6 lg:grid-cols-5">
+        <SectionCard
+          title="양성 파이프라인"
+          hint={`총 ${pipelineTotal}명`}
+          actionLabel="교인 보기"
+          actionTo="/app/members"
+          className="lg:col-span-3"
+        >
+          {pipeline.length === 0 ? (
+            <p className="py-8 text-center text-sm text-[var(--color-muted-foreground)]">등록된 교인이 없습니다.</p>
+          ) : (
+            <ul className="space-y-2.5">
+              {pipeline.map(stage => (
+                <li key={stage.statusId} className="flex items-center gap-3">
+                  <div className="w-16 shrink-0 text-xs text-[var(--color-muted-foreground)]">{stage.name}</div>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--color-muted)]">
+                    <div
+                      className="h-full rounded-full bg-[var(--color-primary)]"
+                      style={{ width: pipelineTotal === 0 ? '0%' : `${Math.round((stage.count / pipelineTotal) * 100)}%` }}
+                    />
+                  </div>
+                  <div className="w-10 shrink-0 text-right text-sm font-medium tabular-nums">{stage.count}</div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </SectionCard>
+
+        <SectionCard title="진행 중 훈련" hint={`${training.length}개 기수`} actionLabel="훈련 열기" actionTo="/app/training" className="lg:col-span-2">
+          {training.length === 0 ? (
+            <p className="py-8 text-center text-sm text-[var(--color-muted-foreground)]">진행 중인 기수가 없습니다.</p>
+          ) : (
+            <ul className="divide-y divide-[var(--color-border)]">
+              {training.map(cohort => (
+                <li key={cohort.cohortId} className="py-2.5">
+                  <div className="text-sm font-medium">{cohort.label}</div>
+                  <div className="mt-0.5 text-xs tabular-nums text-[var(--color-muted-foreground)]">
+                    {cohort.startDate} · 수강 {cohort.enrolledCount}명 · {cohort.sessionCount}회차
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </SectionCard>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-5">
         <SectionCard title="오늘의 일정" hint={`${schedule.length}건`} actionLabel="달력 열기" actionTo="/app/calendar" className="lg:col-span-3">

@@ -14,19 +14,36 @@ export type HomeScheduleItem = {
 };
 
 export type HomeActivityItem = {
-  kind: 'offering' | 'member' | 'transaction';
+  kind: 'offering' | 'member' | 'transaction' | 'training' | 'missionary';
   who: string;
   what: string;
   at: string;
 };
 
+/** 양성 파이프라인 분포 — 재적상태(단계)별 인원. */
+export type PipelineStage = {
+  statusId: number;
+  name: string;
+  count: number;
+};
+
+export type OngoingCohort = {
+  cohortId: number;
+  label: string;
+  startDate: string;
+  enrolledCount: number;
+  sessionCount: number;
+};
+
 export type HomeDashboard = {
   stats: {
-    weeklyAttendance: number;
-    monthlyOffering: number;
-    newMembers: number;
-    budgetRate: number | null;
+    activeMissionaries: number;
+    commissionedThisYear: number;
+    ongoingCohorts: number;
+    completedThisYear: number;
   };
+  pipeline: PipelineStage[];
+  training: OngoingCohort[];
   schedule: HomeScheduleItem[];
   activity: HomeActivityItem[];
 };

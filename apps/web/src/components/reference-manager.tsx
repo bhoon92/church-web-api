@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/lib/permissions';
 
-/** 참조(부서·사역팀·목장·직분·예배·재적상태) 관리 — 탭 + 연도 + CRUD. 각 도메인 페이지에서 재사용. */
+/** 기준정보(기관·사역팀·공동체·사역 역할·예배·재적상태) 관리 — 탭 + 연도 + CRUD. 각 도메인 페이지에서 재사용. */
 export function ReferenceManager({ kinds }: { kinds: ReferenceKind[] }) {
   const [tab, setTab] = useState<ReferenceKind>(kinds[0]);
   const currentYear = new Date().getFullYear();
@@ -453,16 +453,16 @@ function ReferenceRow({
 function exampleFor(kind: ReferenceKind): string {
   switch (kind) {
     case 'department':
-      return '청년부 / 장년부 / 중고등부';
+      return '본부 / 유치원 / 카페';
     case 'ministry':
-      return '찬양팀 / 새가족팀';
+      return '예배사역팀 / 미디어·문화예술팀 / 해외선교팀';
     case 'smallGroup':
-      return '1구역 / 행복목장';
+      return '1하우스 / 2하우스';
     case 'position':
-      return '성도 / 집사 / 안수집사 / 장로';
+      return '목사 / 전도사 / 간사 / 팀장';
     case 'worshipService':
-      return '주일 1부 / 주일 2부 / 수요예배 / 새벽기도';
+      return '주일예배 / 수요예배 / 금요기도회 / 새벽기도회';
     case 'memberStatus':
-      return '방문 / 새가족 / 정식 / 이명';
+      return '방문 / 새가족 / 정착 / 훈련생 / 사역자 / 파송';
   }
 }

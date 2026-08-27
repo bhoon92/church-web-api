@@ -8,8 +8,12 @@ export type Permission =
   | 'finance:write'
   | 'attendance:read'
   | 'attendance:write'
-  | 'pastoral:read'
-  | 'pastoral:write'
+  | 'care:read'
+  | 'care:write'
+  | 'training:read'
+  | 'training:write'
+  | 'missionary:read'
+  | 'missionary:write'
   | 'calendar:read'
   | 'calendar:write'
   | 'gallery:read'
@@ -19,20 +23,30 @@ export type Permission =
 
 export type Role = 'owner' | 'admin' | 'staff' | 'viewer';
 
-const READS: Permission[] = ['member:read', 'finance:read', 'attendance:read', 'calendar:read', 'gallery:read'];
+const READS: Permission[] = [
+  'member:read',
+  'finance:read',
+  'attendance:read',
+  'training:read',
+  'missionary:read',
+  'calendar:read',
+  'gallery:read',
+];
 const SACRED_WRITES: Permission[] = [
   'member:write',
   'attendance:write',
-  'pastoral:write',
+  'care:write',
+  'training:write',
+  'missionary:write',
   'calendar:write',
   'gallery:write',
   'settings:write',
 ];
 
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-  owner: [...READS, 'pastoral:read', ...SACRED_WRITES, 'finance:write', 'team:manage'],
-  admin: [...READS, 'pastoral:read', ...SACRED_WRITES, 'finance:write', 'team:manage'],
-  staff: [...READS, 'pastoral:read', ...SACRED_WRITES],
+  owner: [...READS, 'care:read', ...SACRED_WRITES, 'finance:write', 'team:manage'],
+  admin: [...READS, 'care:read', ...SACRED_WRITES, 'finance:write', 'team:manage'],
+  staff: [...READS, 'care:read', ...SACRED_WRITES],
   viewer: [...READS],
 };
 

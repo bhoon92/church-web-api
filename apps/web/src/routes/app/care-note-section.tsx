@@ -3,14 +3,14 @@ import { Plus, X } from 'lucide-react'
 import { useState } from 'react'
 
 import {
-  createPastoralRecord,
-  deletePastoralRecord,
-  listPastoralRecords,
-  PASTORAL_RECORD_TYPES,
-  PASTORAL_RECORD_TYPE_LABEL,
-  type CreatePastoralRecordPayload,
-  type PastoralRecordType,
-} from '@/api/pastoral-records'
+  CARE_NOTE_TYPE_LABEL,
+  CARE_NOTE_TYPES,
+  createCareNote,
+  deleteCareNote,
+  listCareNotes,
+  type CareNoteType,
+  type CreateCareNotePayload,
+} from '@/api/care-notes'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,36 +18,37 @@ import { cn } from '@/lib/utils'
 import { usePermissions } from '@/lib/permissions'
 import { todayString } from '@/lib/date'
 
-const TYPE_TONE: Record<PastoralRecordType, 'neutral' | 'muted' | 'success' | 'warn'> = {
-  visit: 'success',
-  newcomer_education: 'warn',
+const TYPE_TONE: Record<CareNoteType, 'neutral' | 'muted' | 'success' | 'warn'> = {
+  meeting: 'success',
+  nurture: 'warn',
   counsel: 'muted',
+  field_report: 'success',
   etc: 'neutral',
 }
 
-export function PastoralRecordSection({ memberId }: { memberId: number }) {
+export function CareNoteSection({ memberId }: { memberId: number }) {
   const queryClient = useQueryClient()
   const { can } = usePermissions()
-  const canWrite = can('pastoral:write')
+  const canWrite = can('care:write')
   const [adding, setAdding] = useState(false)
 
-  const { data: records = [], isLoading } = useQuery({
-    queryKey: ['pastoral-records', memberId],
-    queryFn: () => listPastoralRecords(memberId),
+  const { data: notes = [], isLoading } = useQuery({
+    queryKey: ['care-notes', memberId],
+    queryFn: () => listCareNotes(memberId),
   })
 
   const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ['pastoral-records', memberId] })
+    queryClient.invalidateQueries({ queryKey: ['care-notes', memberId] })
 
   const deleteMut = useMutation({
-    mutationFn: (id: number) => deletePastoralRecord(memberId, id),
+    mutationFn: (id: number) => deleteCareNote(memberId, id),
     onSuccess: invalidate,
   })
 
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-semibold">사역 기록</h3>
+        <h3 className="text-sm font-semibold">양육 기록</h3>
         {canWrite && (
           <Button size="sm" variant="ghost" onClick={() => setAdding(!adding)}>
             <Plus className="size-3.5" />
@@ -57,7 +58,7 @@ export function PastoralRecordSection({ memberId }: { memberId: number }) {
       </div>
 
       {adding && (
-        <RecordForm
+        <NoteForm
           memberId={memberId}
           onDone={() => {
             invalidate()
@@ -69,33 +70,33 @@ export function PastoralRecordSection({ memberId }: { memberId: number }) {
 
       {isLoading ? (
         <p className="text-xs text-[var(--color-muted-foreground)]">불러오는 중…</p>
-      ) : records.length === 0 && !adding ? (
-        <p className="text-xs text-[var(--color-muted-foreground)]">사역 기록 없음</p>
+      ) : notes.length === 0 && !adding ? (
+        <p className="text-xs text-[var(--color-muted-foreground)]">양육 기록 없음</p>
       ) : (
         <ul className="mt-1 space-y-3">
-          {records.map((record) => (
+          {notes.map((note) => (
             <li
-              key={record.id}
+              key={note.id}
               className="rounded-xl border border-[var(--color-border)] p-3"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone={TYPE_TONE[record.type]}>
-                    {PASTORAL_RECORD_TYPE_LABEL[record.type]}
+                  <Badge tone={TYPE_TONE[note.type]}>
+                    {CARE_NOTE_TYPE_LABEL[note.type]}
                   </Badge>
                   <span className="text-xs tabular-nums text-[var(--color-muted-foreground)]">
-                    {record.date}
+                    {note.date}
                   </span>
-                  {record.location && (
+                  {note.location && (
                     <span className="text-xs text-[var(--color-muted-foreground)]">
-                      · {record.location}
+                      · {note.location}
                     </span>
                   )}
                 </div>
                 {canWrite && (
                   <button
                     onClick={() => {
-                      if (window.confirm('이 기록을 삭제할까요?')) deleteMut.mutate(record.id)
+                      if (window.confirm('이 기록을 삭제할까요?')) deleteMut.mutate(note.id)
                     }}
                     className="rounded-full p-0.5 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)]"
                     aria-label="삭제"
@@ -105,23 +106,23 @@ export function PastoralRecordSection({ memberId }: { memberId: number }) {
                 )}
               </div>
 
-              <p className="mt-2 whitespace-pre-wrap text-sm">{record.content}</p>
+              <p className="mt-2 whitespace-pre-wrap text-sm">{note.content}</p>
 
-              {record.prayerRequest && (
+              {note.prayerRequest && (
                 <p className="mt-2 whitespace-pre-wrap rounded-lg bg-[var(--color-muted)] px-2.5 py-1.5 text-xs">
                   <span className="font-medium">기도제목 </span>
-                  {record.prayerRequest}
+                  {note.prayerRequest}
                 </p>
               )}
-              {record.statusNote && (
+              {note.statusNote && (
                 <p className="mt-1.5 whitespace-pre-wrap text-xs text-[var(--color-muted-foreground)]">
                   <span className="font-medium">상황 </span>
-                  {record.statusNote}
+                  {note.statusNote}
                 </p>
               )}
 
               <p className="mt-2 text-[11px] text-[var(--color-muted-foreground)]">
-                {record.recorderName ?? '작성자 미상'}
+                {note.recorderName ?? '작성자 미상'}
               </p>
             </li>
           ))}
@@ -131,7 +132,7 @@ export function PastoralRecordSection({ memberId }: { memberId: number }) {
   )
 }
 
-function RecordForm({
+function NoteForm({
   memberId,
   onDone,
   onCancel,
@@ -141,7 +142,7 @@ function RecordForm({
   onCancel: () => void
 }) {
   const today = todayString()
-  const [type, setType] = useState<PastoralRecordType>('visit')
+  const [type, setType] = useState<CareNoteType>('meeting')
   const [date, setDate] = useState(today)
   const [location, setLocation] = useState('')
   const [content, setContent] = useState('')
@@ -149,8 +150,7 @@ function RecordForm({
   const [statusNote, setStatusNote] = useState('')
 
   const createMut = useMutation({
-    mutationFn: (payload: CreatePastoralRecordPayload) =>
-      createPastoralRecord(memberId, payload),
+    mutationFn: (payload: CreateCareNotePayload) => createCareNote(memberId, payload),
     onSuccess: onDone,
   })
 
@@ -169,18 +169,18 @@ function RecordForm({
   return (
     <div className="mb-3 space-y-3 rounded-xl border border-dashed border-[var(--color-border)] p-3">
       <div className="flex flex-wrap gap-1.5">
-        {PASTORAL_RECORD_TYPES.map((recordType) => (
+        {CARE_NOTE_TYPES.map((noteType) => (
           <button
-            key={recordType}
-            onClick={() => setType(recordType)}
+            key={noteType}
+            onClick={() => setType(noteType)}
             className={cn(
               'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-              type === recordType
+              type === noteType
                 ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
                 : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]',
             )}
           >
-            {PASTORAL_RECORD_TYPE_LABEL[recordType]}
+            {CARE_NOTE_TYPE_LABEL[noteType]}
           </button>
         ))}
       </div>

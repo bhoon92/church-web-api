@@ -135,7 +135,7 @@ function AttendanceBoard({
           {isLoading ? (
             <div className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">불러오는 중…</div>
           ) : !roster || roster.items.length === 0 ? (
-            <div className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">대상 성도가 없습니다.</div>
+            <div className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">대상 교인이 없습니다.</div>
           ) : (
             <ul className="divide-y divide-[var(--color-border)]">
               {roster.items.map(item => (

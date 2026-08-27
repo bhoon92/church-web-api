@@ -1,6 +1,8 @@
 import {
   CalendarCheck,
   CalendarDays,
+  Globe2,
+  GraduationCap,
   Images,
   LayoutDashboard,
   LogOut,
@@ -29,9 +31,12 @@ type NavItem = {
   end?: boolean
 }
 
+// 순서 = 이 교회의 우선순위. 훈련·선교사가 교인 바로 다음에 온다.
 const NAV: NavItem[] = [
   { to: '/app', label: '대시보드', icon: LayoutDashboard, end: true },
-  { to: '/app/members', label: '재적', icon: Users },
+  { to: '/app/members', label: '교인', icon: Users },
+  { to: '/app/training', label: '훈련', icon: GraduationCap },
+  { to: '/app/missionaries', label: '선교사', icon: Globe2 },
   { to: '/app/attendance', label: '출석', icon: CalendarCheck },
   { to: '/app/finance', label: '재정', icon: Wallet },
   { to: '/app/calendar', label: '달력', icon: CalendarDays },
@@ -39,7 +44,7 @@ const NAV: NavItem[] = [
   { to: '/app/organization-chart', label: '조직도', icon: Network },
 ]
 
-// 모바일 하단 탭은 5개로 제한 (갤러리는 데스크탑 사이드바에서)
+// 모바일 하단 탭은 5개로 제한 (나머지는 데스크탑 사이드바에서)
 const MOBILE_TABS = NAV.slice(0, 5)
 
 export function AppLayout() {

@@ -5,7 +5,7 @@ import { listMembers } from '@/api/members'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
-/** 성도 검색 → 선택. 선택 시 memberId + 이름 콜백. */
+/** 교인 검색 → 선택. 선택 시 memberId + 이름 콜백. */
 export function MemberPicker({
   selectedName,
   onSelect,
@@ -28,7 +28,7 @@ export function MemberPicker({
     <div className="relative">
       <Input
         value={open ? searchQuery : (selectedName ?? '')}
-        placeholder="성도 검색…"
+        placeholder="교인 검색…"
         onFocus={() => setOpen(true)}
         onChange={(event) => {
           setSearchQuery(event.target.value)

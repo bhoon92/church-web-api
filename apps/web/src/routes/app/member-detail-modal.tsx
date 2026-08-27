@@ -10,7 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/lib/permissions';
-import { PastoralRecordSection } from './pastoral-record-section';
+import { CareNoteSection } from './care-note-section';
+import { MemberJourneySection } from './member-journey-section';
 import { ReceiptSection } from './receipt-section';
 
 const KINDS: AffiliationKind[] = ['department', 'ministry', 'smallGroup'];
@@ -57,14 +58,19 @@ export function MemberDetailModal({ memberId, onClose }: { memberId: number; onC
         <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
           {member && (
             <>
-              <PositionSection memberId={memberId} current={member.position.current} history={member.position.history} />
+              {/* 양성 경로(훈련·파송)를 가장 위에 — 이 교회에서 가장 자주 보는 정보다. */}
+              <MemberJourneySection memberId={memberId} />
+
+              <div className="border-t border-[var(--color-border)] pt-5">
+                <PositionSection memberId={memberId} current={member.position.current} history={member.position.history} />
+              </div>
 
               {KINDS.map(kind => (
                 <AffiliationSection key={kind} kind={kind} memberId={memberId} items={affiliationsByKind(member.affiliations, kind)} />
               ))}
 
               <div className="border-t border-[var(--color-border)] pt-5">
-                <PastoralRecordSection memberId={memberId} />
+                <CareNoteSection memberId={memberId} />
               </div>
 
               <div className="border-t border-[var(--color-border)] pt-5">
@@ -486,7 +492,7 @@ function PositionSection({
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-semibold">직분</h3>
+        <h3 className="text-sm font-semibold">사역 역할</h3>
         {canWrite && (
           <Button size="sm" variant="ghost" onClick={() => setPicking(!picking)}>
             <Plus className="size-3.5" />
@@ -507,7 +513,7 @@ function PositionSection({
                 size="sm"
                 variant="ghost"
                 onClick={() => {
-                  if (window.confirm('현재 직분을 종료할까요?')) endMut.mutate();
+                  if (window.confirm('현재 역할을 종료할까요?')) endMut.mutate();
                 }}
                 className="text-xs text-[var(--color-muted-foreground)]"
               >
@@ -516,14 +522,14 @@ function PositionSection({
             )}
           </>
         ) : (
-          <span className="text-xs text-[var(--color-muted-foreground)]">현재 직분 없음</span>
+          <span className="text-xs text-[var(--color-muted-foreground)]">현재 역할 없음</span>
         )}
       </div>
 
       {picking && (
         <div className="mt-3 rounded-xl border border-dashed border-[var(--color-border)] p-3">
           {positions.length === 0 ? (
-            <p className="text-xs text-[var(--color-muted-foreground)]">등록된 직분이 없습니다. 먼저 설정에서 등록하세요.</p>
+            <p className="text-xs text-[var(--color-muted-foreground)]">등록된 사역 역할이 없습니다. 먼저 설정에서 등록하세요.</p>
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {positions
@@ -554,7 +560,7 @@ function PositionSection({
             className="inline-flex items-center gap-1 text-xs text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
           >
             {showHistory ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
-            이전 직분 ({previousHistory.length})
+            이전 역할 ({previousHistory.length})
           </button>
 
           {showHistory && (
