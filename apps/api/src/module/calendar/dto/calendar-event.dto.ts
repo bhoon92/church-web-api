@@ -1,4 +1,4 @@
-import { PartialType } from '@nestjs/mapped-types';
+import { PartialType } from '@nestjs/swagger';
 import { IsBoolean, IsIn, IsInt, IsISO8601, IsOptional, IsString, Length, Min } from 'class-validator';
 import { RECURRENCE_VALUES } from '../recurrence';
 
