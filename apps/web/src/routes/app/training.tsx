@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, GraduationCap, Plus, Settings2, X } from 'lucide-react'
-import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { CheckCircle2, GraduationCap, Plus, Settings2, X } from 'lucide-react';
+import { useState } from 'react';
 
-import { listMembers, type Member } from '@/api/members'
+import { listMembers, type Member } from '@/api/members';
 import {
   COHORT_STATUS_LABEL,
   ENROLLMENT_STATUS_LABEL,
@@ -18,38 +18,38 @@ import {
   updateSession,
   type Cohort,
   type CohortStatus,
-} from '@/api/training'
-import { PageHeader } from '@/components/page-header'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { todayString } from '@/lib/date'
-import { usePermissions } from '@/lib/permissions'
-import { cn } from '@/lib/utils'
-import { CourseManagerModal } from './course-manager'
+} from '@/api/training';
+import { PageHeader } from '@/components/page-header';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { todayString } from '@/lib/date';
+import { usePermissions } from '@/lib/permissions';
+import { cn } from '@/lib/utils';
+import { CourseManagerModal } from './course-manager';
 
 const STATUS_TONE: Record<CohortStatus, 'neutral' | 'muted' | 'success' | 'warn'> = {
   planned: 'neutral',
   ongoing: 'success',
   closed: 'muted',
-}
+};
 
-const STATUS_FILTERS: (CohortStatus | 'all')[] = ['all', 'ongoing', 'planned', 'closed']
+const STATUS_FILTERS: (CohortStatus | 'all')[] = ['all', 'ongoing', 'planned', 'closed'];
 
 export function TrainingPage() {
-  const { can } = usePermissions()
-  const canWrite = can('training:write')
-  const [statusFilter, setStatusFilter] = useState<CohortStatus | 'all'>('all')
-  const [openCohortId, setOpenCohortId] = useState<number | null>(null)
-  const [creating, setCreating] = useState(false)
-  const [managingCourses, setManagingCourses] = useState(false)
+  const { can } = usePermissions();
+  const canWrite = can('training:write');
+  const [statusFilter, setStatusFilter] = useState<CohortStatus | 'all'>('all');
+  const [openCohortId, setOpenCohortId] = useState<number | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [managingCourses, setManagingCourses] = useState(false);
 
-  const { data: courses = [] } = useQuery({ queryKey: ['training', 'courses'], queryFn: listCourses })
+  const { data: courses = [] } = useQuery({ queryKey: ['training', 'courses'], queryFn: listCourses });
   const { data: cohorts = [], isLoading } = useQuery({
     queryKey: ['training', 'cohorts', statusFilter],
     queryFn: () => listCohorts(statusFilter === 'all' ? undefined : { status: statusFilter }),
-  })
+  });
 
   return (
     <div className="space-y-6">
@@ -76,7 +76,7 @@ export function TrainingPage() {
       {managingCourses && <CourseManagerModal onClose={() => setManagingCourses(false)} />}
 
       <div className="flex flex-wrap gap-1.5">
-        {STATUS_FILTERS.map((filter) => (
+        {STATUS_FILTERS.map(filter => (
           <button
             key={filter}
             onClick={() => setStatusFilter(filter)}
@@ -84,7 +84,7 @@ export function TrainingPage() {
               'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
               statusFilter === filter
                 ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
-                : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]',
+                : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]'
             )}
           >
             {filter === 'all' ? '전체' : COHORT_STATUS_LABEL[filter]}
@@ -105,7 +105,7 @@ export function TrainingPage() {
         </Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {cohorts.map((cohort) => (
+          {cohorts.map(cohort => (
             <button key={cohort.id} onClick={() => setOpenCohortId(cohort.id)} className="text-left">
               <Card className="h-full transition-colors hover:border-[var(--color-foreground)]">
                 <CardContent className="space-y-2 py-4">
@@ -129,20 +129,23 @@ export function TrainingPage() {
       )}
 
       {openCohortId !== null && (
-        <CohortDetailModal
-          cohort={cohorts.find((item) => item.id === openCohortId)!}
-          onClose={() => setOpenCohortId(null)}
-        />
+        <CohortDetailModal cohort={cohorts.find(item => item.id === openCohortId)!} onClose={() => setOpenCohortId(null)} />
       )}
     </div>
-  )
+  );
 }
 
-function CohortForm({ courses, onClose }: { courses: { id: number; name: string; format: string; defaultSessionCount: number }[]; onClose: () => void }) {
-  const queryClient = useQueryClient()
-  const [courseId, setCourseId] = useState<number | null>(courses[0]?.id ?? null)
-  const [startDate, setStartDate] = useState(todayString())
-  const [sessionCount, setSessionCount] = useState<string>('')
+function CohortForm({
+  courses,
+  onClose,
+}: {
+  courses: { id: number; name: string; format: string; defaultSessionCount: number }[];
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const [courseId, setCourseId] = useState<number | null>(courses[0]?.id ?? null);
+  const [startDate, setStartDate] = useState(todayString());
+  const [sessionCount, setSessionCount] = useState<string>('');
 
   const createMut = useMutation({
     mutationFn: () =>
@@ -152,18 +155,18 @@ function CohortForm({ courses, onClose }: { courses: { id: number; name: string;
         sessionCount: sessionCount ? Number(sessionCount) : undefined,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['training', 'cohorts'] })
-      onClose()
+      queryClient.invalidateQueries({ queryKey: ['training', 'cohorts'] });
+      onClose();
     },
-  })
+  });
 
-  const selected = courses.find((course) => course.id === courseId)
+  const selected = courses.find(course => course.id === courseId);
 
   return (
     <Card>
       <CardContent className="space-y-3 py-4">
         <div className="flex flex-wrap gap-1.5">
-          {courses.map((course) => (
+          {courses.map(course => (
             <button
               key={course.id}
               onClick={() => setCourseId(course.id)}
@@ -171,7 +174,7 @@ function CohortForm({ courses, onClose }: { courses: { id: number; name: string;
                 'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
                 courseId === course.id
                   ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
-                  : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]',
+                  : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]'
               )}
             >
               {course.name}
@@ -183,13 +186,13 @@ function CohortForm({ courses, onClose }: { courses: { id: number; name: string;
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="w-40" />
+          <Input type="date" value={startDate} onChange={event => setStartDate(event.target.value)} className="w-40" />
           <Input
             type="number"
             min={1}
             placeholder={selected ? `회차 (기본 ${selected.defaultSessionCount})` : '회차'}
             value={sessionCount}
-            onChange={(event) => setSessionCount(event.target.value)}
+            onChange={event => setSessionCount(event.target.value)}
             className="w-44"
           />
         </div>
@@ -208,52 +211,52 @@ function CohortForm({ courses, onClose }: { courses: { id: number; name: string;
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () => void }) {
-  const queryClient = useQueryClient()
-  const { can } = usePermissions()
-  const canWrite = can('training:write')
-  const [enrolling, setEnrolling] = useState(false)
+  const queryClient = useQueryClient();
+  const { can } = usePermissions();
+  const canWrite = can('training:write');
+  const [enrolling, setEnrolling] = useState(false);
 
   const { data: detail, isLoading } = useQuery({
     queryKey: ['training', 'cohort', cohort.id],
     queryFn: () => fetchCohortDetail(cohort.id),
-  })
+  });
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['training', 'cohort', cohort.id] })
-    queryClient.invalidateQueries({ queryKey: ['training', 'cohorts'] })
-    queryClient.invalidateQueries({ queryKey: ['home', 'dashboard'] })
-  }
+    queryClient.invalidateQueries({ queryKey: ['training', 'cohort', cohort.id] });
+    queryClient.invalidateQueries({ queryKey: ['training', 'cohorts'] });
+    queryClient.invalidateQueries({ queryKey: ['home', 'dashboard'] });
+  };
 
   const attendanceMut = useMutation({
     mutationFn: (vars: { sessionId: number; enrollmentId: number; present: boolean }) =>
       markTrainingAttendance(vars.sessionId, vars.enrollmentId, vars.present),
     onSuccess: invalidate,
-  })
+  });
 
   const completeMut = useMutation({
     mutationFn: (enrollmentId: number) => updateEnrollmentStatus(enrollmentId, 'completed'),
     onSuccess: invalidate,
-  })
+  });
 
   const statusMut = useMutation({
     mutationFn: (status: CohortStatus) => updateCohort(cohort.id, { status }),
     onSuccess: invalidate,
-  })
+  });
 
   const sessionMut = useMutation({
     mutationFn: (vars: { sessionId: number; date: string }) => updateSession(vars.sessionId, { date: vars.date }),
     onSuccess: invalidate,
-  })
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
       <div
         className="flex max-h-[85vh] w-full max-w-4xl flex-col rounded-2xl bg-[var(--color-background)] shadow-md"
-        onClick={(event) => event.stopPropagation()}
+        onClick={event => event.stopPropagation()}
       >
         <div className="flex items-start justify-between border-b border-[var(--color-border)] px-6 py-4">
           <div>
@@ -271,7 +274,7 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
         <div className="flex-1 space-y-5 overflow-auto px-6 py-5">
           {canWrite && (
             <div className="flex flex-wrap items-center gap-2">
-              {(['planned', 'ongoing', 'closed'] as CohortStatus[]).map((status) => (
+              {(['planned', 'ongoing', 'closed'] as CohortStatus[]).map(status => (
                 <button
                   key={status}
                   onClick={() => statusMut.mutate(status)}
@@ -280,7 +283,7 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
                     'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
                     status === cohort.status
                       ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
-                      : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]',
+                      : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]'
                   )}
                 >
                   {COHORT_STATUS_LABEL[status]}
@@ -293,7 +296,15 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
             </div>
           )}
 
-          {enrolling && <EnrollPanel cohortId={cohort.id} onDone={() => { invalidate(); setEnrolling(false) }} />}
+          {enrolling && (
+            <EnrollPanel
+              cohortId={cohort.id}
+              onDone={() => {
+                invalidate();
+                setEnrolling(false);
+              }}
+            />
+          )}
 
           {isLoading || !detail ? (
             <p className="text-sm text-[var(--color-muted-foreground)]">불러오는 중…</p>
@@ -305,14 +316,14 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
                 <thead>
                   <tr className="border-b border-[var(--color-border)]">
                     <th className="py-2 pr-3 text-left font-medium">수강생</th>
-                    {detail.sessions.map((session) => (
+                    {detail.sessions.map(session => (
                       <th key={session.id} className="px-1 py-2 text-center font-medium">
                         <div className="tabular-nums">{session.sequence}</div>
                         {canWrite ? (
                           <input
                             type="date"
                             value={session.date ?? ''}
-                            onChange={(event) => sessionMut.mutate({ sessionId: session.id, date: event.target.value })}
+                            onChange={event => sessionMut.mutate({ sessionId: session.id, date: event.target.value })}
                             className="mt-1 w-[7.5rem] rounded border border-[var(--color-border)] px-1 py-0.5 text-[10px]"
                           />
                         ) : (
@@ -325,11 +336,11 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
                   </tr>
                 </thead>
                 <tbody>
-                  {detail.roster.map((row) => (
+                  {detail.roster.map(row => (
                     <tr key={row.enrollmentId} className="border-b border-[var(--color-border)] last:border-0">
                       <td className="py-2 pr-3 whitespace-nowrap">{row.memberName}</td>
-                      {detail.sessions.map((session) => {
-                        const present = row.attendedSessionIds.includes(session.id)
+                      {detail.sessions.map(session => {
+                        const present = row.attendedSessionIds.includes(session.id);
                         return (
                           <td key={session.id} className="px-1 py-2 text-center">
                             <input
@@ -346,7 +357,7 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
                               className="size-4 accent-[var(--color-foreground)]"
                             />
                           </td>
-                        )
+                        );
                       })}
                       <td className="px-2 py-2 text-right tabular-nums">{row.attendanceRate}%</td>
                       <td className="py-2 pl-2 text-right">
@@ -368,52 +379,50 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
             </div>
           )}
 
-          <p className="text-xs text-[var(--color-muted-foreground)]">
-            출석률은 참고용입니다. 수료는 담당자가 직접 확정합니다.
-          </p>
+          <p className="text-xs text-[var(--color-muted-foreground)]">출석률은 참고용입니다. 수료는 담당자가 직접 확정합니다.</p>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function EnrollPanel({ cohortId, onDone }: { cohortId: number; onDone: () => void }) {
-  const [query, setQuery] = useState('')
-  const [selected, setSelected] = useState<number[]>([])
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<number[]>([]);
 
   const { data } = useQuery({
     queryKey: ['members', 'for-enroll', query],
     queryFn: () => listMembers({ q: query || undefined, pageSize: 20 }),
-  })
+  });
 
   const enrollMut = useMutation({
     mutationFn: () => enrollMembers(cohortId, selected),
     onSuccess: onDone,
-  })
+  });
 
-  const items: Member[] = data?.items ?? []
+  const items: Member[] = data?.items ?? [];
 
   return (
     <Card>
       <CardContent className="space-y-3 py-4">
-        <Input placeholder="이름으로 검색" value={query} onChange={(event) => setQuery(event.target.value)} />
+        <Input placeholder="이름으로 검색" value={query} onChange={event => setQuery(event.target.value)} />
         <div className="flex flex-wrap gap-1.5">
-          {items.map((member) => {
-            const picked = selected.includes(member.id)
+          {items.map(member => {
+            const picked = selected.includes(member.id);
             return (
               <button
                 key={member.id}
-                onClick={() => setSelected(picked ? selected.filter((id) => id !== member.id) : [...selected, member.id])}
+                onClick={() => setSelected(picked ? selected.filter(id => id !== member.id) : [...selected, member.id])}
                 className={cn(
                   'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
                   picked
                     ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
-                    : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]',
+                    : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]'
                 )}
               >
                 {member.name}
               </button>
-            )
+            );
           })}
         </div>
         <div className="flex justify-end">
@@ -423,5 +432,5 @@ function EnrollPanel({ cohortId, onDone }: { cohortId: number; onDone: () => voi
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

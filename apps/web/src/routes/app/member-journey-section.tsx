@@ -1,26 +1,18 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
-import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus } from 'lucide-react';
+import { useState } from 'react';
 
-import {
-  changeMissionaryStage,
-  createMissionary,
-  fetchMissionaryByMember,
-  MISSIONARY_STAGE_LABEL,
-  MISSIONARY_STAGES,
-  type MissionaryStage,
-} from '@/api/missionary'
-import { ENROLLMENT_STATUS_LABEL, fetchMemberTrainingHistory, type EnrollmentStatus } from '@/api/training'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { usePermissions } from '@/lib/permissions'
+import { addNote, createMissionary, fetchMissionaryByMember, listStages, updateMissionary } from '@/api/missionary';
+import { ENROLLMENT_STATUS_LABEL, fetchMemberTrainingHistory, type EnrollmentStatus } from '@/api/training';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { usePermissions } from '@/lib/permissions';
 
 const STATUS_TONE: Record<EnrollmentStatus, 'neutral' | 'muted' | 'success' | 'warn'> = {
   enrolled: 'warn',
   completed: 'success',
   dropped: 'muted',
-}
+};
 
 /**
  * 교인 한 명의 양성 경로 — 무엇을 통과했고(훈련 이력) 지금 어디까지 갔는지(파송 단계).
@@ -32,14 +24,14 @@ export function MemberJourneySection({ memberId }: { memberId: number }) {
       <TrainingHistory memberId={memberId} />
       <MissionaryTrack memberId={memberId} />
     </div>
-  )
+  );
 }
 
 function TrainingHistory({ memberId }: { memberId: number }) {
   const { data: history = [], isLoading } = useQuery({
     queryKey: ['training-history', memberId],
     queryFn: () => fetchMemberTrainingHistory(memberId),
-  })
+  });
 
   return (
     <div>
@@ -50,7 +42,7 @@ function TrainingHistory({ memberId }: { memberId: number }) {
         <p className="text-xs text-[var(--color-muted-foreground)]">수강 이력 없음</p>
       ) : (
         <ul className="space-y-2">
-          {history.map((item) => (
+          {history.map(item => (
             <li
               key={item.enrollmentId}
               className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] px-3 py-2"
@@ -68,39 +60,50 @@ function TrainingHistory({ memberId }: { memberId: number }) {
         </ul>
       )}
     </div>
-  )
+  );
 }
 
 function MissionaryTrack({ memberId }: { memberId: number }) {
-  const queryClient = useQueryClient()
-  const { can } = usePermissions()
-  const canWrite = can('missionary:write')
-  const [note, setNote] = useState('')
+  const queryClient = useQueryClient();
+  const { can } = usePermissions();
+  const canWrite = can('missionary:write');
+  const [memo, setMemo] = useState('');
+  const [stageId, setStageId] = useState<number | ''>('');
 
   const { data: missionary, isLoading } = useQuery({
     queryKey: ['missionary', 'by-member', memberId],
     queryFn: () => fetchMissionaryByMember(memberId),
-  })
+  });
+  const { data: stages = [] } = useQuery({ queryKey: ['missionary', 'stages'], queryFn: listStages });
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['missionary', 'by-member', memberId] })
-    queryClient.invalidateQueries({ queryKey: ['missionaries'] })
-    queryClient.invalidateQueries({ queryKey: ['member', memberId] })
-    queryClient.invalidateQueries({ queryKey: ['home', 'dashboard'] })
-  }
+    queryClient.invalidateQueries({ queryKey: ['missionary', 'by-member', memberId] });
+    queryClient.invalidateQueries({ queryKey: ['missionaries'] });
+    queryClient.invalidateQueries({ queryKey: ['member', memberId] });
+    queryClient.invalidateQueries({ queryKey: ['home', 'dashboard'] });
+  };
 
   const registerMut = useMutation({
     mutationFn: () => createMissionary({ memberId }),
     onSuccess: invalidate,
-  })
+    onError: (error: Error) => window.alert(`트랙 등록 실패: ${error.message}`),
+  });
 
   const stageMut = useMutation({
-    mutationFn: (stage: MissionaryStage) => changeMissionaryStage(missionary!.id, stage, note.trim() || undefined),
+    mutationFn: (nextStageId: number) => updateMissionary(missionary!.id, { stageId: nextStageId }),
+    onSuccess: invalidate,
+    onError: (error: Error) => window.alert(`단계 변경 실패: ${error.message}`),
+  });
+
+  const noteMut = useMutation({
+    mutationFn: () => addNote(missionary!.id, { content: memo.trim(), stageId: stageId === '' ? undefined : stageId }),
     onSuccess: () => {
-      setNote('')
-      invalidate()
+      setMemo('');
+      setStageId('');
+      invalidate();
     },
-  })
+    onError: (error: Error) => window.alert(`기록 실패: ${error.message}`),
+  });
 
   if (isLoading) {
     return (
@@ -108,7 +111,7 @@ function MissionaryTrack({ memberId }: { memberId: number }) {
         <h3 className="mb-2 text-sm font-semibold">파송 트랙</h3>
         <p className="text-xs text-[var(--color-muted-foreground)]">불러오는 중…</p>
       </div>
-    )
+    );
   }
 
   if (!missionary) {
@@ -125,14 +128,16 @@ function MissionaryTrack({ memberId }: { memberId: number }) {
         </div>
         <p className="text-xs text-[var(--color-muted-foreground)]">파송 트랙에 등록되지 않은 교인입니다.</p>
       </div>
-    )
+    );
   }
+
+  const activeStages = stages.filter(stage => stage.isActive || stage.id === missionary.stageId);
 
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-semibold">파송 트랙</h3>
-        <Badge tone="success">{MISSIONARY_STAGE_LABEL[missionary.stage]}</Badge>
+        <Badge tone={missionary.stageCountsAsActive ? 'success' : 'neutral'}>{missionary.stageName ?? '단계 미지정'}</Badge>
       </div>
 
       {(missionary.country || missionary.fieldWork) && (
@@ -144,34 +149,48 @@ function MissionaryTrack({ memberId }: { memberId: number }) {
 
       {canWrite && (
         <div className="space-y-2">
-          <div className="flex flex-wrap gap-1.5">
-            {MISSIONARY_STAGES.map((stage) => (
-              <button
-                key={stage}
-                onClick={() => stageMut.mutate(stage)}
-                disabled={stage === missionary.stage || stageMut.isPending}
-                className={cn(
-                  'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                  stage === missionary.stage
-                    ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
-                    : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]',
-                )}
-              >
-                {MISSIONARY_STAGE_LABEL[stage]}
-              </button>
+          <select
+            value={missionary.stageId ?? ''}
+            onChange={event => event.target.value !== '' && stageMut.mutate(Number(event.target.value))}
+            className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-1.5 text-xs"
+          >
+            <option value="">단계 미지정</option>
+            {activeStages.map(stage => (
+              <option key={stage.id} value={stage.id}>
+                {stage.name}
+              </option>
             ))}
+          </select>
+
+          <div className="flex gap-1.5">
+            <input
+              value={memo}
+              onChange={event => setMemo(event.target.value)}
+              placeholder="경과 메모"
+              className="min-w-0 flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-1.5 text-xs outline-none focus:border-[var(--color-foreground)]"
+            />
+            <select
+              value={stageId}
+              onChange={event => setStageId(event.target.value === '' ? '' : Number(event.target.value))}
+              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1.5 text-xs"
+            >
+              <option value="">단계 변화 없음</option>
+              {activeStages.map(stage => (
+                <option key={stage.id} value={stage.id}>
+                  {stage.name}
+                </option>
+              ))}
+            </select>
+            <Button size="sm" onClick={() => noteMut.mutate()} disabled={!memo.trim() || noteMut.isPending}>
+              기록
+            </Button>
           </div>
-          <input
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder="단계 변경 메모 (선택)"
-            className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-1.5 text-xs outline-none focus:border-[var(--color-foreground)]"
-          />
+
           <p className="text-[11px] text-[var(--color-muted-foreground)]">
-            파송 단계로 옮기면 재적상태가 자동으로 “파송”이 되어 출석 명단에서 빠집니다.
+            파송 집계 단계로 옮기면 재적상태가 “파송”이 되어 출석 명단에서 빠집니다. 기록 목록은 선교사 화면에서 볼 수 있습니다.
           </p>
         </div>
       )}
     </div>
-  )
+  );
 }

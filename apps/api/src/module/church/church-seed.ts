@@ -4,6 +4,7 @@ import { CalendarEntity } from '@src/database/entities/calendar.entity';
 import { DepartmentEntity } from '@src/database/entities/department.entity';
 import { MemberStatusEntity } from '@src/database/entities/member-status.entity';
 import { MinistryEntity } from '@src/database/entities/ministry.entity';
+import { MissionaryStageEntity } from '@src/database/entities/missionary-stage.entity';
 import { OfferingCategoryEntity } from '@src/database/entities/offering-category.entity';
 import { PositionEntity } from '@src/database/entities/position.entity';
 import { SmallGroupEntity } from '@src/database/entities/small-group.entity';
@@ -52,6 +53,20 @@ const WORSHIP_SERVICES = ['주일예배', '수요예배', '금요기도회', '�
 const OFFERING_CATEGORIES = ['십일조', '주정헌금', '감사헌금', '선교헌금', '건축헌금', '특별헌금'];
 
 const ACCOUNT_CATEGORIES = ['인건비', '사역비', '운영비', '선교비', '시설비', '기타'];
+
+/**
+ * 선교사 단계 기본값. 파송 절차는 교회마다 달라 이름·개수를 자유롭게 바꿀 수 있고,
+ * 코드가 아는 건 `countsAsActive`(현재 파송 중으로 집계할 단계인지) 하나뿐이다.
+ */
+const MISSIONARY_STAGES: { name: string; countsAsActive: boolean }[] = [
+  { name: '후보', countsAsActive: false },
+  { name: '훈련 중', countsAsActive: false },
+  { name: '파송 확정', countsAsActive: true },
+  { name: '현지 사역', countsAsActive: true },
+  { name: '안식년', countsAsActive: true },
+  { name: '복귀', countsAsActive: false },
+  { name: '종료', countsAsActive: false },
+];
 
 /** 훈련 과정 — 기사에 나온 3종을 기본값으로. 회차 수는 기수 개설 시 기본값으로 쓰인다. */
 const TRAINING_COURSES: { name: string; format: TrainingFormat; defaultSessionCount: number; description: string }[] = [
@@ -120,6 +135,9 @@ export async function seedChurchReferences(manager: EntityManager, churchId: num
 
   const courseRepo = manager.getRepository(TrainingCourseEntity);
   await courseRepo.save(TRAINING_COURSES.map((course, index) => courseRepo.create({ churchId, ...course, sortOrder: index })));
+
+  const stageRepo = manager.getRepository(MissionaryStageEntity);
+  await stageRepo.save(MISSIONARY_STAGES.map((stage, index) => stageRepo.create({ churchId, ...stage, sortOrder: index })));
 
   const calendarRepo = manager.getRepository(CalendarEntity);
   await calendarRepo.save(CALENDARS.map(calendar => calendarRepo.create({ churchId, ...calendar })));

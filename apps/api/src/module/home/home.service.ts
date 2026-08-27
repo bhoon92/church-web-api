@@ -5,7 +5,8 @@ import { CalendarEntity } from '@src/database/entities/calendar.entity';
 import { FinanceTransactionEntity, TransactionFlow } from '@src/database/entities/finance-transaction.entity';
 import { MemberEntity } from '@src/database/entities/member.entity';
 import { MemberStatusEntity } from '@src/database/entities/member-status.entity';
-import { MissionaryStageHistoryEntity } from '@src/database/entities/missionary-stage-history.entity';
+import { MissionaryNoteEntity } from '@src/database/entities/missionary-note.entity';
+import { MissionaryStageEntity } from '@src/database/entities/missionary-stage.entity';
 import { OfferingCategoryEntity } from '@src/database/entities/offering-category.entity';
 import { OfferingEntity } from '@src/database/entities/offering.entity';
 import { CohortStatus, TrainingCohortEntity } from '@src/database/entities/training-cohort.entity';
@@ -53,7 +54,7 @@ export type OngoingCohort = {
  */
 export type HomeDashboard = {
   stats: {
-    /** 현재 파송 인원 (파송확정·현지·안식년). */
+    /** 현재 파송 인원 — 교회가 `countsAsActive` 로 지정한 단계에 있는 사람. */
     activeMissionaries: number;
     /** 올해 파송 확정된 인원. */
     commissionedThisYear: number;
@@ -186,7 +187,7 @@ export class HomeService {
         order: { updatedAt: 'DESC' },
         take: 6,
       }),
-      DataSources.instance.getRepository(MissionaryStageHistoryEntity).find({
+      DataSources.instance.getRepository(MissionaryNoteEntity).find({
         where: { churchId },
         order: { createdAt: 'DESC' },
         take: 6,
@@ -244,17 +245,26 @@ export class HomeService {
     });
   }
 
-  private async toMissionaryActivity(churchId: number, rows: MissionaryStageHistoryEntity[]): Promise<HomeActivityItem[]> {
+  /** 선교사 기록 피드 — 단계가 지정된 기록은 "○○ 단계", 메모만 있으면 메모 앞부분을 보여준다. */
+  private async toMissionaryActivity(churchId: number, rows: MissionaryNoteEntity[]): Promise<HomeActivityItem[]> {
     if (rows.length === 0) return [];
-    const items = await this.missionaries.list(churchId, {});
+    const [items, stages] = await Promise.all([
+      this.missionaries.list(churchId, {}),
+      DataSources.instance.getRepository(MissionaryStageEntity).find({ where: { churchId } }),
+    ]);
     const byProfile = new Map(items.map(item => [item.id, item]));
+    const stageMap = new Map(stages.map(stage => [stage.id, stage.name]));
 
-    return rows.map(row => ({
-      kind: 'missionary' as const,
-      who: byProfile.get(row.missionaryId)?.memberName ?? '선교사',
-      what: `${STAGE_LABEL[row.toStage] ?? row.toStage} 단계로 이동`,
-      at: row.createdAt.toISOString(),
-    }));
+    return rows.map(row => {
+      const stageName = row.stageId ? stageMap.get(row.stageId) : undefined;
+      const summary = row.content.length > 30 ? `${row.content.slice(0, 30)}…` : row.content;
+      return {
+        kind: 'missionary' as const,
+        who: byProfile.get(row.missionaryId)?.memberName ?? '선교사',
+        what: stageName ? `${stageName} 단계 — ${summary}` : summary,
+        at: row.createdAt.toISOString(),
+      };
+    });
   }
 
   private async toMemberActivity(churchId: number, rows: MemberEntity[]): Promise<HomeActivityItem[]> {
@@ -306,14 +316,3 @@ export class HomeService {
     return { start, end };
   }
 }
-
-/** 활동 피드에 쓰는 단계 한글 라벨. */
-const STAGE_LABEL: Record<string, string> = {
-  candidate: '후보',
-  training: '훈련',
-  commissioned: '파송확정',
-  field: '현지사역',
-  furlough: '안식년',
-  returned: '복귀',
-  ended: '종료',
-};

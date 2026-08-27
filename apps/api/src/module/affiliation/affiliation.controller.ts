@@ -26,9 +26,7 @@ const ASSIGN_DESCRIPTION = [
 ].join('\n');
 
 const LEADER_DESCRIPTION = '활성 소속의 리더 여부와 호칭(roleLabel)을 변경한다. 조직도에서 이 값으로 리더 줄과 직함이 그려진다.';
-
 const END_DESCRIPTION = '소속을 **종료**한다. row 를 지우지 않고 endDate 를 오늘로 채워 이력을 남긴다. 활성 소속이 없으면 404.';
-
 const MEMBER_ID_PARAM = { name: 'memberId', description: '교인 id', type: Number } as const;
 const REFERENCE_ID_PARAM = { name: 'referenceId', description: '기준정보(부서/사역팀/목장) id', type: Number } as const;
 

@@ -1,96 +1,98 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Globe2, Plus, X } from 'lucide-react'
-import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Globe2, Plus, Settings2, Trash2, X } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
 
-import { listMembers, type Member } from '@/api/members'
+import { listMembers, type Member } from '@/api/members';
 import {
-  ACTIVE_STAGES,
-  MISSIONARY_STAGE_LABEL,
-  MISSIONARY_STAGES,
-  changeMissionaryStage,
+  addNote,
   createMissionary,
+  deleteNote,
   fetchMissionaryDetail,
   fetchMissionarySummary,
   listMissionaries,
+  listStages,
   updateMissionary,
   type Missionary,
   type MissionaryStage,
-} from '@/api/missionary'
-import { PageHeader } from '@/components/page-header'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { usePermissions } from '@/lib/permissions'
-import { cn } from '@/lib/utils'
-
-const STAGE_TONE: Record<MissionaryStage, 'neutral' | 'muted' | 'success' | 'warn'> = {
-  candidate: 'neutral',
-  training: 'warn',
-  commissioned: 'success',
-  field: 'success',
-  furlough: 'warn',
-  returned: 'muted',
-  ended: 'muted',
-}
+} from '@/api/missionary';
+import { PageHeader } from '@/components/page-header';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { todayString } from '@/lib/date';
+import { usePermissions } from '@/lib/permissions';
+import { cn } from '@/lib/utils';
+import { MissionaryStageManagerModal } from './missionary-stage-manager';
 
 export function MissionariesPage() {
-  const { can } = usePermissions()
-  const canWrite = can('missionary:write')
-  const [stageFilter, setStageFilter] = useState<MissionaryStage | 'active' | 'all'>('active')
-  const [openId, setOpenId] = useState<number | null>(null)
-  const [registering, setRegistering] = useState(false)
+  const { can } = usePermissions();
+  const canWrite = can('missionary:write');
+  const [filter, setFilter] = useState<{ kind: 'active' | 'all' | 'stage'; stageId?: number }>({ kind: 'active' });
+  const [openId, setOpenId] = useState<number | null>(null);
+  const [registering, setRegistering] = useState(false);
+  const [managingStages, setManagingStages] = useState(false);
 
-  const { data: summary } = useQuery({ queryKey: ['missionaries', 'summary'], queryFn: fetchMissionarySummary })
+  const { data: stages = [] } = useQuery({ queryKey: ['missionary', 'stages'], queryFn: listStages });
+  const { data: summary } = useQuery({ queryKey: ['missionaries', 'summary'], queryFn: fetchMissionarySummary });
   const { data: missionaries = [], isLoading } = useQuery({
-    queryKey: ['missionaries', stageFilter],
+    queryKey: ['missionaries', filter],
     queryFn: () =>
-      listMissionaries(
-        stageFilter === 'all' ? { scope: 'all' } : stageFilter === 'active' ? { scope: 'active' } : { stage: stageFilter },
-      ),
-  })
+      listMissionaries(filter.kind === 'stage' ? { stageId: filter.stageId } : { scope: filter.kind === 'active' ? 'active' : 'all' }),
+  });
+
+  const countFor = (stageId: number) => summary?.byStage.find(row => row.stageId === stageId)?.count ?? 0;
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="양성"
         title="선교사"
-        description="파송 트랙의 단계별 현황입니다. 단계를 옮기면 이력이 남습니다."
+        description="파송 단계와 경과를 관리합니다. 단계 구성은 교회에 맞게 바꿀 수 있습니다."
         actions={
           canWrite && (
-            <Button size="sm" onClick={() => setRegistering(true)}>
-              <Plus className="size-4" />
-              트랙 등록
-            </Button>
+            <>
+              <Button size="sm" variant="outline" onClick={() => setManagingStages(true)}>
+                <Settings2 className="size-4" />
+                단계 관리
+              </Button>
+              <Button size="sm" onClick={() => setRegistering(true)}>
+                <Plus className="size-4" />
+                선교사 등록
+              </Button>
+            </>
           )
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {managingStages && <MissionaryStageManagerModal onClose={() => setManagingStages(false)} />}
+
+      <div className="grid grid-cols-2 gap-3">
         <StatTile label="현재 파송" value={summary ? `${summary.active}명` : '—'} />
         <StatTile label="올해 파송 확정" value={summary ? `${summary.commissionedThisYear}명` : '—'} />
-        <StatTile
-          label="후보·훈련"
-          value={summary ? `${summary.byStage.candidate + summary.byStage.training}명` : '—'}
-        />
       </div>
 
       <div className="flex flex-wrap gap-1.5">
-        <FilterChip active={stageFilter === 'active'} onClick={() => setStageFilter('active')}>
+        <FilterChip active={filter.kind === 'active'} onClick={() => setFilter({ kind: 'active' })}>
           파송 중
         </FilterChip>
-        <FilterChip active={stageFilter === 'all'} onClick={() => setStageFilter('all')}>
+        <FilterChip active={filter.kind === 'all'} onClick={() => setFilter({ kind: 'all' })}>
           전체
         </FilterChip>
-        {MISSIONARY_STAGES.map((stage) => (
-          <FilterChip key={stage} active={stageFilter === stage} onClick={() => setStageFilter(stage)}>
-            {MISSIONARY_STAGE_LABEL[stage]}
-            {summary ? ` ${summary.byStage[stage]}` : ''}
-          </FilterChip>
-        ))}
+        {stages
+          .filter(stage => stage.isActive)
+          .map(stage => (
+            <FilterChip
+              key={stage.id}
+              active={filter.kind === 'stage' && filter.stageId === stage.id}
+              onClick={() => setFilter({ kind: 'stage', stageId: stage.id })}
+            >
+              {stage.name} {countFor(stage.id)}
+            </FilterChip>
+          ))}
       </div>
 
-      {registering && <RegisterPanel onClose={() => setRegistering(false)} />}
+      {registering && <RegisterPanel stages={stages} onClose={() => setRegistering(false)} />}
 
       {isLoading ? (
         <p className="text-sm text-[var(--color-muted-foreground)]">불러오는 중…</p>
@@ -99,28 +101,30 @@ export function MissionariesPage() {
           <CardContent className="flex flex-col items-center gap-2 py-10 text-center">
             <Globe2 className="size-8 text-[var(--color-muted-foreground)]" />
             <p className="text-sm text-[var(--color-muted-foreground)]">
-              {stageFilter === 'active' ? '현재 파송 중인 선교사가 없습니다.' : '해당 단계의 선교사가 없습니다.'}
+              {filter.kind === 'active' ? '현재 파송 중인 선교사가 없습니다.' : '해당 조건의 선교사가 없습니다.'}
             </p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {missionaries.map((missionary) => (
+          {missionaries.map(missionary => (
             <button key={missionary.id} onClick={() => setOpenId(missionary.id)} className="text-left">
               <Card className="h-full transition-colors hover:border-[var(--color-foreground)]">
                 <CardContent className="space-y-1.5 py-4">
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-semibold">{missionary.memberName}</p>
-                    <Badge tone={STAGE_TONE[missionary.stage]}>{MISSIONARY_STAGE_LABEL[missionary.stage]}</Badge>
+                    {missionary.stageName ? (
+                      <Badge tone={missionary.stageCountsAsActive ? 'success' : 'neutral'}>{missionary.stageName}</Badge>
+                    ) : (
+                      <Badge tone="muted">단계 미지정</Badge>
+                    )}
                   </div>
                   <p className="text-xs text-[var(--color-muted-foreground)]">
                     {[missionary.country, missionary.region].filter(Boolean).join(' ') || '파송지 미정'}
                   </p>
                   {missionary.fieldWork && <p className="truncate text-sm">{missionary.fieldWork}</p>}
                   {missionary.commissionedAt && (
-                    <p className="text-xs tabular-nums text-[var(--color-muted-foreground)]">
-                      파송 {missionary.commissionedAt}
-                    </p>
+                    <p className="text-xs tabular-nums text-[var(--color-muted-foreground)]">파송 {missionary.commissionedAt}</p>
                   )}
                 </CardContent>
               </Card>
@@ -129,9 +133,9 @@ export function MissionariesPage() {
         </div>
       )}
 
-      {openId !== null && <MissionaryDetailModal id={openId} onClose={() => setOpenId(null)} />}
+      {openId !== null && <MissionaryDetailModal id={openId} stages={stages} onClose={() => setOpenId(null)} />}
     </div>
-  )
+  );
 }
 
 function StatTile({ label, value }: { label: string; value: string }) {
@@ -142,10 +146,10 @@ function StatTile({ label, value }: { label: string; value: string }) {
         <p className="mt-1 text-xl font-semibold tabular-nums">{value}</p>
       </CardContent>
     </Card>
-  )
+  );
 }
 
-function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <button
       onClick={onClick}
@@ -153,100 +157,162 @@ function FilterChip({ active, onClick, children }: { active: boolean; onClick: (
         'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
         active
           ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
-          : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]',
+          : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]'
       )}
     >
       {children}
     </button>
-  )
+  );
 }
 
-function RegisterPanel({ onClose }: { onClose: () => void }) {
-  const queryClient = useQueryClient()
-  const [query, setQuery] = useState('')
-  const [picked, setPicked] = useState<Member | null>(null)
+/**
+ * 등록 패널 — 명부에 없는 사람도 여기서 바로 등록한다.
+ * 교인 화면을 먼저 다녀와야 했던 흐름을 없애기 위해 "새로 등록" 탭을 둔다.
+ */
+function RegisterPanel({ stages, onClose }: { stages: MissionaryStage[]; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [mode, setMode] = useState<'existing' | 'new'>('new');
+  const [query, setQuery] = useState('');
+  const [picked, setPicked] = useState<Member | null>(null);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [stageId, setStageId] = useState<number | ''>('');
+  const [country, setCountry] = useState('');
 
   const { data } = useQuery({
     queryKey: ['members', 'for-missionary', query],
     queryFn: () => listMembers({ q: query || undefined, pageSize: 20 }),
-  })
+    enabled: mode === 'existing',
+  });
 
   const createMut = useMutation({
-    mutationFn: () => createMissionary({ memberId: picked!.id }),
+    mutationFn: () =>
+      createMissionary({
+        ...(mode === 'existing' ? { memberId: picked!.id } : { newMember: { name: name.trim(), phone: phone.trim() || undefined } }),
+        stageId: stageId === '' ? undefined : stageId,
+        country: country.trim() || undefined,
+      }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['missionaries'] })
-      onClose()
+      queryClient.invalidateQueries({ queryKey: ['missionaries'] });
+      queryClient.invalidateQueries({ queryKey: ['members'] });
+      onClose();
     },
-  })
+    onError: (error: Error) => window.alert(`등록 실패: ${error.message}`),
+  });
+
+  const ready = mode === 'existing' ? Boolean(picked) : Boolean(name.trim());
 
   return (
     <Card>
       <CardContent className="space-y-3 py-4">
-        <Input placeholder="교인 이름으로 검색" value={query} onChange={(event) => setQuery(event.target.value)} />
-        <div className="flex flex-wrap gap-1.5">
-          {(data?.items ?? []).map((member) => (
-            <FilterChip key={member.id} active={picked?.id === member.id} onClick={() => setPicked(member)}>
-              {member.name}
-            </FilterChip>
-          ))}
+        <div className="flex gap-1.5">
+          <FilterChip active={mode === 'new'} onClick={() => setMode('new')}>
+            새로 등록
+          </FilterChip>
+          <FilterChip active={mode === 'existing'} onClick={() => setMode('existing')}>
+            기존 교인에서 선택
+          </FilterChip>
         </div>
-        <p className="text-xs text-[var(--color-muted-foreground)]">후보(candidate) 단계로 등록됩니다.</p>
+
+        {mode === 'new' ? (
+          <>
+            <div className="flex flex-wrap gap-2">
+              <Input placeholder="이름" value={name} onChange={event => setName(event.target.value)} className="w-40" />
+              <Input placeholder="연락처 (선택)" value={phone} onChange={event => setPhone(event.target.value)} className="w-44" />
+            </div>
+            <p className="text-xs text-[var(--color-muted-foreground)]">교인 명부에도 함께 등록됩니다.</p>
+          </>
+        ) : (
+          <>
+            <Input placeholder="교인 이름으로 검색" value={query} onChange={event => setQuery(event.target.value)} />
+            <div className="flex flex-wrap gap-1.5">
+              {(data?.items ?? []).map(member => (
+                <FilterChip key={member.id} active={picked?.id === member.id} onClick={() => setPicked(member)}>
+                  {member.name}
+                </FilterChip>
+              ))}
+            </div>
+          </>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={stageId}
+            onChange={event => setStageId(event.target.value === '' ? '' : Number(event.target.value))}
+            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-2.5 py-1.5 text-sm"
+          >
+            <option value="">단계 미지정</option>
+            {stages
+              .filter(stage => stage.isActive)
+              .map(stage => (
+                <option key={stage.id} value={stage.id}>
+                  {stage.name}
+                </option>
+              ))}
+          </select>
+          <Input placeholder="파송 국가 (선택)" value={country} onChange={event => setCountry(event.target.value)} className="w-40" />
+        </div>
+
         <div className="flex justify-end gap-2">
           <Button size="sm" variant="ghost" onClick={onClose}>
             취소
           </Button>
-          <Button size="sm" onClick={() => createMut.mutate()} disabled={!picked || createMut.isPending}>
+          <Button size="sm" onClick={() => createMut.mutate()} disabled={!ready || createMut.isPending}>
             등록
           </Button>
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
 
-function MissionaryDetailModal({ id, onClose }: { id: number; onClose: () => void }) {
-  const queryClient = useQueryClient()
-  const { can } = usePermissions()
-  const canWrite = can('missionary:write')
-  const [note, setNote] = useState('')
+function MissionaryDetailModal({ id, stages, onClose }: { id: number; stages: MissionaryStage[]; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const { can } = usePermissions();
+  const canWrite = can('missionary:write');
 
   const { data: missionary, isLoading } = useQuery({
     queryKey: ['missionary', id],
     queryFn: () => fetchMissionaryDetail(id),
-  })
+  });
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['missionary', id] })
-    queryClient.invalidateQueries({ queryKey: ['missionaries'] })
-    queryClient.invalidateQueries({ queryKey: ['home', 'dashboard'] })
-  }
+    queryClient.invalidateQueries({ queryKey: ['missionary', id] });
+    queryClient.invalidateQueries({ queryKey: ['missionaries'] });
+    queryClient.invalidateQueries({ queryKey: ['home', 'dashboard'] });
+  };
 
   const stageMut = useMutation({
-    mutationFn: (stage: MissionaryStage) => changeMissionaryStage(id, stage, note.trim() || undefined),
-    onSuccess: () => {
-      setNote('')
-      invalidate()
-    },
-  })
+    mutationFn: (nextStageId: number) => updateMissionary(id, { stageId: nextStageId }),
+    onSuccess: invalidate,
+    onError: (error: Error) => window.alert(`단계 변경 실패: ${error.message}`),
+  });
 
   const fieldMut = useMutation({
     mutationFn: (payload: { country?: string; region?: string; fieldWork?: string }) => updateMissionary(id, payload),
     onSuccess: invalidate,
-  })
+    onError: (error: Error) => window.alert(`저장 실패: ${error.message}`),
+  });
+
+  const deleteNoteMut = useMutation({
+    mutationFn: (noteId: number) => deleteNote(id, noteId),
+    onSuccess: invalidate,
+    onError: (error: Error) => window.alert(`삭제 실패: ${error.message}`),
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
       <div
         className="flex max-h-[85vh] w-full max-w-xl flex-col rounded-2xl bg-[var(--color-background)] shadow-md"
-        onClick={(event) => event.stopPropagation()}
+        onClick={event => event.stopPropagation()}
       >
         <div className="flex items-start justify-between border-b border-[var(--color-border)] px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold">{missionary?.memberName ?? '불러오는 중…'}</h2>
             {missionary && (
               <p className="text-xs text-[var(--color-muted-foreground)]">
-                {MISSIONARY_STAGE_LABEL[missionary.stage]}
-                {ACTIVE_STAGES.includes(missionary.stage) ? ' · 출석 명단 제외' : ''}
+                {missionary.stageName ?? '단계 미지정'}
+                {missionary.stageCountsAsActive ? ' · 출석 명단 제외' : ''}
               </p>
             )}
           </div>
@@ -260,42 +326,63 @@ function MissionaryDetailModal({ id, onClose }: { id: number; onClose: () => voi
             <p className="text-sm text-[var(--color-muted-foreground)]">불러오는 중…</p>
           ) : (
             <>
-              <FieldEditor missionary={missionary} canWrite={canWrite} onSave={(payload) => fieldMut.mutate(payload)} />
+              {/* 현재 상태 = 드롭다운으로 직접 관리. 사유를 남기려면 아래 기록 폼을 쓴다. */}
+              <div className="space-y-2">
+                <h3 className="text-sm font-semibold">현재 단계</h3>
+                {canWrite ? (
+                  <select
+                    value={missionary.stageId ?? ''}
+                    onChange={event => event.target.value !== '' && stageMut.mutate(Number(event.target.value))}
+                    className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm"
+                  >
+                    <option value="">단계 미지정</option>
+                    {stages
+                      .filter(stage => stage.isActive || stage.id === missionary.stageId)
+                      .map(stage => (
+                        <option key={stage.id} value={stage.id}>
+                          {stage.name}
+                        </option>
+                      ))}
+                  </select>
+                ) : (
+                  <p className="text-sm">{missionary.stageName ?? '단계 미지정'}</p>
+                )}
+                <p className="text-[11px] text-[var(--color-muted-foreground)]">
+                  여기서 바꾸면 기록이 남지 않습니다. 사유를 남기려면 아래 “기록 추가”에서 단계를 함께 선택하세요.
+                </p>
+              </div>
 
-              {canWrite && (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-semibold">단계 이동</h3>
-                  <div className="flex flex-wrap gap-1.5">
-                    {MISSIONARY_STAGES.map((stage) => (
-                      <FilterChip
-                        key={stage}
-                        active={stage === missionary.stage}
-                        onClick={() => stage !== missionary.stage && stageMut.mutate(stage)}
-                      >
-                        {MISSIONARY_STAGE_LABEL[stage]}
-                      </FilterChip>
-                    ))}
-                  </div>
-                  <Input placeholder="변경 메모 (선택)" value={note} onChange={(event) => setNote(event.target.value)} />
-                </div>
-              )}
+              <FieldEditor missionary={missionary} canWrite={canWrite} onSave={payload => fieldMut.mutate(payload)} />
 
-              <div>
-                <h3 className="mb-2 text-sm font-semibold">단계 이력</h3>
-                {missionary.history.length === 0 ? (
-                  <p className="text-xs text-[var(--color-muted-foreground)]">이력 없음</p>
+              <div className="border-t border-[var(--color-border)] pt-4">
+                <h3 className="mb-2 text-sm font-semibold">기록</h3>
+                {canWrite && <NoteForm missionaryId={id} stages={stages} onDone={invalidate} />}
+
+                {missionary.notes.length === 0 ? (
+                  <p className="text-xs text-[var(--color-muted-foreground)]">기록 없음</p>
                 ) : (
                   <ul className="space-y-2">
-                    {missionary.history.map((entry) => (
-                      <li key={entry.id} className="rounded-xl border border-[var(--color-border)] px-3 py-2">
-                        <p className="text-sm">
-                          {entry.fromStage ? `${MISSIONARY_STAGE_LABEL[entry.fromStage]} → ` : ''}
-                          <span className="font-medium">{MISSIONARY_STAGE_LABEL[entry.toStage]}</span>
-                        </p>
-                        <p className="text-xs tabular-nums text-[var(--color-muted-foreground)]">
-                          {entry.changedAt}
-                          {entry.note ? ` · ${entry.note}` : ''}
-                        </p>
+                    {missionary.notes.map(note => (
+                      <li key={note.id} className="rounded-xl border border-[var(--color-border)] px-3 py-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {note.stageName && <Badge tone="accent">{note.stageName}</Badge>}
+                            <span className="text-xs tabular-nums text-[var(--color-muted-foreground)]">{note.date}</span>
+                          </div>
+                          {canWrite && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm('이 기록을 삭제할까요?')) deleteNoteMut.mutate(note.id);
+                              }}
+                              className="rounded-full p-0.5 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)]"
+                              aria-label="기록 삭제"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          )}
+                        </div>
+                        <p className="mt-1.5 whitespace-pre-wrap text-sm">{note.content}</p>
+                        {note.recorderName && <p className="mt-1 text-[11px] text-[var(--color-muted-foreground)]">{note.recorderName}</p>}
                       </li>
                     ))}
                   </ul>
@@ -306,7 +393,61 @@ function MissionaryDetailModal({ id, onClose }: { id: number; onClose: () => voi
         </div>
       </div>
     </div>
-  )
+  );
+}
+
+/** 기록 폼 — 메모가 본체, 단계는 옆의 드롭다운에서 선택하거나 비워둔다. */
+function NoteForm({ missionaryId, stages, onDone }: { missionaryId: number; stages: MissionaryStage[]; onDone: () => void }) {
+  const [content, setContent] = useState('');
+  const [stageId, setStageId] = useState<number | ''>('');
+  const [date, setDate] = useState(todayString());
+
+  const addMut = useMutation({
+    mutationFn: () =>
+      addNote(missionaryId, {
+        content: content.trim(),
+        stageId: stageId === '' ? undefined : stageId,
+        date,
+      }),
+    onSuccess: () => {
+      setContent('');
+      setStageId('');
+      onDone();
+    },
+    onError: (error: Error) => window.alert(`기록 실패: ${error.message}`),
+  });
+
+  return (
+    <div className="mb-3 space-y-2 rounded-xl border border-dashed border-[var(--color-border)] p-3">
+      <textarea
+        placeholder="경과 메모 (예: 비자 발급 완료, 파송예배 일정 확정)"
+        value={content}
+        onChange={event => setContent(event.target.value)}
+        rows={2}
+        className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm outline-none focus:border-[var(--color-foreground)]"
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={stageId}
+          onChange={event => setStageId(event.target.value === '' ? '' : Number(event.target.value))}
+          className="rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-2.5 py-1.5 text-sm"
+        >
+          <option value="">단계 변화 없음</option>
+          {stages
+            .filter(stage => stage.isActive)
+            .map(stage => (
+              <option key={stage.id} value={stage.id}>
+                {stage.name}(으)로 이동
+              </option>
+            ))}
+        </select>
+        <Input type="date" value={date} onChange={event => setDate(event.target.value)} className="w-40" />
+        <Button size="sm" onClick={() => addMut.mutate()} disabled={!content.trim() || addMut.isPending}>
+          기록 추가
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 function FieldEditor({
@@ -314,16 +455,16 @@ function FieldEditor({
   canWrite,
   onSave,
 }: {
-  missionary: Missionary
-  canWrite: boolean
-  onSave: (payload: { country?: string; region?: string; fieldWork?: string }) => void
+  missionary: Missionary;
+  canWrite: boolean;
+  onSave: (payload: { country?: string; region?: string; fieldWork?: string }) => void;
 }) {
-  const [country, setCountry] = useState(missionary.country ?? '')
-  const [region, setRegion] = useState(missionary.region ?? '')
-  const [fieldWork, setFieldWork] = useState(missionary.fieldWork ?? '')
+  const [country, setCountry] = useState(missionary.country ?? '');
+  const [region, setRegion] = useState(missionary.region ?? '');
+  const [fieldWork, setFieldWork] = useState(missionary.fieldWork ?? '');
 
   const dirty =
-    country !== (missionary.country ?? '') || region !== (missionary.region ?? '') || fieldWork !== (missionary.fieldWork ?? '')
+    country !== (missionary.country ?? '') || region !== (missionary.region ?? '') || fieldWork !== (missionary.fieldWork ?? '');
 
   if (!canWrite) {
     return (
@@ -331,17 +472,17 @@ function FieldEditor({
         <p>{[missionary.country, missionary.region].filter(Boolean).join(' ') || '파송지 미정'}</p>
         {missionary.fieldWork && <p className="text-[var(--color-muted-foreground)]">{missionary.fieldWork}</p>}
       </div>
-    )
+    );
   }
 
   return (
     <div className="space-y-2">
       <h3 className="text-sm font-semibold">파송지</h3>
       <div className="flex flex-wrap gap-2">
-        <Input placeholder="국가" value={country} onChange={(event) => setCountry(event.target.value)} className="w-32" />
-        <Input placeholder="지역/도시" value={region} onChange={(event) => setRegion(event.target.value)} className="w-40" />
+        <Input placeholder="국가" value={country} onChange={event => setCountry(event.target.value)} className="w-32" />
+        <Input placeholder="지역/도시" value={region} onChange={event => setRegion(event.target.value)} className="w-40" />
       </div>
-      <Input placeholder="사역 내용" value={fieldWork} onChange={(event) => setFieldWork(event.target.value)} />
+      <Input placeholder="사역 내용" value={fieldWork} onChange={event => setFieldWork(event.target.value)} />
       {dirty && (
         <div className="flex justify-end">
           <Button
@@ -359,5 +500,5 @@ function FieldEditor({
         </div>
       )}
     </div>
-  )
+  );
 }
