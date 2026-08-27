@@ -1,14 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { DataSources } from '@src/database/data-sources';
 import { AccountEntity } from '@src/database/entities/account.entity';
+import { CareNoteEntity, CareNoteType } from '@src/database/entities/care-note.entity';
 import { MemberEntity } from '@src/database/entities/member.entity';
-import { PastoralRecordEntity, PastoralRecordType } from '@src/database/entities/pastoral-record.entity';
-import { CreatePastoralRecordDto } from './dto/create-pastoral-record.dto';
-import { UpdatePastoralRecordDto } from './dto/update-pastoral-record.dto';
+import { CreateCareNoteDto } from './dto/create-care-note.dto';
+import { UpdateCareNoteDto } from './dto/update-care-note.dto';
 
-export type PastoralRecordItem = {
+export type CareNoteItem = {
   id: number;
-  type: PastoralRecordType;
+  type: CareNoteType;
   date: string;
   location: string | null;
   content: string;
@@ -20,18 +20,18 @@ export type PastoralRecordItem = {
 };
 
 @Injectable()
-export class PastoralRecordService {
+export class CareNoteService {
   private repo() {
-    return DataSources.instance.getRepository(PastoralRecordEntity);
+    return DataSources.instance.getRepository(CareNoteEntity);
   }
 
-  async create(churchId: number, memberId: number, recorderAccountId: number, dto: CreatePastoralRecordDto): Promise<PastoralRecordEntity> {
+  async create(churchId: number, memberId: number, recorderAccountId: number, dto: CreateCareNoteDto): Promise<CareNoteEntity> {
     await this.assertMember(churchId, memberId);
     const row = this.repo().create({
       churchId,
       memberId,
       recorderAccountId,
-      type: dto.type ?? PastoralRecordType.VISIT,
+      type: dto.type ?? CareNoteType.MEETING,
       date: dto.date ?? this.today(),
       location: dto.location,
       content: dto.content,
@@ -41,8 +41,8 @@ export class PastoralRecordService {
     return this.repo().save(row);
   }
 
-  /** 한 성도의 사역 기록 timeline (기록일 내림차순). 작성자 이름까지 join. */
-  async listForMember(churchId: number, memberId: number): Promise<PastoralRecordItem[]> {
+  /** 한 교인의 양육 기록 timeline (기록일 내림차순). 작성자 이름까지 join. */
+  async listForMember(churchId: number, memberId: number): Promise<CareNoteItem[]> {
     await this.assertMember(churchId, memberId);
     const rows = await this.repo().find({
       where: { churchId, memberId },
@@ -50,27 +50,27 @@ export class PastoralRecordService {
     });
     if (rows.length === 0) return [];
 
-    const accountIds = Array.from(new Set(rows.map(record => record.recorderAccountId)));
+    const accountIds = Array.from(new Set(rows.map(note => note.recorderAccountId)));
     const accounts = await DataSources.instance.getRepository(AccountEntity).find({ where: accountIds.map(id => ({ id })) });
     const nameMap = new Map(accounts.map(account => [account.id, account.name]));
 
-    return rows.map(record => ({
-      id: record.id,
-      type: record.type,
-      date: record.date,
-      location: record.location ?? null,
-      content: record.content,
-      prayerRequest: record.prayerRequest ?? null,
-      statusNote: record.statusNote ?? null,
-      recorderAccountId: record.recorderAccountId,
-      recorderName: nameMap.get(record.recorderAccountId) ?? null,
-      createdAt: record.createdAt,
+    return rows.map(note => ({
+      id: note.id,
+      type: note.type,
+      date: note.date,
+      location: note.location ?? null,
+      content: note.content,
+      prayerRequest: note.prayerRequest ?? null,
+      statusNote: note.statusNote ?? null,
+      recorderAccountId: note.recorderAccountId,
+      recorderName: nameMap.get(note.recorderAccountId) ?? null,
+      createdAt: note.createdAt,
     }));
   }
 
-  async update(churchId: number, memberId: number, id: number, dto: UpdatePastoralRecordDto): Promise<PastoralRecordEntity> {
+  async update(churchId: number, memberId: number, id: number, dto: UpdateCareNoteDto): Promise<CareNoteEntity> {
     const row = await this.repo().findOne({ where: { id, churchId, memberId } });
-    if (!row) throw new NotFoundException('사역 기록을 찾을 수 없습니다.');
+    if (!row) throw new NotFoundException('양육 기록을 찾을 수 없습니다.');
     await this.repo().update({ id, churchId, memberId }, dto);
     const updated = await this.repo().findOne({ where: { id, churchId, memberId } });
     return updated!;
@@ -78,7 +78,7 @@ export class PastoralRecordService {
 
   async remove(churchId: number, memberId: number, id: number): Promise<void> {
     const result = await this.repo().softDelete({ id, churchId, memberId });
-    if (!result.affected) throw new NotFoundException('사역 기록을 찾을 수 없습니다.');
+    if (!result.affected) throw new NotFoundException('양육 기록을 찾을 수 없습니다.');
   }
 
   private async assertMember(churchId: number, memberId: number): Promise<void> {

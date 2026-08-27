@@ -2,11 +2,15 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { DataSources } from '@src/database/data-sources';
 import { ChurchEntity, ChurchStatus } from '@src/database/entities/church.entity';
 import { MembershipEntity, MembershipRole } from '@src/database/entities/membership.entity';
+import { seedChurchReferences } from './church-seed';
 import { CreateChurchDto } from './dto/create-church.dto';
 
 @Injectable()
 export class ChurchService {
-  /** 새 교회 생성 + 생성자를 OWNER 멤버십으로 자동 등록 */
+  /**
+   * 새 교회 생성 + 생성자를 OWNER 멤버십으로 등록 + 기준정보 시드.
+   * 시드까지 같은 트랜잭션에 묶는다 — 재적상태 없이 만들어진 교회는 교인 등록조차 안 되기 때문.
+   */
   async create(accountId: number, dto: CreateChurchDto): Promise<{ church: ChurchEntity; membership: MembershipEntity }> {
     return DataSources.instance.transaction(async manager => {
       const church = await manager.getRepository(ChurchEntity).save(
@@ -27,6 +31,8 @@ export class ChurchService {
           role: MembershipRole.OWNER,
         })
       );
+
+      await seedChurchReferences(manager, church.id, new Date().getFullYear());
 
       return { church, membership };
     });

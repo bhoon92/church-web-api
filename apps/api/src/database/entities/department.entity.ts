@@ -1,7 +1,7 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { BaseDateEntityWithDeletedAt } from './base-date.entity';
 
-/** 부서 — 연령 기반 reference. */
+/** 부서 — 유치원·카페 등 **상설 기관** reference (연령 부서 아님. planning 00.5). */
 @Entity('department')
 @Index(['churchId'])
 @Index(['churchId', 'year'])

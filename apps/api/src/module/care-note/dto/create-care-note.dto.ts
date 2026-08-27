@@ -1,10 +1,11 @@
 import { IsEnum, IsOptional, IsString, Length, Matches } from 'class-validator';
-import { PastoralRecordType } from '@src/database/entities/pastoral-record.entity';
+import { CareNoteType } from '@src/database/entities/care-note.entity';
 
-export class CreatePastoralRecordDto {
+export class CreateCareNoteDto {
+  /** 기록 종류. 미지정 시 면담(meeting). */
   @IsOptional()
-  @IsEnum(PastoralRecordType)
-  type?: PastoralRecordType;
+  @IsEnum(CareNoteType)
+  type?: CareNoteType;
 
   /** 기록일 (YYYY-MM-DD). 미지정 시 오늘. */
   @IsOptional()

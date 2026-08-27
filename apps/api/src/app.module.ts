@@ -7,6 +7,7 @@ import { AffiliationModule } from './module/affiliation/affiliation.module';
 import { AttendanceModule } from './module/attendance/attendance.module';
 import { AuthModule } from './module/auth/auth.module';
 import { CalendarModule } from './module/calendar/calendar.module';
+import { CareNoteModule } from './module/care-note/care-note.module';
 import { ChurchModule } from './module/church/church.module';
 import { ExportModule } from './module/export/export.module';
 import { FinanceModule } from './module/finance/finance.module';
@@ -14,11 +15,12 @@ import { GalleryModule } from './module/gallery/gallery.module';
 import { GoogleCalendarModule } from './module/google-calendar/google-calendar.module';
 import { HomeModule } from './module/home/home.module';
 import { MemberModule } from './module/member/member.module';
+import { MissionaryModule } from './module/missionary/missionary.module';
 import { OrganizationChartModule } from './module/organization-chart/organization-chart.module';
-import { PastoralRecordModule } from './module/pastoral-record/pastoral-record.module';
 import { MemberPositionModule } from './module/position/member-position.module';
 import { ReferenceModule } from './module/reference/reference.module';
 import { TeamModule } from './module/team/team.module';
+import { TrainingModule } from './module/training/training.module';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -36,11 +38,13 @@ const isProduction = process.env.NODE_ENV === 'production';
     AuthModule,
     ChurchModule,
     MemberModule,
+    TrainingModule,
+    MissionaryModule,
     ReferenceModule,
     AffiliationModule,
     OrganizationChartModule,
     MemberPositionModule,
-    PastoralRecordModule,
+    CareNoteModule,
     AttendanceModule,
     FinanceModule,
     ExportModule,

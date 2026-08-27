@@ -1,7 +1,7 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { BaseDateEntityWithDeletedAt } from './base-date.entity';
 
-/** 목장/구역 — 생활 기반 소그룹 reference. */
+/** 공동체(하우스) — 공동생활 단위 reference (구 '목장/구역'. planning 00.5). */
 @Entity('small_group')
 @Index(['churchId'])
 @Index(['churchId', 'year'])
