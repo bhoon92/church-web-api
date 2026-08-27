@@ -27,3 +27,8 @@ lerna-debug.log*
 
 .claude
 .vscode
+
+# 작업용 문서 — 로컬에만 두고 커밋하지 않는다.
+# 백업: ~/Documents/yakirim-notes/  (git clean -xdf 는 아래 파일들도 지우므로 주의)
+HANDOFF.md
+planning.md
