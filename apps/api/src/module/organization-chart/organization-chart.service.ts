@@ -6,7 +6,10 @@ import { MemberDepartmentEntity } from '@src/database/entities/member-department
 import { MemberMinistryEntity } from '@src/database/entities/member-ministry.entity';
 import { MemberSmallGroupEntity } from '@src/database/entities/member-small-group.entity';
 import { MemberEntity } from '@src/database/entities/member.entity';
+import { MemberPositionEntity } from '@src/database/entities/member-position.entity';
+import { MemberStatusEntity } from '@src/database/entities/member-status.entity';
 import { MinistryEntity } from '@src/database/entities/ministry.entity';
+import { PositionEntity } from '@src/database/entities/position.entity';
 import { SmallGroupEntity } from '@src/database/entities/small-group.entity';
 
 /**
@@ -42,8 +45,16 @@ const CONFIG: Record<OrganizationKind, Config> = {
 export type OrganizationPerson = {
   memberId: number;
   name: string;
+  /** 이 조직에서의 호칭 (팀장·목자 등). 조직마다 다를 수 있어 사람 단위가 아니라 소속 단위 값이다. */
   roleLabel: string | null;
+  /** 현재 사역 역할 (간사·전도사 등). 사람 단위 값이라 어느 조직에서 보든 같다. */
+  positionName: string | null;
+  /** 재적상태 = 양성 파이프라인 단계. */
+  statusName: string | null;
 };
+
+/** 사람 단위 부가 정보 — 조직마다 다시 조회하지 않도록 한 번만 만들어 각 섹션에 넘긴다. */
+type MemberMeta = Map<number, { positionName: string | null; statusName: string | null }>;
 
 export type OrganizationUnit = {
   referenceId: number;
@@ -56,15 +67,36 @@ export type OrganizationUnit = {
 @Injectable()
 export class OrganizationChartService {
   async tree(churchId: number, year: number): Promise<Record<OrganizationKind, OrganizationUnit[]>> {
+    const meta = await this.memberMeta(churchId);
     const [department, ministry, smallGroup] = await Promise.all([
-      this.section('department', churchId, year),
-      this.section('ministry', churchId, year),
-      this.section('smallGroup', churchId, year),
+      this.section('department', churchId, year, meta),
+      this.section('ministry', churchId, year, meta),
+      this.section('smallGroup', churchId, year, meta),
     ]);
     return { department, ministry, smallGroup };
   }
 
-  private async section(kind: OrganizationKind, churchId: number, year: number): Promise<OrganizationUnit[]> {
+  /** 교회 전체의 현재 사역 역할·재적상태를 한 번에 모아 map 으로. */
+  private async memberMeta(churchId: number): Promise<MemberMeta> {
+    const [positions, positionRefs, statuses, members] = await Promise.all([
+      DataSources.instance.getRepository(MemberPositionEntity).find({ where: { churchId, endDate: IsNull() } }),
+      DataSources.instance.getRepository(PositionEntity).find({ where: { churchId } }),
+      DataSources.instance.getRepository(MemberStatusEntity).find({ where: { churchId } }),
+      DataSources.instance.getRepository(MemberEntity).find({ where: { churchId } }),
+    ]);
+    const positionNameById = new Map(positionRefs.map(position => [position.id, position.name]));
+    const currentPosition = new Map(positions.map(row => [row.memberId, positionNameById.get(row.positionId) ?? null]));
+    const statusNameById = new Map(statuses.map(status => [status.id, status.name]));
+
+    return new Map(
+      members.map(member => [
+        member.id,
+        { positionName: currentPosition.get(member.id) ?? null, statusName: statusNameById.get(member.statusId) ?? null },
+      ])
+    );
+  }
+
+  private async section(kind: OrganizationKind, churchId: number, year: number, meta: MemberMeta): Promise<OrganizationUnit[]> {
     const config = CONFIG[kind];
     const joinRepo = DataSources.instance.getRepository(config.joinEntity) as Repository<JoinRow>;
     const referenceRepo = DataSources.instance.getRepository(config.referenceEntity);
@@ -89,7 +121,14 @@ export class OrganizationChartService {
       const slot = bucket.get(joinRow[config.referenceKey] as number);
       const member = memberMap.get(joinRow.memberId);
       if (!slot || !member) continue;
-      const person: OrganizationPerson = { memberId: member.id, name: member.name, roleLabel: joinRow.roleLabel ?? null };
+      const extra = meta.get(member.id);
+      const person: OrganizationPerson = {
+        memberId: member.id,
+        name: member.name,
+        roleLabel: joinRow.roleLabel ?? null,
+        positionName: extra?.positionName ?? null,
+        statusName: extra?.statusName ?? null,
+      };
       (joinRow.isLeader ? slot.leader : slot.member).push(person);
     }
 

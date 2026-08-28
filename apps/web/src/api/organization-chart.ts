@@ -11,7 +11,12 @@ export const ORGANIZATION_KIND_LABEL: Record<OrganizationKind, string> = {
 export type OrganizationPerson = {
   memberId: number;
   name: string;
+  /** 이 조직에서의 호칭(팀장·목자 등) — 조직마다 다를 수 있다. */
   roleLabel: string | null;
+  /** 현재 사역 역할 — 사람 단위라 어느 조직에서 보든 같다. */
+  positionName: string | null;
+  /** 재적상태(양성 파이프라인 단계). */
+  statusName: string | null;
 };
 
 export type OrganizationUnit = {
