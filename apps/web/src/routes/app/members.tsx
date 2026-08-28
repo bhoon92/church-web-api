@@ -2,18 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Download, Phone, Plus, Search, Settings2, UserPlus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import {
-  createMember,
-  listMembers,
-  type AffiliationKind,
-  type Member,
-  type MemberCounts,
-} from '@/api/members';
+import { createMember, listMembers, type AffiliationKind, type Member, type MemberCounts } from '@/api/members';
 import { listReferences, type Reference } from '@/api/references';
 import { exportMembers } from '@/api/exports';
 import { usePermissions } from '@/lib/permissions';
 import { ReferenceManagerModal } from '@/components/reference-manager';
 import { MemberDetailModal } from '@/routes/app/member-detail-modal';
+import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -92,7 +87,12 @@ export function MembersPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
-          <Input placeholder="이름·전화번호로 검색" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} className="pl-10" />
+          <Input
+            placeholder="이름·전화번호로 검색"
+            value={searchQuery}
+            onChange={event => setSearchQuery(event.target.value)}
+            className="pl-10"
+          />
         </div>
         <AffiliationFilter value={affiliation} onChange={setAffiliation} />
       </div>
@@ -271,15 +271,6 @@ function MemberList({
         총 {total}명
       </CardContent>
     </Card>
-  );
-}
-
-function Avatar({ name }: { name: string }) {
-  const initials = name.slice(0, 2);
-  return (
-    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[var(--color-muted)] text-xs font-semibold text-[var(--color-foreground)]">
-      {initials}
-    </div>
   );
 }
 

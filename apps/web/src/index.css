@@ -3,9 +3,8 @@
 
 @theme {
   --font-sans:
-    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
-    system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo',
-    'Noto Sans KR', 'Malgun Gothic', sans-serif;
+    'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI',
+    'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
 
   /* 모노톤 — 순수 뉴트럴(채도 0) + 거의-블랙 primary */
   --color-background: oklch(0.99 0 0);
@@ -32,6 +31,42 @@
   --color-destructive: oklch(0.55 0.18 25);
   --color-destructive-foreground: oklch(0.99 0 0);
 
+  /* ─────────────────────────────────────────────────────────────
+   * flex(flex.team) 벤치마킹 — 뉴트럴 캔버스 위에 초록 액센트 하나,
+   * 색은 파스텔 타일(이모지·아바타)에만 쓴다. 본문은 계속 모노톤.
+   * ───────────────────────────────────────────────────────────── */
+
+  /* 주요 행동(CTA)에만 쓰는 브랜드 초록. 남용하면 flex 특유의 차분함이 깨진다. */
+  --color-brand: oklch(0.63 0.15 152);
+  --color-brand-hover: oklch(0.58 0.15 152);
+  --color-brand-foreground: oklch(0.99 0 0);
+  --color-brand-subtle: oklch(0.95 0.04 152);
+
+  /* 페이지 배경 — 카드(흰색)와 살짝 대비되는 캔버스 */
+  --color-canvas: oklch(0.985 0 0);
+
+  /* 알림 배지 등 주의 환기 */
+  --color-alert: oklch(0.62 0.19 28);
+
+  /* 파스텔 타일 8색 — 이모지 타일·이니셜 아바타 배경.
+     같은 인덱스의 -ink 는 그 위에 얹는 글자색(대비 확보). */
+  --color-tile-1: oklch(0.94 0.045 145);
+  --color-tile-1-ink: oklch(0.42 0.11 145);
+  --color-tile-2: oklch(0.94 0.05 85);
+  --color-tile-2-ink: oklch(0.42 0.11 85);
+  --color-tile-3: oklch(0.94 0.045 30);
+  --color-tile-3-ink: oklch(0.45 0.13 30);
+  --color-tile-4: oklch(0.94 0.04 340);
+  --color-tile-4-ink: oklch(0.45 0.12 340);
+  --color-tile-5: oklch(0.94 0.04 290);
+  --color-tile-5-ink: oklch(0.45 0.13 290);
+  --color-tile-6: oklch(0.94 0.04 250);
+  --color-tile-6-ink: oklch(0.45 0.13 250);
+  --color-tile-7: oklch(0.94 0.04 205);
+  --color-tile-7-ink: oklch(0.42 0.1 205);
+  --color-tile-8: oklch(0.94 0.05 65);
+  --color-tile-8-ink: oklch(0.44 0.11 65);
+
   /* Radius — 세련을 위해 살짝 조이기 (2xl 남용 줄임) */
   --radius-sm: 0.5rem;
   --radius-md: 0.625rem;
@@ -41,12 +76,8 @@
 
   /* Shadows — 더 정교하고 얕게 */
   --shadow-xs: 0 1px 2px 0 oklch(0.16 0.015 170 / 0.04);
-  --shadow-sm:
-    0 1px 2px 0 oklch(0.16 0.015 170 / 0.04),
-    0 1px 3px 0 oklch(0.16 0.015 170 / 0.04);
-  --shadow-md:
-    0 2px 6px -1px oklch(0.16 0.015 170 / 0.05),
-    0 4px 12px -2px oklch(0.16 0.015 170 / 0.05);
+  --shadow-sm: 0 1px 2px 0 oklch(0.16 0.015 170 / 0.04), 0 1px 3px 0 oklch(0.16 0.015 170 / 0.04);
+  --shadow-md: 0 2px 6px -1px oklch(0.16 0.015 170 / 0.05), 0 4px 12px -2px oklch(0.16 0.015 170 / 0.05);
 }
 
 @layer base {

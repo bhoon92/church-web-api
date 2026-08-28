@@ -16,6 +16,7 @@ import {
   type MissionaryStage,
 } from '@/api/missionary';
 import { PageHeader } from '@/components/page-header';
+import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -112,7 +113,10 @@ export function MissionariesPage() {
               <Card className="h-full transition-colors hover:border-[var(--color-foreground)]">
                 <CardContent className="space-y-1.5 py-4">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="font-semibold">{missionary.memberName}</p>
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <Avatar name={missionary.memberName} size="sm" />
+                      <p className="truncate font-semibold">{missionary.memberName}</p>
+                    </div>
                     {missionary.stageName ? (
                       <Badge tone={missionary.stageCountsAsActive ? 'success' : 'neutral'}>{missionary.stageName}</Badge>
                     ) : (

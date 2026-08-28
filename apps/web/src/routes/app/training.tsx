@@ -20,9 +20,11 @@ import {
   type CohortStatus,
 } from '@/api/training';
 import { PageHeader } from '@/components/page-header';
+import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { EmojiTile } from '@/components/ui/emoji-tile';
 import { Input } from '@/components/ui/input';
 import { todayString } from '@/lib/date';
 import { usePermissions } from '@/lib/permissions';
@@ -110,7 +112,10 @@ export function TrainingPage() {
               <Card className="h-full transition-colors hover:border-[var(--color-foreground)]">
                 <CardContent className="space-y-2 py-4">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="font-semibold">{cohort.label}</p>
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <EmojiTile seed={cohort.courseName} kind="training" size="sm" />
+                      <p className="truncate font-semibold">{cohort.label}</p>
+                    </div>
                     <Badge tone={STATUS_TONE[cohort.status]}>{COHORT_STATUS_LABEL[cohort.status]}</Badge>
                   </div>
                   <p className="text-xs text-[var(--color-muted-foreground)]">
@@ -338,7 +343,12 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
                 <tbody>
                   {detail.roster.map(row => (
                     <tr key={row.enrollmentId} className="border-b border-[var(--color-border)] last:border-0">
-                      <td className="py-2 pr-3 whitespace-nowrap">{row.memberName}</td>
+                      <td className="py-2 pr-3 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-2">
+                          <Avatar name={row.memberName} size="xs" />
+                          {row.memberName}
+                        </span>
+                      </td>
                       {detail.sessions.map(session => {
                         const present = row.attendedSessionIds.includes(session.id);
                         return (

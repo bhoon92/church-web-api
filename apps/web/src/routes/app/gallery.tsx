@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import { createEvent, deleteEvent, deletePhoto, listEvents, listPhotos, uploadPhoto, type ChurchEvent } from '@/api/gallery';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { EmojiTile } from '@/components/ui/emoji-tile';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/page-header';
 import { cn } from '@/lib/utils';
@@ -94,9 +95,12 @@ function EventList({ onOpen, canWrite }: { onOpen: (event: ChurchEvent) => void;
             <Card key={event.id} className="group cursor-pointer transition-shadow hover:shadow-md">
               <CardContent className="p-5" onClick={() => onOpen(event)}>
                 <div className="flex items-start justify-between">
-                  <div>
-                    <div className="text-sm font-semibold">{event.name}</div>
-                    {event.date && <div className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">{event.date}</div>}
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <EmojiTile seed={event.name} kind="event" size="sm" />
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold">{event.name}</div>
+                      {event.date && <div className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">{event.date}</div>}
+                    </div>
                   </div>
                   {canWrite && (
                     <button
@@ -186,8 +190,13 @@ function EventDetail({ event, canWrite, onBack }: { event: ChurchEvent; canWrite
 
       <div
         className="relative"
-        onDragOver={e => { e.preventDefault(); if (canWrite) setDragOver(true); }}
-        onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false); }}
+        onDragOver={e => {
+          e.preventDefault();
+          if (canWrite) setDragOver(true);
+        }}
+        onDragLeave={e => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false);
+        }}
         onDrop={e => {
           e.preventDefault();
           setDragOver(false);
