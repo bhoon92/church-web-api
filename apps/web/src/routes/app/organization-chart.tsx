@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight, Search, Settings2, Users, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Check, ChevronDown, ChevronRight, CopyPlus, Pencil, Plus, Search, Trash2, Users, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   fetchOrganizationChart,
@@ -10,12 +10,12 @@ import {
   type OrganizationKind,
   type OrganizationPerson,
 } from '@/api/organization-chart';
+import { copyReferenceYear, createReference, deleteReference, updateReference } from '@/api/references';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/page-header';
-import { ReferenceManagerModal } from '@/components/reference-manager';
 import { MemberDetailModal } from '@/routes/app/member-detail-modal';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/lib/permissions';
@@ -38,8 +38,19 @@ export function OrganizationChartPage() {
   const [year, setYear] = useState(currentYear);
   const [selection, setSelection] = useState<Selection | null>(null);
   const [query, setQuery] = useState('');
-  const [managing, setManaging] = useState(false);
   const [openMemberId, setOpenMemberId] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['organization-chart'] });
+
+  /** 연초 편성 — 기관·사역팀·공동체를 한 번에 작년에서 복제한다. */
+  const copyYear = useMutation({
+    mutationFn: async () => {
+      for (const kind of ORGANIZATION_KIND) await copyReferenceYear(kind, year - 1, year);
+    },
+    onSuccess: invalidate,
+    onError: (error: Error) => window.alert(`복제 실패: ${error.message}`),
+  });
 
   const { data: chart, isLoading } = useQuery({
     queryKey: ['organization-chart', year],
@@ -116,25 +127,17 @@ export function OrganizationChartPage() {
               ))}
             </select>
             {can('settings:write') && (
-              <Button variant="outline" size="sm" onClick={() => setManaging(true)}>
-                <Settings2 className="size-4" />
-                구성 관리
+              <Button variant="outline" size="sm" onClick={() => copyYear.mutate()} disabled={copyYear.isPending}>
+                <CopyPlus className="size-4" />
+                {year - 1}년 구성 가져오기
               </Button>
             )}
           </>
         }
       />
 
-      {managing && (
-        <ReferenceManagerModal
-          title="기관·사역팀·공동체 관리"
-          kinds={['department', 'ministry', 'smallGroup']}
-          onClose={() => setManaging(false)}
-        />
-      )}
-
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-        <OrgTree chart={chart} loading={isLoading} selection={selection} onSelect={setSelection} />
+        <OrgTree chart={chart} loading={isLoading} selection={selection} onSelect={setSelection} year={year} onChanged={invalidate} />
 
         <Card className="overflow-hidden">
           <div className="flex flex-wrap items-center gap-3 border-b border-[var(--color-border)] px-5 py-3">
@@ -173,13 +176,46 @@ function OrgTree({
   loading,
   selection,
   onSelect,
+  year,
+  onChanged,
 }: {
   chart: OrganizationChart | undefined;
   loading: boolean;
   selection: Selection | null;
   onSelect: (selection: Selection | null) => void;
+  year: number;
+  onChanged: () => void;
 }) {
+  const { can } = usePermissions();
+  const canEdit = can('settings:write');
   const [collapsed, setCollapsed] = useState<Set<OrganizationKind>>(new Set());
+  /** 지금 이름을 고치고 있는 조직 / 지금 새 조직을 추가 중인 분류. 동시에 하나만. */
+  const [editing, setEditing] = useState<{ kind: OrganizationKind; referenceId: number } | null>(null);
+  const [adding, setAdding] = useState<OrganizationKind | null>(null);
+
+  const createMut = useMutation({
+    mutationFn: (vars: { kind: OrganizationKind; name: string }) => createReference(vars.kind, { name: vars.name }, year),
+    onSuccess: () => {
+      setAdding(null);
+      onChanged();
+    },
+    onError: (error: Error) => window.alert(`추가 실패: ${error.message}`),
+  });
+
+  const renameMut = useMutation({
+    mutationFn: (vars: { kind: OrganizationKind; id: number; name: string }) => updateReference(vars.kind, vars.id, { name: vars.name }),
+    onSuccess: () => {
+      setEditing(null);
+      onChanged();
+    },
+    onError: (error: Error) => window.alert(`수정 실패: ${error.message}`),
+  });
+
+  const removeMut = useMutation({
+    mutationFn: (vars: { kind: OrganizationKind; id: number }) => deleteReference(vars.kind, vars.id),
+    onSuccess: onChanged,
+    onError: (error: Error) => window.alert(`삭제 실패: ${error.message}`),
+  });
 
   const toggle = (kind: OrganizationKind) =>
     setCollapsed(previous => {
@@ -245,6 +281,23 @@ function OrgTree({
                       {ORGANIZATION_KIND_LABEL[kind]}
                       <span className="text-xs tabular-nums text-[var(--color-muted-foreground)]">{units.length}</span>
                     </button>
+                    {canEdit && (
+                      <button
+                        onClick={() => {
+                          setAdding(kind);
+                          setCollapsed(previous => {
+                            const next = new Set(previous);
+                            next.delete(kind);
+                            return next;
+                          });
+                        }}
+                        className="ml-0.5 rounded p-1 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]"
+                        aria-label={`${ORGANIZATION_KIND_LABEL[kind]} 추가`}
+                        title={`${ORGANIZATION_KIND_LABEL[kind]} 추가`}
+                      >
+                        <Plus className="size-3.5" />
+                      </button>
+                    )}
                   </div>
 
                   {!isCollapsed && (
@@ -254,22 +307,75 @@ function OrgTree({
                       ) : (
                         units.map(unit => {
                           const active = selection?.kind === kind && selection.referenceId === unit.referenceId;
+                          const isEditing = editing?.kind === kind && editing.referenceId === unit.referenceId;
+
+                          if (isEditing) {
+                            return (
+                              <InlineNameInput
+                                key={unit.referenceId}
+                                initial={unit.referenceName}
+                                pending={renameMut.isPending}
+                                onSubmit={name => renameMut.mutate({ kind, id: unit.referenceId, name })}
+                                onCancel={() => setEditing(null)}
+                              />
+                            );
+                          }
+
                           return (
-                            <button
-                              key={unit.referenceId}
-                              onClick={() => onSelect({ kind, referenceId: unit.referenceId })}
-                              className={cn(
-                                'flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-[var(--color-muted)]',
-                                active
-                                  ? 'bg-[var(--color-muted)] font-semibold'
-                                  : 'text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]'
+                            <div key={unit.referenceId} className="group/row flex items-center">
+                              <button
+                                onClick={() => onSelect({ kind, referenceId: unit.referenceId })}
+                                className={cn(
+                                  'flex min-w-0 flex-1 items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-[var(--color-muted)]',
+                                  active
+                                    ? 'bg-[var(--color-muted)] font-semibold'
+                                    : 'text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]'
+                                )}
+                              >
+                                <span className="truncate">{unit.referenceName}</span>
+                                <span className="ml-2 shrink-0 text-xs tabular-nums text-[var(--color-muted-foreground)]">
+                                  {unit.total}
+                                </span>
+                              </button>
+                              {canEdit && (
+                                <span className="flex shrink-0 opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
+                                  <button
+                                    onClick={() => setEditing({ kind, referenceId: unit.referenceId })}
+                                    className="rounded p-1 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]"
+                                    aria-label={`${unit.referenceName} 이름 수정`}
+                                    title="이름 수정"
+                                  >
+                                    <Pencil className="size-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      const warning =
+                                        unit.total > 0
+                                          ? `"${unit.referenceName}" 에 ${unit.total}명이 소속돼 있습니다. 삭제할까요?\n(소속 이력은 남고 조직만 사라집니다)`
+                                          : `"${unit.referenceName}" 을(를) 삭제할까요?`;
+                                      if (window.confirm(warning)) removeMut.mutate({ kind, id: unit.referenceId });
+                                    }}
+                                    className="rounded p-1 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-destructive)]"
+                                    aria-label={`${unit.referenceName} 삭제`}
+                                    title="삭제"
+                                  >
+                                    <Trash2 className="size-3" />
+                                  </button>
+                                </span>
                               )}
-                            >
-                              <span className="truncate">{unit.referenceName}</span>
-                              <span className="ml-2 shrink-0 text-xs tabular-nums text-[var(--color-muted-foreground)]">{unit.total}</span>
-                            </button>
+                            </div>
                           );
                         })
+                      )}
+
+                      {adding === kind && (
+                        <InlineNameInput
+                          initial=""
+                          placeholder={`새 ${ORGANIZATION_KIND_LABEL[kind]} 이름`}
+                          pending={createMut.isPending}
+                          onSubmit={name => createMut.mutate({ kind, name })}
+                          onCancel={() => setAdding(null)}
+                        />
                       )}
                     </div>
                   )}
@@ -344,6 +450,74 @@ function RosterTable({ rows, loading, onSelect }: { rows: RosterRow[]; loading: 
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+/** 트리 안에서 바로 쓰는 한 줄 입력 — 이름 추가·수정 공용. Enter 저장 / Esc 취소. */
+function InlineNameInput({
+  initial,
+  placeholder,
+  pending,
+  onSubmit,
+  onCancel,
+}: {
+  initial: string;
+  placeholder?: string;
+  pending: boolean;
+  onSubmit: (name: string) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(initial);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  const commit = () => {
+    const name = value.trim();
+    if (!name || name === initial) {
+      onCancel();
+      return;
+    }
+    onSubmit(name);
+  };
+
+  return (
+    <div className="flex items-center gap-1 px-1 py-0.5">
+      <input
+        ref={inputRef}
+        value={value}
+        placeholder={placeholder}
+        maxLength={40}
+        disabled={pending}
+        onChange={event => setValue(event.target.value)}
+        onKeyDown={event => {
+          if (event.key === 'Enter') commit();
+          if (event.key === 'Escape') {
+            event.stopPropagation();
+            onCancel();
+          }
+        }}
+        className="min-w-0 flex-1 rounded-md border border-[var(--color-foreground)] bg-[var(--color-background)] px-2 py-1 text-sm outline-none"
+      />
+      <button
+        onClick={commit}
+        disabled={pending}
+        className="rounded p-1 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]"
+        aria-label="저장"
+      >
+        <Check className="size-3.5" />
+      </button>
+      <button
+        onClick={onCancel}
+        className="rounded p-1 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)]"
+        aria-label="취소"
+      >
+        <X className="size-3.5" />
+      </button>
     </div>
   );
 }
