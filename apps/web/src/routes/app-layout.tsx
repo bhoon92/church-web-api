@@ -84,7 +84,12 @@ function Shell() {
     <div className="flex min-h-svh bg-[var(--color-canvas)]">
       <DesktopSidebar />
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      {/*
+       * flex 셸의 핵심 — 사이드바는 캔버스에 그냥 얹혀 있고, 본문만 흰 판으로 떠 있다.
+       * (flex 토큰 --shadows-pageRoot 가 딱 이 판을 위한 것이다)
+       * overflow-hidden 은 쓰지 않는다 — 상단바 sticky 가 죽는다. 대신 상단바가 자기 모서리를 갖는다.
+       */}
+      <div className="flex min-w-0 flex-1 flex-col bg-[var(--color-background)] md:my-2 md:mr-2 md:rounded-xl md:shadow-[var(--shadow-panel)]">
         <TopBar />
         <MobileHeader />
 
@@ -93,7 +98,7 @@ function Shell() {
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
-          className="flex-1 px-4 pt-6 pb-24 sm:px-8 sm:pt-7 md:pb-10"
+          className="flex-1 px-4 pt-5 pb-24 sm:px-7 sm:pt-6 md:pb-10"
         >
           <div className="mx-auto w-full max-w-6xl">
             <Outlet />
@@ -111,20 +116,18 @@ function DesktopSidebar() {
   const location = useLocation();
 
   return (
-    <aside className="sticky top-0 hidden h-svh w-60 shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-background)] px-3 py-4 md:flex">
-      <div className="flex items-center gap-2.5 px-2 py-1.5">
+    <aside className="sticky top-0 hidden h-svh w-[232px] shrink-0 flex-col px-3 py-3 md:flex">
+      <div className="flex h-14 items-center gap-2.5 px-2">
         <ChurchLogo size="sm" />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-semibold tracking-tight">{branding.name}</div>
+          <div className="truncate text-base font-semibold tracking-tight">{branding.name}</div>
         </div>
       </div>
 
-      <nav className="mt-5 flex flex-col gap-5 overflow-y-auto">
+      <nav className="mt-1 flex flex-col gap-4 overflow-y-auto">
         {NAV_GROUPS.map((group, index) => (
           <div key={group.label ?? `group-${index}`} className="flex flex-col gap-0.5">
-            {group.label && (
-              <div className="px-3 pb-1 text-[11px] font-semibold tracking-wide text-[var(--color-muted-foreground)]">{group.label}</div>
-            )}
+            {group.label && <div className="px-2.5 pb-1 text-[11px] font-semibold text-[var(--color-muted-foreground)]">{group.label}</div>}
             {group.items.map(item => (
               <SidebarLink key={item.to} item={item} active={isActive(item, location.pathname)} />
             ))}
@@ -145,20 +148,20 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
     <Link
       to={item.to}
       className={cn(
-        'relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-        active
-          ? 'text-[var(--color-foreground)]'
-          : 'text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]'
+        // 사이드바 바닥이 캔버스(#f4f4f5)라서 활성 표시를 회색으로 하면 안 보인다 —
+        // flex 처럼 흰 알약에 헤어라인을 둘러 띄운다.
+        'relative flex h-9 items-center gap-2.5 rounded-md px-2.5 text-base font-semibold transition-colors',
+        active ? 'text-[var(--color-foreground)]' : 'font-medium text-[var(--color-secondary-foreground)] hover:bg-[var(--color-accent)]'
       )}
     >
       {active && (
         <motion.div
           layoutId="sidebar-active"
-          className="absolute inset-0 rounded-lg bg-[var(--color-muted)]"
+          className="absolute inset-0 rounded-md bg-[var(--color-background)] shadow-[0_0_0_1px_rgb(0_0_0/0.06),0_1px_2px_rgb(0_0_0/0.04)]"
           transition={{ type: 'spring', stiffness: 380, damping: 30 }}
         />
       )}
-      <Icon className="relative size-[18px]" />
+      <Icon className={cn('relative size-[18px]', active ? 'text-[var(--color-brand-hover)]' : 'text-[var(--color-muted-foreground)]')} />
       <span className="relative">{item.label}</span>
     </Link>
   );
@@ -178,22 +181,23 @@ function TopBar() {
     navigate(keyword ? `/app/members?q=${encodeURIComponent(keyword)}` : '/app/members');
   };
 
+  // flex 의 toolbox — 높이 56px(--sizes-xlarge)에 고정
   return (
-    <header className="sticky top-0 z-20 hidden h-14 items-center gap-3 border-b border-[var(--color-border)] bg-[var(--color-background)]/90 px-6 backdrop-blur md:flex">
-      <form onSubmit={submit} className="relative max-w-md flex-1">
-        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
+    <header className="sticky top-0 z-20 hidden h-14 items-center gap-3 rounded-t-xl border-b border-[var(--color-border)] bg-[var(--color-background)]/90 px-5 backdrop-blur md:flex">
+      <form onSubmit={submit} className="relative max-w-sm flex-1">
+        <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
         <input
           value={query}
           onChange={event => setQuery(event.target.value)}
           placeholder="교인을 검색해보세요"
-          className="w-full rounded-lg bg-[var(--color-muted)] py-2 pr-3 pl-9 text-sm outline-none transition-colors placeholder:text-[var(--color-muted-foreground)] focus:bg-[var(--color-background)] focus:ring-2 focus:ring-[var(--color-border)]"
+          className="h-8 w-full rounded-md bg-[var(--color-muted)] pr-3 pl-8 text-sm font-medium outline-none transition-shadow placeholder:font-normal placeholder:text-[var(--color-muted-foreground)] focus:bg-[var(--color-background)] focus:shadow-[var(--shadow-input-focus)]"
         />
       </form>
 
       <div className="ml-auto flex items-center gap-1">
         <Link
           to="/app/settings"
-          className="inline-flex size-9 items-center justify-center rounded-lg text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]"
+          className="inline-flex size-8 items-center justify-center rounded-md text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]"
           aria-label="도움말·설정"
           title="설정"
         >

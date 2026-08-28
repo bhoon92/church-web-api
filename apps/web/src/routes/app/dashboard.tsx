@@ -234,20 +234,21 @@ function StatCard({
 }) {
   return (
     <Link to={to} className="block">
-      <Card className="transition-colors hover:border-[var(--color-foreground)]">
+      <Card className="transition-colors hover:bg-[var(--color-background)] hover:shadow-[0_0_0_1px_rgb(0_0_0/0.1)]">
         <CardContent className="flex items-center gap-3 p-4">
           <div
             className="flex size-9 shrink-0 items-center justify-center rounded-lg"
             style={{
-              backgroundColor: accent ? 'var(--color-brand-subtle)' : 'var(--color-muted)',
-              color: accent ? 'var(--color-brand)' : 'var(--color-muted-foreground)',
+              backgroundColor: accent ? 'var(--color-brand-muted)' : 'var(--color-muted)',
+              color: accent ? 'var(--color-brand-active)' : 'var(--color-muted-foreground)',
             }}
           >
             <Icon className="size-[18px]" />
           </div>
           <div className="min-w-0">
             <div className="text-xs text-[var(--color-muted-foreground)]">{label}</div>
-            <div className="text-lg font-semibold tracking-tight tabular-nums">{value}</div>
+            {/* flex 는 지표 숫자를 크게 쓴다 — 라벨보다 값이 먼저 읽혀야 한다 */}
+            <div className="text-2xl font-bold tracking-tighter tabular-nums">{value}</div>
           </div>
         </CardContent>
       </Card>

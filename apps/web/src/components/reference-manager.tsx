@@ -61,7 +61,7 @@ export function ReferenceManager({ kinds }: { kinds: ReferenceKind[] }) {
               id="reference-year"
               value={year}
               onChange={event => setYear(Number(event.target.value))}
-              className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-2 text-sm focus-visible:border-[var(--color-ring)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ring)]/30"
+              className="h-8 rounded-md bg-[var(--color-background)] px-2 text-sm shadow-[var(--shadow-input)] outline-none transition-shadow focus-visible:shadow-[var(--shadow-input-focus)]"
             >
               {yearOptions.map(option => (
                 <option key={option} value={option}>

@@ -108,7 +108,7 @@ function Field({ label, hint, required, children }: { label: string; hint?: stri
       <div className="flex items-baseline justify-between">
         <span className="text-sm font-medium">
           {label}
-          {required && <span className="ml-0.5 text-[var(--color-primary)]">*</span>}
+          {required && <span className="ml-0.5 text-[var(--color-destructive)]">*</span>}
         </span>
         {hint && <span className="text-xs text-[var(--color-muted-foreground)]">{hint}</span>}
       </div>
