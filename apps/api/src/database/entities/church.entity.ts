@@ -40,4 +40,20 @@ export class ChurchEntity extends BaseDateEntityWithDeletedAt {
 
   @Column({ type: 'enum', enum: ChurchStatus, default: ChurchStatus.TRIAL })
   status!: ChurchStatus;
+
+  /**
+   * 조직 대분류를 이 교회에서 부르는 이름. null 이면 코드 기본값(기관/사역팀/공동체)을 쓴다.
+   *
+   * 대분류 자체는 3종 고정이다 — 각각 테이블·소속 이력·예산 배정 대상이 따로 있어서
+   * 개수를 바꾸려면 스키마를 갈아야 한다. 반면 "뭐라고 부르는가"는 교회마다 다르므로
+   * (부서/구역/목장/셀…) 표시 이름만 교회별로 저장한다.
+   */
+  @Column({ comment: '기관 대분류의 교회별 표시 이름', type: 'varchar', nullable: true })
+  departmentLabel?: string | null;
+
+  @Column({ comment: '사역팀 대분류의 교회별 표시 이름', type: 'varchar', nullable: true })
+  ministryLabel?: string | null;
+
+  @Column({ comment: '공동체 대분류의 교회별 표시 이름', type: 'varchar', nullable: true })
+  smallGroupLabel?: string | null;
 }

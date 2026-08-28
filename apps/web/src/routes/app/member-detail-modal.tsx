@@ -5,10 +5,11 @@ import { useEffect, useRef, useState } from 'react';
 import { assignAffiliation, type AffiliationKind, endAffiliation, setAffiliationLeader } from '@/api/affiliations';
 import { fetchMember, updateMember, type AffiliationSummary, type PositionHistoryEntry } from '@/api/members';
 import { endCurrentPosition, promotePosition } from '@/api/positions';
-import { listReferences, REFERENCE_LABEL, type Reference } from '@/api/references';
+import { listReferences, type Reference } from '@/api/references';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useOrgLabels } from '@/lib/org-labels';
 import { usePermissions } from '@/lib/permissions';
 import { CareNoteSection } from './care-note-section';
 import { MemberJourneySection } from './member-journey-section';
@@ -301,6 +302,7 @@ function affiliationsByKind(
 }
 
 function AffiliationSection({ kind, memberId, items }: { kind: AffiliationKind; memberId: number; items: AffiliationSummary[] }) {
+  const orgLabels = useOrgLabels();
   const queryClient = useQueryClient();
   const { can } = usePermissions();
   const canWrite = can('member:write');
@@ -333,7 +335,8 @@ function AffiliationSection({ kind, memberId, items }: { kind: AffiliationKind; 
   });
 
   const leaderMut = useMutation({
-    mutationFn: ({ referenceId, isLeader }: { referenceId: number; isLeader: boolean }) => setAffiliationLeader(memberId, kind, referenceId, isLeader),
+    mutationFn: ({ referenceId, isLeader }: { referenceId: number; isLeader: boolean }) =>
+      setAffiliationLeader(memberId, kind, referenceId, isLeader),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['member', memberId] });
       queryClient.invalidateQueries({ queryKey: ['members'] });
@@ -347,7 +350,7 @@ function AffiliationSection({ kind, memberId, items }: { kind: AffiliationKind; 
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-semibold">{REFERENCE_LABEL[kind]}</h3>
+        <h3 className="text-sm font-semibold">{orgLabels[kind]}</h3>
         {canWrite && (
           <Button size="sm" variant="ghost" onClick={() => setAdding(!adding)}>
             <Plus className="size-3.5" />
@@ -374,7 +377,7 @@ function AffiliationSection({ kind, memberId, items }: { kind: AffiliationKind; 
         <div className="mt-3 rounded-xl border border-dashed border-[var(--color-border)] p-3">
           {available.length === 0 ? (
             <p className="text-xs text-[var(--color-muted-foreground)]">
-              추가 가능한 {REFERENCE_LABEL[kind]}이 없습니다. 먼저 설정에서 등록하세요.
+              추가 가능한 {orgLabels[kind]}이 없습니다. 먼저 설정에서 등록하세요.
             </p>
           ) : (
             <div className="flex flex-wrap gap-1.5">

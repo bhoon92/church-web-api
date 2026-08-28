@@ -5,11 +5,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   fetchOrganizationChart,
   ORGANIZATION_KIND,
-  ORGANIZATION_KIND_LABEL,
   type OrganizationChart,
   type OrganizationKind,
   type OrganizationPerson,
 } from '@/api/organization-chart';
+import { updateOrganizationLabels } from '@/api/church';
 import { copyReferenceYear, createReference, deleteReference, updateReference } from '@/api/references';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -18,6 +18,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/page-header';
 import { MemberDetailModal } from '@/routes/app/member-detail-modal';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/auth/auth-context';
+import { useOrgLabels } from '@/lib/org-labels';
 import { usePermissions } from '@/lib/permissions';
 
 /** 트리에서 고른 노드. kind 만 있으면 그 분류 전체, referenceId 까지 있으면 특정 조직. */
@@ -34,6 +36,7 @@ type RosterRow = {
 
 export function OrganizationChartPage() {
   const { can } = usePermissions();
+  const orgLabels = useOrgLabels();
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -102,9 +105,9 @@ export function OrganizationChartPage() {
 
   const selectedLabel = useMemo(() => {
     if (!selection) return null;
-    if (!selection.referenceId) return ORGANIZATION_KIND_LABEL[selection.kind];
+    if (!selection.referenceId) return orgLabels[selection.kind];
     return chart?.[selection.kind].find(unit => unit.referenceId === selection.referenceId)?.referenceName ?? null;
-  }, [chart, selection]);
+  }, [chart, selection, orgLabels]);
 
   return (
     <div className="space-y-5">
@@ -187,11 +190,28 @@ function OrgTree({
   onChanged: () => void;
 }) {
   const { can } = usePermissions();
+  const { refresh: refreshAuth } = useAuth();
+  const orgLabels = useOrgLabels();
   const canEdit = can('settings:write');
   const [collapsed, setCollapsed] = useState<Set<OrganizationKind>>(new Set());
-  /** 지금 이름을 고치고 있는 조직 / 지금 새 조직을 추가 중인 분류. 동시에 하나만. */
+  /** 지금 이름을 고치고 있는 조직 / 새 조직을 추가 중인 분류 / 이름을 고치고 있는 대분류. 동시에 하나만. */
   const [editing, setEditing] = useState<{ kind: OrganizationKind; referenceId: number } | null>(null);
   const [adding, setAdding] = useState<OrganizationKind | null>(null);
+  const [renamingKind, setRenamingKind] = useState<OrganizationKind | null>(null);
+
+  /**
+   * 대분류(기관·사역팀·공동체) 이름 변경 — 조직 하나가 아니라 이 교회가 그 분류를 부르는 말이다.
+   * 저장 후 /auth/me 를 다시 읽어야 앱 전체(교인 소속·예산 대상)에 반영된다.
+   */
+  const renameKindMut = useMutation({
+    mutationFn: (vars: { kind: OrganizationKind; name: string }) =>
+      updateOrganizationLabels({ [`${vars.kind}Label`]: vars.name } as Record<string, string>),
+    onSuccess: async () => {
+      setRenamingKind(null);
+      await refreshAuth();
+    },
+    onError: (error: Error) => window.alert(`대분류 이름 수정 실패: ${error.message}`),
+  });
 
   const createMut = useMutation({
     mutationFn: (vars: { kind: OrganizationKind; name: string }) => createReference(vars.kind, { name: vars.name }, year),
@@ -263,42 +283,61 @@ function OrgTree({
 
               return (
                 <div key={kind}>
-                  <div className="flex items-center">
-                    <button
-                      onClick={() => toggle(kind)}
-                      className="rounded p-0.5 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)]"
-                      aria-label={isCollapsed ? '펼치기' : '접기'}
-                    >
-                      {isCollapsed ? <ChevronRight className="size-3.5" /> : <ChevronDown className="size-3.5" />}
-                    </button>
-                    <button
-                      onClick={() => onSelect({ kind })}
-                      className={cn(
-                        'flex flex-1 items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm font-medium transition-colors hover:bg-[var(--color-muted)]',
-                        kindSelected && 'bg-[var(--color-muted)]'
-                      )}
-                    >
-                      {ORGANIZATION_KIND_LABEL[kind]}
-                      <span className="text-xs tabular-nums text-[var(--color-muted-foreground)]">{units.length}</span>
-                    </button>
-                    {canEdit && (
+                  {renamingKind === kind ? (
+                    <InlineNameInput
+                      initial={orgLabels[kind]}
+                      pending={renameKindMut.isPending}
+                      onSubmit={name => renameKindMut.mutate({ kind, name })}
+                      onCancel={() => setRenamingKind(null)}
+                    />
+                  ) : (
+                    <div className="group/kind flex items-center">
                       <button
-                        onClick={() => {
-                          setAdding(kind);
-                          setCollapsed(previous => {
-                            const next = new Set(previous);
-                            next.delete(kind);
-                            return next;
-                          });
-                        }}
-                        className="ml-0.5 rounded p-1 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]"
-                        aria-label={`${ORGANIZATION_KIND_LABEL[kind]} 추가`}
-                        title={`${ORGANIZATION_KIND_LABEL[kind]} 추가`}
+                        onClick={() => toggle(kind)}
+                        className="rounded p-0.5 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)]"
+                        aria-label={isCollapsed ? '펼치기' : '접기'}
                       >
-                        <Plus className="size-3.5" />
+                        {isCollapsed ? <ChevronRight className="size-3.5" /> : <ChevronDown className="size-3.5" />}
                       </button>
-                    )}
-                  </div>
+                      <button
+                        onClick={() => onSelect({ kind })}
+                        className={cn(
+                          'flex flex-1 items-center justify-between rounded-lg px-2 py-1.5 text-left text-sm font-medium transition-colors hover:bg-[var(--color-muted)]',
+                          kindSelected && 'bg-[var(--color-muted)]'
+                        )}
+                      >
+                        {orgLabels[kind]}
+                        <span className="text-xs tabular-nums text-[var(--color-muted-foreground)]">{units.length}</span>
+                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={() => {
+                            setAdding(kind);
+                            setCollapsed(previous => {
+                              const next = new Set(previous);
+                              next.delete(kind);
+                              return next;
+                            });
+                          }}
+                          className="ml-0.5 rounded p-1 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]"
+                          aria-label={`${orgLabels[kind]} 추가`}
+                          title={`${orgLabels[kind]} 추가`}
+                        >
+                          <Plus className="size-3.5" />
+                        </button>
+                      )}
+                      {canEdit && (
+                        <button
+                          onClick={() => setRenamingKind(kind)}
+                          className="rounded p-1 text-[var(--color-muted-foreground)] opacity-0 transition-opacity group-hover/kind:opacity-100 focus:opacity-100 hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]"
+                          aria-label={`${orgLabels[kind]} 이름 수정`}
+                          title="대분류 이름 수정"
+                        >
+                          <Pencil className="size-3" />
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {!isCollapsed && (
                     <div className="mt-0.5 ml-4 space-y-0.5 border-l border-[var(--color-border)] pl-2">
@@ -371,7 +410,7 @@ function OrgTree({
                       {adding === kind && (
                         <InlineNameInput
                           initial=""
-                          placeholder={`새 ${ORGANIZATION_KIND_LABEL[kind]} 이름`}
+                          placeholder={`새 ${orgLabels[kind]} 이름`}
                           pending={createMut.isPending}
                           onSubmit={name => createMut.mutate({ kind, name })}
                           onCancel={() => setAdding(null)}

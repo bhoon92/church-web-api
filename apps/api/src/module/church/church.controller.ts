@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Res, UseGuards } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { ApiAuth } from '@src/common/swagger/api-auth.decorator';
@@ -6,16 +6,19 @@ import { SwaggerTag } from '@src/common/swagger/swagger-tags';
 import { ACCESS_TOKEN_COOKIE } from '@src/module/auth/auth.constants';
 import { AuthService } from '@src/module/auth/auth.service';
 import { CurrentAuth, RequireChurch } from '@src/module/auth/decorators/current-auth.decorator';
+import { Permissions } from '@src/module/auth/decorators/permissions.decorator';
 import { JwtAuthGuard } from '@src/module/auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '@src/module/auth/guards/permissions.guard';
 import type { AuthContext } from '@src/module/auth/types/auth-context';
 import { ConfigProvider } from '@src/config';
 import { ChurchService } from './church.service';
 import { CreateChurchDto } from './dto/create-church.dto';
+import { UpdateOrganizationLabelsDto } from './dto/organization-labels.dto';
 
 @ApiTags(SwaggerTag.CHURCH)
 @ApiAuth()
 @Controller('churches')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ChurchController {
   constructor(
     private readonly churches: ChurchService,
@@ -54,5 +57,23 @@ export class ChurchController {
   @ApiOperation({ summary: '현재 활성 교회 조회', description: '토큰의 churchId 로 교회 정보를 반환한다. 교회 미선택 상태면 403.' })
   async me(@RequireChurch() auth: AuthContext & { churchId: number }) {
     return this.churches.findById(auth.churchId);
+  }
+
+  @Patch('me/organization-labels')
+  @Permissions('settings:write')
+  @ApiOperation({
+    summary: '조직 대분류 표시 이름 변경',
+    description: [
+      '조직 대분류를 이 교회에서 부르는 이름을 바꾼다 — 부서/구역/목장/셀처럼 교회마다 용어가 달라서다.',
+      '',
+      '**대분류의 개수·성격은 3종 고정이다**(기관 / 사역팀 / 공동체). 각각 소속 이력 테이블과 예산 배정',
+      '대상이 따로 있어 개수를 바꾸려면 스키마를 바꿔야 한다. 여기서 바뀌는 건 표시 이름뿐이다.',
+      '',
+      '빈 문자열이나 null 을 보내면 기본값으로 되돌아가고, 보내지 않은 항목은 그대로 유지된다.',
+      '변경된 이름은 `/auth/me` 의 `currentChurch` 로 내려가 앱 전체(조직도·교인 소속·예산 대상)에 반영된다.',
+    ].join('\n'),
+  })
+  async updateOrganizationLabels(@RequireChurch() auth: AuthContext & { churchId: number }, @Body() dto: UpdateOrganizationLabelsDto) {
+    return this.churches.updateOrganizationLabels(auth.churchId, dto);
   }
 }

@@ -4,6 +4,7 @@ import { ChurchEntity, ChurchStatus } from '@src/database/entities/church.entity
 import { MembershipEntity, MembershipRole } from '@src/database/entities/membership.entity';
 import { seedChurchReferences } from './church-seed';
 import { CreateChurchDto } from './dto/create-church.dto';
+import { UpdateOrganizationLabelsDto } from './dto/organization-labels.dto';
 
 @Injectable()
 export class ChurchService {
@@ -42,5 +43,22 @@ export class ChurchService {
     const church = await DataSources.instance.getRepository(ChurchEntity).findOne({ where: { id } });
     if (!church) throw new NotFoundException('Church not found');
     return church;
+  }
+
+  /**
+   * 조직 대분류의 표시 이름 변경. 빈 문자열은 null 로 저장해 기본값으로 되돌린다.
+   * 보내지 않은 항목은 건드리지 않는다.
+   */
+  async updateOrganizationLabels(churchId: number, dto: UpdateOrganizationLabelsDto): Promise<ChurchEntity> {
+    const patch: Partial<ChurchEntity> = {};
+    for (const key of ['departmentLabel', 'ministryLabel', 'smallGroupLabel'] as const) {
+      if (dto[key] === undefined) continue;
+      const value = dto[key];
+      patch[key] = value === null || value.trim() === '' ? null : value.trim();
+    }
+    if (Object.keys(patch).length > 0) {
+      await DataSources.instance.getRepository(ChurchEntity).update({ id: churchId }, patch);
+    }
+    return this.findById(churchId);
   }
 }
