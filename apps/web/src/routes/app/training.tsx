@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CheckCircle2, GraduationCap, Plus, Settings2, X } from 'lucide-react';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { GraduationCap, Plus, Settings2, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { listMembers, type Member } from '@/api/members';
@@ -7,22 +7,28 @@ import {
   COHORT_STATUS_LABEL,
   ENROLLMENT_STATUS_LABEL,
   TRAINING_FORMAT_LABEL,
+  addSession,
   createCohort,
+  deleteCohort,
   enrollMembers,
   fetchCohortDetail,
   listCohorts,
   listCourses,
   markTrainingAttendance,
+  removeEnrollment,
+  removeSession,
   updateCohort,
   updateEnrollmentStatus,
   updateSession,
   type Cohort,
   type CohortStatus,
+  type EnrollmentStatus,
 } from '@/api/training';
 import { PageHeader } from '@/components/page-header';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PanelToggle } from '@/components/ui/panel-toggle';
 import { Card, CardContent } from '@/components/ui/card';
 import { EmojiTile } from '@/components/ui/emoji-tile';
 import { Input } from '@/components/ui/input';
@@ -66,10 +72,7 @@ export function TrainingPage() {
                 <Settings2 className="size-4" />
                 과정 관리
               </Button>
-              <Button size="sm" onClick={() => setCreating(true)}>
-                <Plus className="size-4" />
-                기수 개설
-              </Button>
+              <PanelToggle open={creating} onToggle={() => setCreating(!creating)} label="기수 개설" variant="default" />
             </>
           )
         }
@@ -242,9 +245,16 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
     onSuccess: invalidate,
   });
 
-  const completeMut = useMutation({
-    mutationFn: (enrollmentId: number) => updateEnrollmentStatus(enrollmentId, 'completed'),
+  const enrollmentStatusMut = useMutation({
+    mutationFn: (vars: { enrollmentId: number; status: EnrollmentStatus }) => updateEnrollmentStatus(vars.enrollmentId, vars.status),
     onSuccess: invalidate,
+    onError: (error: Error) => window.alert(`상태 변경 실패: ${error.message}`),
+  });
+
+  const removeEnrollmentMut = useMutation({
+    mutationFn: (enrollmentId: number) => removeEnrollment(enrollmentId),
+    onSuccess: invalidate,
+    onError: (error: Error) => window.alert(`수강 취소 실패: ${error.message}`),
   });
 
   const statusMut = useMutation({
@@ -255,6 +265,27 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
   const sessionMut = useMutation({
     mutationFn: (vars: { sessionId: number; date: string }) => updateSession(vars.sessionId, { date: vars.date }),
     onSuccess: invalidate,
+  });
+
+  const addSessionMut = useMutation({
+    mutationFn: () => addSession(cohort.id),
+    onSuccess: invalidate,
+    onError: (error: Error) => window.alert(`회차 추가 실패: ${error.message}`),
+  });
+
+  const removeSessionMut = useMutation({
+    mutationFn: (sessionId: number) => removeSession(sessionId),
+    onSuccess: invalidate,
+    onError: (error: Error) => window.alert(`회차 삭제 실패: ${error.message}`),
+  });
+
+  const deleteCohortMut = useMutation({
+    mutationFn: () => deleteCohort(cohort.id),
+    onSuccess: () => {
+      invalidate();
+      onClose();
+    },
+    onError: (error: Error) => window.alert(`기수 삭제 실패: ${error.message}`),
   });
 
   return (
@@ -271,9 +302,27 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
               {cohort.endDate ? ` ~ ${cohort.endDate}` : ''} · 수강 {cohort.enrolledCount}명
             </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="닫기">
-            <X />
-          </Button>
+          <div className="flex shrink-0 items-center gap-1">
+            {canWrite && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="기수 삭제"
+                title="기수 삭제"
+                disabled={deleteCohortMut.isPending}
+                onClick={() => {
+                  if (window.confirm(`"${cohort.label}" 기수를 삭제할까요?\n회차·수강·출석 기록이 함께 삭제됩니다.`)) {
+                    deleteCohortMut.mutate();
+                  }
+                }}
+              >
+                <Trash2 className="text-[var(--color-destructive)]" />
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" onClick={onClose} aria-label="닫기">
+              <X />
+            </Button>
+          </div>
         </div>
 
         <div className="flex-1 space-y-5 overflow-auto px-6 py-5">
@@ -294,9 +343,10 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
                   {COHORT_STATUS_LABEL[status]}
                 </button>
               ))}
-              <Button size="sm" variant="ghost" onClick={() => setEnrolling(!enrolling)}>
+              <PanelToggle open={enrolling} onToggle={() => setEnrolling(!enrolling)} label="수강생 추가" />
+              <Button size="sm" variant="ghost" onClick={() => addSessionMut.mutate()} disabled={addSessionMut.isPending}>
                 <Plus className="size-3.5" />
-                수강생 추가
+                회차 추가
               </Button>
             </div>
           )}
@@ -304,6 +354,7 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
           {enrolling && (
             <EnrollPanel
               cohortId={cohort.id}
+              enrolledMemberIds={(detail?.roster ?? []).map(row => row.memberId)}
               onDone={() => {
                 invalidate();
                 setEnrolling(false);
@@ -322,8 +373,29 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
                   <tr className="border-b border-[var(--color-border)]">
                     <th className="py-2 pr-3 text-left font-medium">수강생</th>
                     {detail.sessions.map(session => (
-                      <th key={session.id} className="px-1 py-2 text-center font-medium">
-                        <div className="tabular-nums">{session.sequence}</div>
+                      <th key={session.id} className="group px-1 py-2 text-center font-medium">
+                        <div className="flex items-center justify-center gap-0.5">
+                          <span className="tabular-nums">{session.sequence}</span>
+                          {canWrite && (
+                            <button
+                              onClick={() => {
+                                const marked = detail.roster.filter(row => row.attendedSessionIds.includes(session.id)).length;
+                                const warning = marked > 0 ? `\n이 회차 출석 ${marked}건도 함께 삭제됩니다.` : '';
+                                if (
+                                  window.confirm(`${session.sequence}회차를 삭제할까요?${warning}\n남은 회차 번호는 1부터 다시 매겨집니다.`)
+                                ) {
+                                  removeSessionMut.mutate(session.id);
+                                }
+                              }}
+                              disabled={removeSessionMut.isPending}
+                              className="rounded p-0.5 text-[var(--color-muted-foreground)] opacity-0 transition-opacity group-hover:opacity-100 hover:text-[var(--color-destructive)] focus-visible:opacity-100"
+                              aria-label={`${session.sequence}회차 삭제`}
+                              title="회차 삭제"
+                            >
+                              <X className="size-3" />
+                            </button>
+                          )}
+                        </div>
                         {canWrite ? (
                           <input
                             type="date"
@@ -338,6 +410,7 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
                     ))}
                     <th className="px-2 py-2 text-right font-medium">출석률</th>
                     <th className="py-2 pl-2 text-right font-medium">상태</th>
+                    {canWrite && <th className="w-8 py-2" aria-label="수강 취소" />}
                   </tr>
                 </thead>
                 <tbody>
@@ -371,17 +444,47 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
                       })}
                       <td className="px-2 py-2 text-right tabular-nums">{row.attendanceRate}%</td>
                       <td className="py-2 pl-2 text-right">
-                        {row.status === 'completed' ? (
-                          <Badge tone="success">{ENROLLMENT_STATUS_LABEL.completed}</Badge>
-                        ) : canWrite ? (
-                          <Button size="sm" variant="ghost" onClick={() => completeMut.mutate(row.enrollmentId)}>
-                            <CheckCircle2 className="size-3.5" />
-                            수료
-                          </Button>
+                        {/* 수료 버튼 하나만 두면 되돌리거나 중도포기로 옮길 방법이 없었다.
+                            세 상태를 모두 오갈 수 있게 드롭다운으로 바꿨다. */}
+                        {canWrite ? (
+                          <select
+                            value={row.status}
+                            disabled={enrollmentStatusMut.isPending}
+                            onChange={event =>
+                              enrollmentStatusMut.mutate({
+                                enrollmentId: row.enrollmentId,
+                                status: event.target.value as EnrollmentStatus,
+                              })
+                            }
+                            className="rounded-md bg-[var(--color-background)] px-2 py-1 text-xs shadow-[var(--shadow-input)] outline-none focus-visible:shadow-[var(--shadow-input-focus)]"
+                          >
+                            {(['enrolled', 'completed', 'dropped'] as EnrollmentStatus[]).map(status => (
+                              <option key={status} value={status}>
+                                {ENROLLMENT_STATUS_LABEL[status]}
+                              </option>
+                            ))}
+                          </select>
                         ) : (
-                          <Badge tone="muted">{ENROLLMENT_STATUS_LABEL[row.status]}</Badge>
+                          <Badge tone={row.status === 'completed' ? 'success' : 'muted'}>{ENROLLMENT_STATUS_LABEL[row.status]}</Badge>
                         )}
                       </td>
+                      {canWrite && (
+                        <td className="py-2 pl-1 text-right">
+                          <button
+                            onClick={() => {
+                              if (window.confirm(`${row.memberName} 님을 이 기수에서 제외할까요?\n출석 기록도 함께 삭제됩니다.`)) {
+                                removeEnrollmentMut.mutate(row.enrollmentId);
+                              }
+                            }}
+                            disabled={removeEnrollmentMut.isPending}
+                            className="rounded-full p-1 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-destructive)]"
+                            aria-label={`${row.memberName} 수강 취소`}
+                            title="수강 취소"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -396,13 +499,16 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
   );
 }
 
-function EnrollPanel({ cohortId, onDone }: { cohortId: number; onDone: () => void }) {
+function EnrollPanel({ cohortId, enrolledMemberIds, onDone }: { cohortId: number; enrolledMemberIds: number[]; onDone: () => void }) {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<number[]>([]);
 
   const { data } = useQuery({
     queryKey: ['members', 'for-enroll', query],
     queryFn: () => listMembers({ q: query || undefined, pageSize: 20 }),
+    // 글자를 칠 때마다 queryKey 가 바뀌어 data 가 잠깐 undefined 로 떨어진다.
+    // 그대로 두면 목록이 비었다가 다시 차면서 한 번 더 깜빡인다.
+    placeholderData: keepPreviousData,
   });
 
   const enrollMut = useMutation({
@@ -410,30 +516,63 @@ function EnrollPanel({ cohortId, onDone }: { cohortId: number; onDone: () => voi
     onSuccess: onDone,
   });
 
-  const items: Member[] = data?.items ?? [];
+  // 이미 이 기수에 등록된 교인은 후보에서 뺀다.
+  // 서버는 중복을 조용히 건너뛰기만 해서(enroll 의 skipped), 그대로 두면 이미 등록된 사람을
+  // 다시 고를 수 있고 "1명 등록"을 눌러도 명단이 그대로여서 아무 일도 안 일어난 것처럼 보인다.
+  const enrolled = new Set(enrolledMemberIds);
+  const found: Member[] = data?.items ?? [];
+  const items = found.filter(member => !enrolled.has(member.id));
+  const hiddenCount = found.length - items.length;
 
   return (
     <Card>
       <CardContent className="space-y-3 py-4">
         <Input placeholder="이름으로 검색" value={query} onChange={event => setQuery(event.target.value)} />
-        <div className="flex flex-wrap gap-1.5">
-          {items.map(member => {
-            const picked = selected.includes(member.id);
-            return (
-              <button
-                key={member.id}
-                onClick={() => setSelected(picked ? selected.filter(id => id !== member.id) : [...selected, member.id])}
-                className={cn(
-                  'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                  picked
-                    ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
-                    : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]'
-                )}
-              >
-                {member.name}
-              </button>
-            );
-          })}
+        {/*
+         * 결과 칸은 높이를 고정한다. 이 패널은 수강생 표 위에 있어서, 검색 결과 수에 따라
+         * 칸이 늘었다 줄면 아래 표 전체가 밀리고 문서 높이가 바뀐다. 스크롤을 내린 상태였다면
+         * 브라우저가 스크롤 위치를 다시 맞추면서 검색창까지 위아래로 튄다.
+         * 넘치는 건 안에서 스크롤시킨다 — 3줄(칩 28px × 3 + 간격 6px × 2) 기준.
+         */}
+        <div className="h-[112px] overflow-y-auto rounded-md bg-[var(--color-muted)] p-2">
+          {items.length === 0 ? (
+            <p className="py-2 text-center text-xs text-[var(--color-muted-foreground)]">
+              {hiddenCount > 0
+                ? '검색된 교인은 이미 모두 이 기수에 등록되어 있습니다.'
+                : query
+                  ? '검색 결과가 없습니다.'
+                  : '등록할 교인을 검색하세요.'}
+            </p>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-1.5">
+                {items.map(member => {
+                  const picked = selected.includes(member.id);
+                  return (
+                    <button
+                      key={member.id}
+                      onClick={() => setSelected(picked ? selected.filter(id => id !== member.id) : [...selected, member.id])}
+                      className={cn(
+                        'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                        picked
+                          ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
+                          : 'border-[var(--color-border)] bg-[var(--color-background)] hover:bg-[var(--color-accent)]'
+                      )}
+                    >
+                      {member.name}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* 왜 검색한 사람이 안 보이는지 알려준다 — 조용히 빼면 그것대로 헷갈린다.
+                  높이 고정 칸 안이라 이 줄이 생겨도 레이아웃은 안 밀린다. */}
+              {hiddenCount > 0 && (
+                <p className="mt-2 text-[11px] text-[var(--color-muted-foreground)]">
+                  이미 등록된 {hiddenCount}명은 목록에서 제외했습니다.
+                </p>
+              )}
+            </>
+          )}
         </div>
         <div className="flex justify-end">
           <Button size="sm" onClick={() => enrollMut.mutate()} disabled={selected.length === 0 || enrollMut.isPending}>

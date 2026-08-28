@@ -166,6 +166,34 @@ export class TrainingCohortService {
     return this.sessionRepo().save(this.sessionRepo().create({ churchId, cohortId, sequence: (last?.sequence ?? 0) + 1 }));
   }
 
+  /**
+   * 회차 삭제 — 그 회차의 출석 기록을 함께 정리하고 남은 회차 번호를 1부터 다시 매긴다.
+   *
+   * 번호를 그대로 두면 표 머리글이 1·2·4·5… 로 보여 버그처럼 읽힌다. 회차의 정체성은 id 이고
+   * 출석도 sessionId 로 물려 있어서 번호를 당겨도 기록은 어긋나지 않는다.
+   */
+  async removeSession(churchId: number, sessionId: number): Promise<void> {
+    const session = await this.sessionRepo().findOne({ where: { id: sessionId, churchId } });
+    if (!session) throw new NotFoundException('회차를 찾을 수 없습니다.');
+
+    await DataSources.instance.transaction(async manager => {
+      await manager.getRepository(TrainingAttendanceEntity).softDelete({ sessionId });
+      await manager.getRepository(TrainingSessionEntity).softDelete({ id: sessionId, churchId });
+
+      // (cohort_id, sequence) 는 살아있는 행에만 걸리는 부분 유니크 인덱스다.
+      // 번호를 당길 때 반드시 오름차순으로 처리해야 앞 자리가 먼저 비어 충돌하지 않는다.
+      const rest = await manager
+        .getRepository(TrainingSessionEntity)
+        .find({ where: { churchId, cohortId: session.cohortId }, order: { sequence: 'ASC' } });
+      for (const [index, row] of rest.entries()) {
+        const next = index + 1;
+        if (row.sequence !== next) {
+          await manager.getRepository(TrainingSessionEntity).update({ id: row.id }, { sequence: next });
+        }
+      }
+    });
+  }
+
   private async nextOrdinal(churchId: number, courseId: number): Promise<number> {
     const last = await this.repo().findOne({ where: { churchId, courseId }, order: { ordinal: 'DESC' } });
     return (last?.ordinal ?? 0) + 1;

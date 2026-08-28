@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Eye, EyeOff, Plus, X } from 'lucide-react';
+import { Check, Eye, EyeOff, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { createStage, listStages, updateStage, type MissionaryStage } from '@/api/missionary';
+import { createStage, deleteStage, listStages, updateStage, type MissionaryStage } from '@/api/missionary';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +61,16 @@ function StageList() {
     onError: (error: Error) => window.alert(`변경 실패: ${error.message}`),
   });
 
+  const deleteMut = useMutation({
+    mutationFn: (id: number) => deleteStage(id),
+    onSuccess: invalidate,
+    // 쓰이고 있는 단계는 서버가 409 로 막는다. 지우는 대신 비활성화하라고 안내한다.
+    onError: (error: Error) =>
+      window.alert(
+        `${error.message}\n\n지울 수 없다면 눈 아이콘으로 비활성화하세요 — 새로 고를 수만 없게 되고 기존 기록은 그대로 남습니다.`
+      ),
+  });
+
   return (
     <div className="space-y-4">
       <p className="text-xs text-[var(--color-muted-foreground)]">
@@ -100,6 +110,19 @@ function StageList() {
                     title={stage.isActive ? '비활성화' : '활성화'}
                   >
                     {stage.isActive ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm(`"${stage.name}" 단계를 삭제할까요?\n이 단계를 쓰는 선교사나 기록이 있으면 삭제되지 않습니다.`)) {
+                        deleteMut.mutate(stage.id);
+                      }
+                    }}
+                    disabled={deleteMut.isPending}
+                    className="rounded-full p-1 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-destructive)]"
+                    aria-label={`${stage.name} 삭제`}
+                    title="삭제"
+                  >
+                    <Trash2 className="size-4" />
                   </button>
                 </div>
               )}

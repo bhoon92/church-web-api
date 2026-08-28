@@ -134,6 +134,9 @@ export const updateSession = (sessionId: number, payload: { date?: string; topic
 
 export const addSession = (cohortId: number) => request<CohortSession>(`${BASE}/cohorts/${cohortId}/sessions`, { method: 'POST' });
 
+/** 회차 삭제 — 출석 기록도 함께 지워지고 남은 회차 번호가 1부터 다시 매겨진다. */
+export const removeSession = (sessionId: number) => request<void>(`${BASE}/cohorts/sessions/${sessionId}`, { method: 'DELETE' });
+
 export const markTrainingAttendance = (sessionId: number, enrollmentId: number, present: boolean) =>
   request<{ present: boolean }>(`${BASE}/cohorts/sessions/${sessionId}/attendance`, {
     method: 'POST',

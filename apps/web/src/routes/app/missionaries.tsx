@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Globe2, Plus, Settings2, Trash2, X } from 'lucide-react';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Globe2, Settings2, Trash2, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
 import { listMembers, type Member } from '@/api/members';
@@ -11,6 +11,7 @@ import {
   fetchMissionarySummary,
   listMissionaries,
   listStages,
+  removeMissionary,
   updateMissionary,
   type Missionary,
   type MissionaryStage,
@@ -19,6 +20,7 @@ import { PageHeader } from '@/components/page-header';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PanelToggle } from '@/components/ui/panel-toggle';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { todayString } from '@/lib/date';
@@ -57,10 +59,7 @@ export function MissionariesPage() {
                 <Settings2 className="size-4" />
                 단계 관리
               </Button>
-              <Button size="sm" onClick={() => setRegistering(true)}>
-                <Plus className="size-4" />
-                선교사 등록
-              </Button>
+              <PanelToggle open={registering} onToggle={() => setRegistering(!registering)} label="선교사 등록" variant="default" />
             </>
           )
         }
@@ -187,6 +186,8 @@ function RegisterPanel({ stages, onClose }: { stages: MissionaryStage[]; onClose
     queryKey: ['members', 'for-missionary', query],
     queryFn: () => listMembers({ q: query || undefined, pageSize: 20 }),
     enabled: mode === 'existing',
+    // 한 글자마다 queryKey 가 바뀌어 목록이 비었다 차는 깜빡임을 막는다
+    placeholderData: keepPreviousData,
   });
 
   const createMut = useMutation({
@@ -229,12 +230,22 @@ function RegisterPanel({ stages, onClose }: { stages: MissionaryStage[]; onClose
         ) : (
           <>
             <Input placeholder="교인 이름으로 검색" value={query} onChange={event => setQuery(event.target.value)} />
-            <div className="flex flex-wrap gap-1.5">
-              {(data?.items ?? []).map(member => (
-                <FilterChip key={member.id} active={picked?.id === member.id} onClick={() => setPicked(member)}>
-                  {member.name}
-                </FilterChip>
-              ))}
+            {/* 훈련 수강생 추가와 같은 이유로 높이를 고정한다 — 결과 수에 따라 아래 목록이 밀리면
+                스크롤 위치가 튀면서 검색창까지 흔들린다. */}
+            <div className="h-[112px] overflow-y-auto rounded-md bg-[var(--color-muted)] p-2">
+              {(data?.items ?? []).length === 0 ? (
+                <p className="py-2 text-center text-xs text-[var(--color-muted-foreground)]">
+                  {query ? '검색 결과가 없습니다.' : '등록할 교인을 검색하세요.'}
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {(data?.items ?? []).map(member => (
+                    <FilterChip key={member.id} active={picked?.id === member.id} onClick={() => setPicked(member)}>
+                      {member.name}
+                    </FilterChip>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         )}
@@ -304,6 +315,15 @@ function MissionaryDetailModal({ id, stages, onClose }: { id: number; stages: Mi
     onError: (error: Error) => window.alert(`삭제 실패: ${error.message}`),
   });
 
+  const removeMut = useMutation({
+    mutationFn: () => removeMissionary(id),
+    onSuccess: () => {
+      invalidate();
+      onClose();
+    },
+    onError: (error: Error) => window.alert(`제거 실패: ${error.message}`),
+  });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
       <div
@@ -320,9 +340,31 @@ function MissionaryDetailModal({ id, stages, onClose }: { id: number; stages: Mi
               </p>
             )}
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="닫기">
-            <X />
-          </Button>
+          <div className="flex shrink-0 items-center gap-1">
+            {canWrite && missionary && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="파송 트랙에서 제거"
+                title="파송 트랙에서 제거"
+                disabled={removeMut.isPending}
+                onClick={() => {
+                  if (
+                    window.confirm(
+                      `${missionary.memberName} 님을 파송 트랙에서 제거할까요?\n선교사 기록도 함께 삭제됩니다. 교인 명부에는 그대로 남습니다.`
+                    )
+                  ) {
+                    removeMut.mutate();
+                  }
+                }}
+              >
+                <Trash2 className="text-[var(--color-destructive)]" />
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" onClick={onClose} aria-label="닫기">
+              <X />
+            </Button>
+          </div>
         </div>
 
         <div className="flex-1 space-y-5 overflow-auto px-6 py-5">

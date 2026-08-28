@@ -115,6 +115,19 @@ export class TrainingCohortController {
     return this.cohorts.updateSession(auth.churchId, sessionId, dto);
   }
 
+  @Delete('sessions/:sessionId')
+  @Permissions('training:write')
+  @HttpCode(204)
+  @ApiOperation({
+    summary: '회차 삭제',
+    description: '그 회차의 출석 기록을 함께 삭제하고, 남은 회차 번호를 1부터 다시 매긴다.',
+  })
+  @ApiParam({ name: 'sessionId', description: '회차 id', type: Number })
+  @ApiNoContentResponse({ description: '삭제 완료' })
+  removeSession(@RequireChurch() auth: Auth, @Param('sessionId', ParseIntPipe) sessionId: number) {
+    return this.cohorts.removeSession(auth.churchId, sessionId);
+  }
+
   @Post('sessions/:sessionId/attendance')
   @Permissions('training:write')
   @ApiOperation({
