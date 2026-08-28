@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ImageOff, Plus, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, ImageOff, Trash2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 
 import { createEvent, deleteEvent, deletePhoto, listEvents, listPhotos, uploadPhoto, type ChurchEvent } from '@/api/gallery';
 import { Button } from '@/components/ui/button';
+import { PanelToggle } from '@/components/ui/panel-toggle';
 import { Card, CardContent } from '@/components/ui/card';
 import { EmojiTile } from '@/components/ui/emoji-tile';
 import { Input } from '@/components/ui/input';
@@ -58,10 +59,7 @@ function EventList({ onOpen, canWrite }: { onOpen: (event: ChurchEvent) => void;
     <div className="space-y-4">
       {canWrite && (
         <div className="flex justify-end">
-          <Button size="sm" onClick={() => setCreating(!creating)}>
-            <Plus className="size-3.5" />
-            행사 추가
-          </Button>
+          <PanelToggle open={creating} onToggle={() => setCreating(!creating)} label="행사 추가" variant="default" />
         </div>
       )}
 

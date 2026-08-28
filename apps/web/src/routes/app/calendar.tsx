@@ -214,9 +214,7 @@ export function CalendarPage() {
       </div>
 
       {addFor && <EventModal date={addFor} calendars={calendars} onClose={() => setAddFor(null)} />}
-      {editingEvent && (
-        <EventEditModal event={editingEvent} calendars={calendars} onClose={() => setEditingEvent(null)} />
-      )}
+      {editingEvent && <EventEditModal event={editingEvent} calendars={calendars} onClose={() => setEditingEvent(null)} />}
       {showSub && <SubscriptionModal calendars={calendars} onClose={() => setShowSub(false)} />}
       {showGoogle && (
         <ModalShell title="Google Calendar 연동" onClose={() => setShowGoogle(false)}>
@@ -295,9 +293,11 @@ function CalendarSidebar({
             <button
               onClick={() => setAdding(!adding)}
               className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
-              aria-label="달력 추가"
+              aria-label={adding ? '달력 추가 취소' : '달력 추가'}
+              aria-expanded={adding}
+              title={adding ? '취소' : '달력 추가'}
             >
-              <Plus className="size-4" />
+              {adding ? <X className="size-4" /> : <Plus className="size-4" />}
             </button>
           )}
         </div>
@@ -659,7 +659,12 @@ function SubscriptionModal({ calendars, onClose }: { calendars: Calendar[]; onCl
             {calendars.map(calendar => (
               <li key={calendar.id}>
                 <label className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm hover:bg-[var(--color-muted)]">
-                  <input type="checkbox" checked={included.has(calendar.id)} onChange={() => toggle(calendar.id)} disabled={updateMut.isPending} />
+                  <input
+                    type="checkbox"
+                    checked={included.has(calendar.id)}
+                    onChange={() => toggle(calendar.id)}
+                    disabled={updateMut.isPending}
+                  />
                   <span className="size-2.5 rounded-full" style={{ backgroundColor: calendar.color }} />
                   {calendar.name}
                 </label>

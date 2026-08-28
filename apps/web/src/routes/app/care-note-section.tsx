@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useState } from 'react';
 
 import {
@@ -13,6 +13,7 @@ import {
 } from '@/api/care-notes';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PanelToggle } from '@/components/ui/panel-toggle';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/lib/permissions';
@@ -48,12 +49,7 @@ export function CareNoteSection({ memberId }: { memberId: number }) {
     <div>
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-semibold">양육 기록</h3>
-        {canWrite && (
-          <Button size="sm" variant="ghost" onClick={() => setAdding(!adding)}>
-            <Plus className="size-3.5" />
-            기록
-          </Button>
-        )}
+        {canWrite && <PanelToggle open={adding} onToggle={() => setAdding(!adding)} label="기록" />}
       </div>
 
       {adding && (

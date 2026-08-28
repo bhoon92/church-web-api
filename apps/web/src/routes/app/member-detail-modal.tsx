@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, ChevronRight, Pencil, Phone, Plus, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Pencil, Phone, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { assignAffiliation, type AffiliationKind, endAffiliation, setAffiliationLeader } from '@/api/affiliations';
@@ -8,6 +8,7 @@ import { endCurrentPosition, promotePosition } from '@/api/positions';
 import { listReferences, type Reference } from '@/api/references';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PanelToggle } from '@/components/ui/panel-toggle';
 import { cn } from '@/lib/utils';
 import { useOrgLabels } from '@/lib/org-labels';
 import { usePermissions } from '@/lib/permissions';
@@ -351,12 +352,7 @@ function AffiliationSection({ kind, memberId, items }: { kind: AffiliationKind; 
     <div>
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-semibold">{orgLabels[kind]}</h3>
-        {canWrite && (
-          <Button size="sm" variant="ghost" onClick={() => setAdding(!adding)}>
-            <Plus className="size-3.5" />
-            추가
-          </Button>
-        )}
+        {canWrite && <PanelToggle open={adding} onToggle={() => setAdding(!adding)} label="추가" />}
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -496,12 +492,7 @@ function PositionSection({
     <div>
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-semibold">사역 역할</h3>
-        {canWrite && (
-          <Button size="sm" variant="ghost" onClick={() => setPicking(!picking)}>
-            <Plus className="size-3.5" />
-            {current ? '변경' : '임명'}
-          </Button>
-        )}
+        {canWrite && <PanelToggle open={picking} onToggle={() => setPicking(!picking)} label={current ? '변경' : '임명'} />}
       </div>
 
       <div className="flex items-center gap-2">
