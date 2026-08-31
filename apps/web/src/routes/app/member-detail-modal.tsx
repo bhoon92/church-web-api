@@ -8,6 +8,7 @@ import { endCurrentPosition, promotePosition } from '@/api/positions';
 import { listReferences, type Reference } from '@/api/references';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { TagChip, TagChipButton } from '@/components/ui/tag-chip';
 import { PanelToggle } from '@/components/ui/panel-toggle';
 import { cn } from '@/lib/utils';
 import { useOrgLabels } from '@/lib/org-labels';
@@ -361,6 +362,7 @@ function AffiliationSection({ kind, memberId, items }: { kind: AffiliationKind; 
           <AffiliationChip
             key={affiliation.id}
             label={affiliation.referenceName ?? '(이름 없음)'}
+            seed={affiliation.referenceId}
             leader={affiliation.isLeader}
             canWrite={canWrite}
             onToggleLeader={() => leaderMut.mutate({ referenceId: affiliation.referenceId, isLeader: !affiliation.isLeader })}
@@ -378,18 +380,14 @@ function AffiliationSection({ kind, memberId, items }: { kind: AffiliationKind; 
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {available.map(reference => (
-                <button
+                <TagChipButton
                   key={reference.id}
-                  onClick={() => assignMut.mutate(reference.id)}
+                  name={reference.name}
+                  seed={reference.id}
+                  prefix="+"
                   disabled={assignMut.isPending}
-                  className={cn(
-                    'rounded-full border border-[var(--color-border)] px-3 py-1 text-xs font-medium',
-                    'hover:border-[var(--color-foreground)] hover:bg-[var(--color-muted)]',
-                    'transition-colors disabled:opacity-50'
-                  )}
-                >
-                  + {reference.name}
-                </button>
+                  onClick={() => assignMut.mutate(reference.id)}
+                />
               ))}
             </div>
           )}
@@ -401,49 +399,48 @@ function AffiliationSection({ kind, memberId, items }: { kind: AffiliationKind; 
 
 function AffiliationChip({
   label,
+  seed,
   leader,
   canWrite,
   onToggleLeader,
   onRemove,
 }: {
   label: string;
+  seed: number;
   leader: boolean;
   canWrite: boolean;
   onToggleLeader: () => void;
   onRemove: () => void;
 }) {
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs',
-        leader
-          ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
-          : 'border-[var(--color-border)] bg-[var(--color-background)]'
-      )}
-    >
-      {canWrite ? (
-        <button
-          onClick={onToggleLeader}
-          aria-label={leader ? '리더 해제' : '리더 지정'}
-          title={leader ? '리더 해제' : '리더 지정'}
-          className={cn('text-[10px] leading-none transition-opacity', leader ? 'opacity-100' : 'opacity-40 hover:opacity-100')}
-        >
-          ★
-        </button>
-      ) : (
-        leader && <span className="text-[10px] leading-none">★</span>
-      )}
-      {label}
-      {canWrite && (
-        <button
-          onClick={onRemove}
-          className={cn('rounded-full p-0.5 transition-colors', leader ? 'hover:bg-white/15' : 'hover:bg-[var(--color-muted)]')}
-          aria-label="종료"
-        >
-          <X className="size-3" />
-        </button>
-      )}
-    </span>
+    <TagChip
+      name={label}
+      seed={seed}
+      // 리더는 색이 아니라 테두리로 구분한다 — 색은 이미 "어느 조직인지"를 나타내고 있어서
+      // 리더까지 색으로 표시하면 두 정보가 같은 채널에서 부딪힌다.
+      className={cn(leader && 'ring-1 ring-[var(--color-foreground)] ring-inset')}
+      prefix={
+        canWrite ? (
+          <button
+            onClick={onToggleLeader}
+            aria-label={leader ? '리더 해제' : '리더 지정'}
+            title={leader ? '리더 해제' : '리더 지정'}
+            className={cn('text-[10px] leading-none transition-opacity', leader ? 'opacity-100' : 'opacity-40 hover:opacity-100')}
+          >
+            ★
+          </button>
+        ) : (
+          leader && <span className="text-[10px] leading-none">★</span>
+        )
+      }
+      suffix={
+        canWrite && (
+          <button onClick={onRemove} className="rounded-full p-0.5 transition-colors hover:bg-black/10" aria-label="종료">
+            <X className="size-3" />
+          </button>
+        )
+      }
+    />
   );
 }
 
@@ -498,9 +495,7 @@ function PositionSection({
       <div className="flex items-center gap-2">
         {current ? (
           <>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-foreground)] bg-[var(--color-foreground)] px-3 py-1 text-xs font-medium text-[var(--color-background)]">
-              {current.positionName ?? '(이름 없음)'}
-            </span>
+            <TagChip name={current.positionName ?? '(이름 없음)'} seed={current.positionId} />
             <span className="text-xs text-[var(--color-muted-foreground)]">{current.startDate} ~</span>
             {canWrite && (
               <Button
@@ -529,18 +524,14 @@ function PositionSection({
               {positions
                 .filter((position: Reference) => position.id !== current?.positionId)
                 .map(position => (
-                  <button
+                  <TagChipButton
                     key={position.id}
-                    onClick={() => promoteMut.mutate(position.id)}
+                    name={position.name}
+                    seed={position.id}
+                    prefix="→"
                     disabled={promoteMut.isPending}
-                    className={cn(
-                      'rounded-full border border-[var(--color-border)] px-3 py-1 text-xs font-medium',
-                      'hover:border-[var(--color-foreground)] hover:bg-[var(--color-muted)]',
-                      'transition-colors disabled:opacity-50'
-                    )}
-                  >
-                    → {position.name}
-                  </button>
+                    onClick={() => promoteMut.mutate(position.id)}
+                  />
                 ))}
             </div>
           )}

@@ -19,9 +19,17 @@ function hash(seed: string): number {
 
 export type TileTone = { bg: string; ink: string };
 
-/** 이름 → 파스텔 배경 + 그 위에 얹을 글자색. */
-export function tileTone(seed: string): TileTone {
-  const index = (hash(seed) % TILE_COUNT) + 1;
+/**
+ * seed → 파스텔 배경 + 그 위에 얹을 글자색.
+ *
+ * **숫자를 주면 그 값을 그대로 팔레트 인덱스로 쓴다.** 기준정보 id 처럼 연속된 값을 넘기면
+ * 한 목록 안의 항목들이 서로 다른 색을 받는다 — 이름 해시는 짧은 목록에서 잘 겹쳐서
+ * ("담임목사"·"목사"·"팀장"이 모두 같은 색) 구분하려고 색을 쓰는 의미가 없어진다.
+ * 문자열은 id 가 없는 대상(사람 이름 등)용 대비책이다.
+ */
+export function tileTone(seed: string | number): TileTone {
+  const bucket = typeof seed === 'number' ? Math.abs(Math.trunc(seed)) : hash(seed);
+  const index = (bucket % TILE_COUNT) + 1;
   return {
     bg: `var(--color-tile-${index})`,
     ink: `var(--color-tile-${index}-ink)`,
