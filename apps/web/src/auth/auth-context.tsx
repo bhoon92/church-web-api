@@ -32,7 +32,16 @@ export type MeResponse = {
   role: Membership['role'] | null;
 };
 
-type AuthState = { status: 'loading' } | { status: 'unauthenticated' } | ({ status: 'authenticated' } & MeResponse);
+/**
+ * `offline` 은 "로그아웃"과 구분하려고 둔 상태다.
+ * API 가 꺼져 있으면 Vite 프록시가 502 를 주는데, 그걸 인증 실패와 같이 취급하면
+ * 화면에는 그냥 로그인 페이지가 떠서 "로그인이 안 된다"로 보인다. 원인이 다르면 다르게 말해야 한다.
+ */
+type AuthState =
+  | { status: 'loading' }
+  | { status: 'offline'; message: string }
+  | { status: 'unauthenticated' }
+  | ({ status: 'authenticated' } & MeResponse);
 
 type AuthContextValue = {
   state: AuthState;
@@ -45,9 +54,22 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** API 자체에 닿지 못한 경우. 인증 실패(401)와 구분하려고 별도 타입으로 둔다. */
+class ApiOfflineError extends Error {}
+
 async function fetchMe(): Promise<MeResponse | null> {
-  const res = await fetch('/api/auth/me', { credentials: 'include' });
+  let res: Response;
+  try {
+    res = await fetch('/api/auth/me', { credentials: 'include' });
+  } catch {
+    // fetch 가 던지는 건 네트워크 단계 실패 — 개발 중에는 보통 Vite 는 떠 있고 API 만 꺼진 경우다.
+    throw new ApiOfflineError('API 서버에 연결할 수 없습니다.');
+  }
   if (res.status === 401) return null;
+  // Vite 프록시는 백엔드가 죽어 있으면 502(연결 거부) / 504(응답 없음)를 돌려준다.
+  if (res.status === 502 || res.status === 503 || res.status === 504) {
+    throw new ApiOfflineError('API 서버가 응답하지 않습니다.');
+  }
   if (!res.ok) throw new Error(`auth/me ${res.status}`);
   return res.json();
 }
@@ -56,19 +78,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [optimistic, setOptimistic] = useState<AuthState | null>(null);
 
-  const { data, isPending } = useQuery({
+  const { data, isPending, error } = useQuery({
     queryKey: ['auth', 'me'],
     queryFn: fetchMe,
     staleTime: 60_000,
     retry: false,
+    // 서버가 꺼져 있는 동안만 짧게 다시 물어본다 → 사용자가 API 를 켜면 새로고침 없이 저절로 복구된다.
+    refetchInterval: query => (query.state.error instanceof ApiOfflineError ? 3000 : false),
   });
 
   const state: AuthState = useMemo(() => {
     if (optimistic) return optimistic;
     if (isPending) return { status: 'loading' };
+    if (error instanceof ApiOfflineError) return { status: 'offline', message: error.message };
     if (!data) return { status: 'unauthenticated' };
     return { status: 'authenticated', ...data };
-  }, [optimistic, isPending, data]);
+  }, [optimistic, isPending, data, error]);
 
   const loginWithGoogle = useCallback(() => {
     window.location.href = '/api/auth/google';

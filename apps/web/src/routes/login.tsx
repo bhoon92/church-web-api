@@ -1,33 +1,39 @@
-import { motion } from 'motion/react'
-import { useState } from 'react'
-import { Navigate } from 'react-router'
+import { motion } from 'motion/react';
+import { useState } from 'react';
+import { Navigate } from 'react-router';
 
-import { useAuth } from '@/auth/auth-context'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { useAuth } from '@/auth/auth-context';
+import { ApiOffline } from '@/components/api-offline';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
-const IS_DEV = import.meta.env.DEV
+const IS_DEV = import.meta.env.DEV;
 
 export function LoginPage() {
-  const { state, loginWithGoogle, devLogin } = useAuth()
-  const [devEmail, setDevEmail] = useState('')
-  const [devName, setDevName] = useState('')
-  const [submitting, setSubmitting] = useState(false)
+  const { state, loginWithGoogle, devLogin } = useAuth();
+  const [devEmail, setDevEmail] = useState('');
+  const [devName, setDevName] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  // 로그인 화면에서도 원인을 구분해 준다 — Google 버튼을 눌러도 /api 가 죽어 있으면 아무 일도 안 일어난다.
+  if (state.status === 'offline') {
+    return <ApiOffline message={state.message} />;
+  }
 
   if (state.status === 'authenticated') {
-    return <Navigate to={state.currentChurch ? '/app' : '/onboarding'} replace />
+    return <Navigate to={state.currentChurch ? '/app' : '/onboarding'} replace />;
   }
 
   const handleDevSubmit = async (event: React.FormEvent) => {
-    event.preventDefault()
-    if (!devEmail) return
-    setSubmitting(true)
+    event.preventDefault();
+    if (!devEmail) return;
+    setSubmitting(true);
     try {
-      await devLogin(devEmail, devName || undefined)
+      await devLogin(devEmail, devName || undefined);
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   return (
     <main className="flex min-h-svh items-center justify-center bg-[var(--color-muted)] px-6">
@@ -39,25 +45,16 @@ export function LoginPage() {
       >
         <div className="mb-8 text-center">
           <Wordmark />
-          <p className="mt-3 text-sm text-[var(--color-muted-foreground)]">
-            교회를 위한 부드러운 관리 도구
-          </p>
+          <p className="mt-3 text-sm text-[var(--color-muted-foreground)]">교회를 위한 부드러운 관리 도구</p>
         </div>
 
         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 shadow-sm">
           <div className="space-y-1.5 pb-5 text-center">
             <h2 className="text-lg font-semibold tracking-tight">로그인</h2>
-            <p className="text-xs text-[var(--color-muted-foreground)]">
-              Google 계정으로 간편하게 시작하세요.
-            </p>
+            <p className="text-xs text-[var(--color-muted-foreground)]">Google 계정으로 간편하게 시작하세요.</p>
           </div>
 
-          <Button
-            size="lg"
-            variant="outline"
-            className="w-full"
-            onClick={loginWithGoogle}
-          >
+          <Button size="lg" variant="outline" className="w-full" onClick={loginWithGoogle}>
             <GoogleIcon />
             Google로 계속하기
           </Button>
@@ -71,28 +68,17 @@ export function LoginPage() {
 
         {IS_DEV && (
           <details className="mt-6 rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-background)] p-4 text-xs text-[var(--color-muted-foreground)]">
-            <summary className="cursor-pointer font-medium text-[var(--color-foreground)]">
-              개발용 로그인 (localdev 전용)
-            </summary>
+            <summary className="cursor-pointer font-medium text-[var(--color-foreground)]">개발용 로그인 (localdev 전용)</summary>
             <form onSubmit={handleDevSubmit} className="mt-4 space-y-2">
               <Input
                 type="email"
                 placeholder="email@example.com"
                 value={devEmail}
-                onChange={(event) => setDevEmail(event.target.value)}
+                onChange={event => setDevEmail(event.target.value)}
                 required
               />
-              <Input
-                placeholder="이름 (선택)"
-                value={devName}
-                onChange={(event) => setDevName(event.target.value)}
-              />
-              <Button
-                type="submit"
-                size="sm"
-                className="w-full"
-                disabled={submitting || !devEmail}
-              >
+              <Input placeholder="이름 (선택)" value={devName} onChange={event => setDevName(event.target.value)} />
+              <Button type="submit" size="sm" className="w-full" disabled={submitting || !devEmail}>
                 {submitting ? '로그인 중…' : '개발 로그인'}
               </Button>
             </form>
@@ -100,7 +86,7 @@ export function LoginPage() {
         )}
       </motion.div>
     </main>
-  )
+  );
 }
 
 function Wordmark() {
@@ -109,7 +95,7 @@ function Wordmark() {
       <span className="inline-block size-1.5 rounded-full bg-[var(--color-primary)]" />
       <span className="text-xl font-semibold tracking-tight">Yakirim</span>
     </div>
-  )
+  );
 }
 
 function GoogleIcon() {
@@ -123,14 +109,11 @@ function GoogleIcon() {
         fill="#34A853"
         d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.56-2.76c-.98.66-2.24 1.06-3.72 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23Z"
       />
-      <path
-        fill="#FBBC05"
-        d="M5.84 14.11A6.6 6.6 0 0 1 5.48 12c0-.73.13-1.44.36-2.11V7.05H2.18a11 11 0 0 0 0 9.9l3.66-2.84Z"
-      />
+      <path fill="#FBBC05" d="M5.84 14.11A6.6 6.6 0 0 1 5.48 12c0-.73.13-1.44.36-2.11V7.05H2.18a11 11 0 0 0 0 9.9l3.66-2.84Z" />
       <path
         fill="#EA4335"
         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1A11 11 0 0 0 2.18 7.05l3.66 2.84C6.71 7.3 9.14 5.38 12 5.38Z"
       />
     </svg>
-  )
+  );
 }

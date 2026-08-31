@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 
 import { useAuth } from '@/auth/auth-context';
+import { ApiOffline } from '@/components/api-offline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -17,6 +18,10 @@ export function OnboardingPage() {
 
   if (state.status === 'loading') {
     return <div className="flex min-h-svh items-center justify-center text-sm text-[var(--color-muted-foreground)]">불러오는 중…</div>;
+  }
+
+  if (state.status === 'offline') {
+    return <ApiOffline message={state.message} />;
   }
 
   if (state.status === 'unauthenticated') {
@@ -74,7 +79,12 @@ export function OnboardingPage() {
           </Field>
 
           <Field label="담임 / 대표자" hint="선택">
-            <Input placeholder="예: 김 목사" value={representative} onChange={event => setRepresentative(event.target.value)} maxLength={60} />
+            <Input
+              placeholder="예: 김 목사"
+              value={representative}
+              onChange={event => setRepresentative(event.target.value)}
+              maxLength={60}
+            />
           </Field>
 
           <Field label="회계연도 시작월" hint="기본 1월">
