@@ -8,6 +8,8 @@ import { JwtAuthGuard } from '@src/module/auth/guards/jwt-auth.guard';
 import { Permissions } from '@src/module/auth/decorators/permissions.decorator';
 import { PermissionsGuard } from '@src/module/auth/guards/permissions.guard';
 import type { AuthContext } from '@src/module/auth/types/auth-context';
+import { MemberSmallGroupEntity } from '@src/database/entities/member-small-group.entity';
+import { BudgetAllocationEntity, BudgetTargetKind } from '@src/database/entities/budget-allocation.entity';
 import { UpsertReferenceDto } from './dto/upsert-reference.dto';
 import { UpdateReferenceDto } from './dto/update-reference.dto';
 import {
@@ -78,6 +80,9 @@ export class SmallGroupController {
   @ApiOperation({ summary: '목장 삭제', description: removeDescription(WHAT) })
   @ApiNoContentResponse({ description: '삭제 완료' })
   remove(@RequireChurch() auth: AuthContext & { churchId: number }, @Param('id', ParseIntPipe) id: number) {
-    return this.referenceService.remove(SmallGroupEntity, auth.churchId, id);
+    return this.referenceService.remove(SmallGroupEntity, auth.churchId, id, [
+      { entity: MemberSmallGroupEntity, column: 'smallGroupId', label: '소속 이력' },
+      { entity: BudgetAllocationEntity, column: 'targetId', label: '예산 배정', extraWhere: { targetKind: BudgetTargetKind.SMALL_GROUP } },
+    ]);
   }
 }

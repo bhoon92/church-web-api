@@ -29,6 +29,8 @@ export type Reference = {
   description: string | null;
   sortOrder: number;
   isActive: boolean;
+  /** 재적상태 전용 — 코드가 참조하는 항목이라 삭제 불가(이름 변경·비활성화는 가능). */
+  systemKey?: string | null;
   /** 재적상태 전용 — 이 단계에 며칠 이상 머무르면 정체로 볼지. null 이면 판정 안 함. */
   stallsAfterDays?: number | null;
   createdAt: string;
@@ -43,6 +45,20 @@ export type UpsertReferencePayload = {
   /** 재적상태 전용. null 을 보내면 정체 판정에서 제외한다. */
   stallsAfterDays?: number | null;
 };
+
+/**
+ * 서버가 준 한국어 사유를 그대로 꺼낸다.
+ *
+ * 예전에는 `delete memberStatus 409` 같은 문자열만 남겨서, 화면에는 "삭제 실패: delete memberStatus 409"
+ * 로 떴다. 정작 서버는 "이 상태인 교인이 62명 있어 삭제할 수 없습니다" 처럼 이유를 말해 주고 있었다.
+ */
+async function failure(res: Response, fallback: string): Promise<Error> {
+  const body = await res.json().catch(() => null);
+  const message =
+    (Array.isArray(body?.error?.desc) ? body.error.desc.join('\n') : null) ??
+    (typeof body?.message === 'string' ? body.message.replace(/^\w+Exception:\s*/, '') : null);
+  return new Error(message || `${fallback} (${res.status})`);
+}
 
 export async function listReferences(kind: ReferenceKind, year?: number): Promise<Reference[]> {
   const query = year != null ? `?year=${year}` : '';
@@ -59,10 +75,7 @@ export async function createReference(kind: ReferenceKind, payload: UpsertRefere
     credentials: 'include',
     body: JSON.stringify(payload),
   });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`create ${kind} ${res.status} ${text}`);
-  }
+  if (!res.ok) throw await failure(res, '추가하지 못했습니다');
   return res.json();
 }
 
@@ -72,10 +85,7 @@ export async function copyReferenceYear(kind: ReferenceKind, fromYear: number, t
     method: 'POST',
     credentials: 'include',
   });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`copy ${kind} ${res.status} ${text}`);
-  }
+  if (!res.ok) throw await failure(res, '복사하지 못했습니다');
   return res.json();
 }
 
@@ -86,7 +96,7 @@ export async function updateReference(kind: ReferenceKind, id: number, payload: 
     credentials: 'include',
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(`update ${kind} ${res.status}`);
+  if (!res.ok) throw await failure(res, '수정하지 못했습니다');
   return res.json();
 }
 
@@ -95,5 +105,5 @@ export async function deleteReference(kind: ReferenceKind, id: number): Promise<
     method: 'DELETE',
     credentials: 'include',
   });
-  if (!res.ok) throw new Error(`delete ${kind} ${res.status}`);
+  if (!res.ok) throw await failure(res, '삭제하지 못했습니다');
 }

@@ -8,6 +8,7 @@ import { JwtAuthGuard } from '@src/module/auth/guards/jwt-auth.guard';
 import { Permissions } from '@src/module/auth/decorators/permissions.decorator';
 import { PermissionsGuard } from '@src/module/auth/guards/permissions.guard';
 import type { AuthContext } from '@src/module/auth/types/auth-context';
+import { MemberPositionEntity } from '@src/database/entities/member-position.entity';
 import { UpsertReferenceDto } from './dto/upsert-reference.dto';
 import { UpdateReferenceDto } from './dto/update-reference.dto';
 import { createDescription, listDescription, removeDescription, updateDescription } from './reference-swagger';
@@ -55,6 +56,8 @@ export class PositionController {
   @ApiOperation({ summary: '직분 삭제', description: removeDescription(WHAT) })
   @ApiNoContentResponse({ description: '삭제 완료' })
   remove(@RequireChurch() auth: AuthContext & { churchId: number }, @Param('id', ParseIntPipe) id: number) {
-    return this.referenceService.remove(PositionEntity, auth.churchId, id);
+    return this.referenceService.remove(PositionEntity, auth.churchId, id, [
+      { entity: MemberPositionEntity, column: 'positionId', label: '사역 역할 이력' },
+    ]);
   }
 }

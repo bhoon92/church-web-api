@@ -8,6 +8,8 @@ import { JwtAuthGuard } from '@src/module/auth/guards/jwt-auth.guard';
 import { Permissions } from '@src/module/auth/decorators/permissions.decorator';
 import { PermissionsGuard } from '@src/module/auth/guards/permissions.guard';
 import type { AuthContext } from '@src/module/auth/types/auth-context';
+import { AttendanceEntity } from '@src/database/entities/attendance.entity';
+import { OfferingEntity } from '@src/database/entities/offering.entity';
 import { UpsertReferenceDto } from './dto/upsert-reference.dto';
 import { UpdateReferenceDto } from './dto/update-reference.dto';
 import { createDescription, listDescription, removeDescription, updateDescription } from './reference-swagger';
@@ -55,6 +57,9 @@ export class WorshipServiceController {
   @ApiOperation({ summary: '예배 삭제', description: `${removeDescription(WHAT)} 지난 출석 기록은 그대로 남는다.` })
   @ApiNoContentResponse({ description: '삭제 완료' })
   remove(@RequireChurch() auth: AuthContext & { churchId: number }, @Param('id', ParseIntPipe) id: number) {
-    return this.referenceService.remove(WorshipServiceEntity, auth.churchId, id);
+    return this.referenceService.remove(WorshipServiceEntity, auth.churchId, id, [
+      { entity: AttendanceEntity, column: 'worshipServiceId', label: '출석 기록' },
+      { entity: OfferingEntity, column: 'worshipServiceId', label: '헌금 기록' },
+    ]);
   }
 }

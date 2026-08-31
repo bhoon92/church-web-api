@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { DataSources } from '@src/database/data-sources';
 import { MemberEntity } from '@src/database/entities/member.entity';
 import { MemberStatusEntity } from '@src/database/entities/member-status.entity';
+import { MemberStatusHistoryEntity } from '@src/database/entities/member-status-history.entity';
 
 export type UpsertMemberStatusInput = {
   name?: string;
@@ -58,9 +59,26 @@ export class MemberStatusService {
   async remove(churchId: number, id: number): Promise<void> {
     const status = await this.repo().findOne({ where: { id, churchId } });
     if (!status) throw new NotFoundException('재적상태를 찾을 수 없습니다.');
-    if (status.systemKey) throw new ConflictException('시스템 상태는 삭제할 수 없습니다.');
+    if (status.systemKey) {
+      throw new ConflictException('코드가 참조하는 시스템 상태라 삭제할 수 없습니다. 이름은 바꿀 수 있고, 안 쓰신다면 비활성화하세요.');
+    }
+
     const inUse = await DataSources.instance.getRepository(MemberEntity).count({ where: { churchId, statusId: id } });
-    if (inUse > 0) throw new ConflictException(`이 상태인 성도가 ${inUse}명 있어 삭제할 수 없습니다.`);
+    if (inUse > 0) {
+      throw new ConflictException(
+        `이 상태인 교인이 ${inUse}명 있어 삭제할 수 없습니다. 그 교인들을 다른 상태로 옮기거나, 지우는 대신 비활성화하세요.`
+      );
+    }
+
+    // 지금 이 상태인 사람이 없어도 과거 이력이 남아 있으면 지울 수 없다 —
+    // 지우면 교인 상세의 단계 타임라인에서 그 구간 이름이 사라진다.
+    const inHistory = await DataSources.instance.getRepository(MemberStatusHistoryEntity).count({ where: { churchId, statusId: id } });
+    if (inHistory > 0) {
+      throw new ConflictException(
+        `과거에 이 상태를 거친 기록이 ${inHistory}건 있어 삭제할 수 없습니다. 지우면 단계 이동 이력이 끊깁니다 — 비활성화하세요.`
+      );
+    }
+
     await this.repo().softDelete({ id, churchId });
   }
 }

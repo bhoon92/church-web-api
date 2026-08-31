@@ -8,6 +8,7 @@ import { JwtAuthGuard } from '@src/module/auth/guards/jwt-auth.guard';
 import { Permissions } from '@src/module/auth/decorators/permissions.decorator';
 import { PermissionsGuard } from '@src/module/auth/guards/permissions.guard';
 import type { AuthContext } from '@src/module/auth/types/auth-context';
+import { FinanceTransactionEntity } from '@src/database/entities/finance-transaction.entity';
 import { UpsertReferenceDto } from './dto/upsert-reference.dto';
 import { UpdateReferenceDto } from './dto/update-reference.dto';
 import { createDescription, listDescription, removeDescription, updateDescription } from './reference-swagger';
@@ -55,6 +56,8 @@ export class AccountCategoryController {
   @ApiOperation({ summary: '계정과목 삭제', description: `${removeDescription(WHAT)} 예산·수입지출 기록이 걸려 있으면 특히 주의.` })
   @ApiNoContentResponse({ description: '삭제 완료' })
   remove(@RequireChurch() auth: AuthContext & { churchId: number }, @Param('id', ParseIntPipe) id: number) {
-    return this.referenceService.remove(AccountCategoryEntity, auth.churchId, id);
+    return this.referenceService.remove(AccountCategoryEntity, auth.churchId, id, [
+      { entity: FinanceTransactionEntity, column: 'accountCategoryId', label: '수입지출 기록' },
+    ]);
   }
 }

@@ -467,11 +467,14 @@ function ReferenceRow({
           >
             {item.isActive ? <Eye className="size-4" /> : <EyeOff className="size-4 text-[var(--color-muted-foreground)]" />}
           </Button>
+          {/* 시스템 항목은 서버가 어차피 막는다 — 눌러 보고 알게 하지 않고 아예 못 누르게 한다. */}
           <Button
             size="icon"
             variant="ghost"
+            disabled={Boolean(item.systemKey)}
+            title={item.systemKey ? '코드가 참조하는 항목이라 삭제할 수 없습니다 (비활성화는 가능)' : '삭제'}
             onClick={() => {
-              if (window.confirm(`"${item.name}" 을(를) 삭제할까요?`)) onDelete();
+              if (window.confirm(`"${item.name}" 을(를) 삭제할까요?\n사용 중이면 삭제되지 않고 이유를 알려 드립니다.`)) onDelete();
             }}
             aria-label="삭제"
           >

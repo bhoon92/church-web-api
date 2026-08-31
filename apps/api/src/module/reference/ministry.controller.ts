@@ -8,6 +8,9 @@ import { JwtAuthGuard } from '@src/module/auth/guards/jwt-auth.guard';
 import { Permissions } from '@src/module/auth/decorators/permissions.decorator';
 import { PermissionsGuard } from '@src/module/auth/guards/permissions.guard';
 import type { AuthContext } from '@src/module/auth/types/auth-context';
+import { MemberMinistryEntity } from '@src/database/entities/member-ministry.entity';
+import { MissionaryProfileEntity } from '@src/database/entities/missionary-profile.entity';
+import { BudgetAllocationEntity, BudgetTargetKind } from '@src/database/entities/budget-allocation.entity';
 import { UpsertReferenceDto } from './dto/upsert-reference.dto';
 import { UpdateReferenceDto } from './dto/update-reference.dto';
 import {
@@ -78,6 +81,10 @@ export class MinistryController {
   @ApiOperation({ summary: '사역팀 삭제', description: removeDescription(WHAT) })
   @ApiNoContentResponse({ description: '삭제 완료' })
   remove(@RequireChurch() auth: AuthContext & { churchId: number }, @Param('id', ParseIntPipe) id: number) {
-    return this.referenceService.remove(MinistryEntity, auth.churchId, id);
+    return this.referenceService.remove(MinistryEntity, auth.churchId, id, [
+      { entity: MemberMinistryEntity, column: 'ministryId', label: '소속 이력' },
+      { entity: MissionaryProfileEntity, column: 'ministryId', label: '선교사 프로필' },
+      { entity: BudgetAllocationEntity, column: 'targetId', label: '예산 배정', extraWhere: { targetKind: BudgetTargetKind.MINISTRY } },
+    ]);
   }
 }
