@@ -11,11 +11,13 @@ export class CreateCohortDto {
   @Min(1)
   courseId!: number;
 
-  /** 기수 번호. 생략하면 해당 과정의 마지막 기수 + 1 로 자동 부여된다. */
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  ordinal?: number;
+  /**
+   * 기수 이름. 담당자가 직접 적는다 — "5기" 여도 되고 "2026 봄학기" 여도 된다.
+   * 같은 과정 안에서 중복될 수 없다(409).
+   */
+  @IsString()
+  @Length(1, 40)
+  name!: string;
 
   @Matches(YYYY_MM_DD, { message: 'startDate must be YYYY-MM-DD' })
   startDate!: string;

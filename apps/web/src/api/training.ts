@@ -53,7 +53,9 @@ export type Cohort = {
   id: number;
   courseId: number;
   courseName: string;
-  ordinal: number;
+  /** 담당자가 직접 적는 기수 이름 — "5기" 여도 되고 "2026 봄학기" 여도 된다. */
+  name: string;
+  /** 목록 표시용 = `{과정명} {기수이름}` */
   label: string;
   startDate: string;
   endDate: string | null;
@@ -90,7 +92,7 @@ export type MemberTrainingHistory = {
   enrollmentId: number;
   cohortId: number;
   courseName: string;
-  ordinal: number;
+  name: string;
   label: string;
   status: EnrollmentStatus;
   enrolledAt: string;
@@ -116,6 +118,8 @@ export const listCohorts = (params?: { courseId?: number; status?: CohortStatus 
 
 export const createCohort = (payload: {
   courseId: number;
+  /** 필수. 같은 과정 안에서 겹치면 409 가 온다. */
+  name: string;
   startDate: string;
   endDate?: string;
   sessionCount?: number;
@@ -124,8 +128,10 @@ export const createCohort = (payload: {
 
 export const fetchCohortDetail = (cohortId: number) => request<CohortDetail>(`${BASE}/cohorts/${cohortId}`);
 
-export const updateCohort = (cohortId: number, payload: Partial<{ status: CohortStatus; startDate: string; endDate: string }>) =>
-  request<Cohort>(`${BASE}/cohorts/${cohortId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+export const updateCohort = (
+  cohortId: number,
+  payload: Partial<{ name: string; status: CohortStatus; startDate: string; endDate: string }>
+) => request<Cohort>(`${BASE}/cohorts/${cohortId}`, { method: 'PATCH', body: JSON.stringify(payload) });
 
 export const deleteCohort = (cohortId: number) => request<void>(`${BASE}/cohorts/${cohortId}`, { method: 'DELETE' });
 

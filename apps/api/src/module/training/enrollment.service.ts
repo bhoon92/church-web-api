@@ -27,7 +27,7 @@ export type MemberTrainingHistory = {
   enrollmentId: number;
   cohortId: number;
   courseName: string;
-  ordinal: number;
+  name: string;
   label: string;
   status: EnrollmentStatus;
   enrolledAt: string;
@@ -180,8 +180,8 @@ export class TrainingEnrollmentService {
         enrollmentId: enrollment.id,
         cohortId: enrollment.cohortId,
         courseName,
-        ordinal: cohort?.ordinal ?? 0,
-        label: cohort ? `${courseName} ${cohort.ordinal}기` : courseName,
+        name: cohort?.name ?? '',
+        label: cohort ? `${courseName} ${cohort.name}` : courseName,
         status: enrollment.status,
         enrolledAt: enrollment.enrolledAt,
         closedAt: enrollment.closedAt ?? null,

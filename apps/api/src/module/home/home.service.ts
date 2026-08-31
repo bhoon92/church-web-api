@@ -149,7 +149,7 @@ export class HomeService {
 
     return cohorts.map(cohort => ({
       cohortId: cohort.id,
-      label: `${courseMap.get(cohort.courseId) ?? '훈련'} ${cohort.ordinal}기`,
+      label: `${courseMap.get(cohort.courseId) ?? '훈련'} ${cohort.name}`,
       startDate: cohort.startDate,
       enrolledCount: enrollments.filter(row => row.cohortId === cohort.id).length,
       sessionCount: sessions.filter(row => row.cohortId === cohort.id).length,
@@ -235,7 +235,7 @@ export class HomeService {
 
     return rows.map(row => {
       const cohort = cohortMap.get(row.cohortId);
-      const label = cohort ? `${courseMap.get(cohort.courseId) ?? '훈련'} ${cohort.ordinal}기` : '훈련';
+      const label = cohort ? `${courseMap.get(cohort.courseId) ?? '훈련'} ${cohort.name}` : '훈련';
       return {
         kind: 'training' as const,
         who: names.get(row.memberId) ?? '성도',

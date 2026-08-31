@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { In } from 'typeorm';
 import { DataSources } from '@src/database/data-sources';
 import { MemberEntity } from '@src/database/entities/member.entity';
@@ -14,7 +14,7 @@ export type CohortSummary = {
   id: number;
   courseId: number;
   courseName: string;
-  ordinal: number;
+  name: string;
   label: string;
   startDate: string;
   endDate: string | null;
@@ -63,8 +63,8 @@ export class TrainingCohortService {
         id: cohort.id,
         courseId: cohort.courseId,
         courseName,
-        ordinal: cohort.ordinal,
-        label: `${courseName} ${cohort.ordinal}기`,
+        name: cohort.name,
+        label: `${courseName} ${cohort.name}`,
         startDate: cohort.startDate,
         endDate: cohort.endDate ?? null,
         status: cohort.status,
@@ -77,6 +77,20 @@ export class TrainingCohortService {
     });
   }
 
+  /**
+   * 한 건을 목록과 같은 모양(`label`·`courseName`·집계 포함)으로 돌려준다.
+   * 생성·수정 응답이 원시 엔티티라 화면 타입(Cohort)과 어긋나 있었다 — 이름 수정 후
+   * 응답을 바로 쓰려면 label 이 있어야 한다.
+   */
+  async summaryById(churchId: number, id: number): Promise<CohortSummary> {
+    const cohort = await this.findById(churchId, id);
+    // 같은 과정으로 범위를 좁혀 목록 조립을 재사용한다(기수 수가 적어 따로 최적화하지 않는다).
+    const rows = await this.list(churchId, { courseId: cohort.courseId } as ListCohortQueryDto);
+    const summary = rows.find(row => row.id === id);
+    if (!summary) throw new NotFoundException('기수를 찾을 수 없습니다.');
+    return summary;
+  }
+
   async findById(churchId: number, id: number): Promise<TrainingCohortEntity> {
     const cohort = await this.repo().findOne({ where: { id, churchId } });
     if (!cohort) throw new NotFoundException('기수를 찾을 수 없습니다.');
@@ -84,19 +98,21 @@ export class TrainingCohortService {
   }
 
   /** 기수 개설 — 회차를 함께 만든다 (한 트랜잭션). 회차 없이 만든 기수는 출석 체크를 할 수 없어서. */
-  async create(churchId: number, dto: CreateCohortDto): Promise<TrainingCohortEntity> {
+  async create(churchId: number, dto: CreateCohortDto): Promise<CohortSummary> {
     const course = await DataSources.instance.getRepository(TrainingCourseEntity).findOne({ where: { id: dto.courseId, churchId } });
     if (!course) throw new NotFoundException('훈련 과정을 찾을 수 없습니다.');
 
-    const ordinal = dto.ordinal ?? (await this.nextOrdinal(churchId, dto.courseId));
+    const name = dto.name.trim();
+    if (!name) throw new BadRequestException('기수 이름을 입력하세요.');
+    await this.assertNameFree(churchId, dto.courseId, name);
     const sessionCount = dto.sessionCount ?? course.defaultSessionCount;
 
-    return DataSources.instance.transaction(async manager => {
+    const created = await DataSources.instance.transaction(async manager => {
       const cohort = await manager.getRepository(TrainingCohortEntity).save(
         manager.getRepository(TrainingCohortEntity).create({
           churchId,
           courseId: dto.courseId,
-          ordinal,
+          name,
           startDate: dto.startDate,
           endDate: dto.endDate,
           status: CohortStatus.PLANNED,
@@ -116,18 +132,31 @@ export class TrainingCohortService {
 
       return cohort;
     });
+    return this.summaryById(churchId, created.id);
   }
 
   /** sessionCount 는 개설 시에만 의미가 있어 수정에서는 무시한다 (회차 증감은 addSession 사용). */
-  async update(churchId: number, id: number, dto: UpdateCohortDto): Promise<TrainingCohortEntity> {
-    await this.findById(churchId, id);
-    const editable = ['courseId', 'ordinal', 'startDate', 'endDate', 'status', 'leaderMemberId', 'note'] as const;
+  async update(churchId: number, id: number, dto: UpdateCohortDto): Promise<CohortSummary> {
+    const current = await this.findById(churchId, id);
+
+    if (dto.name !== undefined) {
+      const name = dto.name.trim();
+      if (!name) throw new BadRequestException('기수 이름을 입력하세요.');
+      // 과정을 함께 옮기는 경우도 있어 "옮겨갈 과정" 기준으로 검사한다.
+      const courseId = dto.courseId ?? current.courseId;
+      if (name !== current.name || courseId !== current.courseId) {
+        await this.assertNameFree(churchId, courseId, name, id);
+      }
+      dto.name = name;
+    }
+
+    const editable = ['courseId', 'name', 'startDate', 'endDate', 'status', 'leaderMemberId', 'note'] as const;
     const patch: Partial<TrainingCohortEntity> = {};
     for (const key of editable) {
       if (dto[key] !== undefined) Object.assign(patch, { [key]: dto[key] });
     }
     await this.repo().update({ id, churchId }, patch);
-    return this.findById(churchId, id);
+    return this.summaryById(churchId, id);
   }
 
   /** 기수 삭제 — 회차·수강·출석까지 함께 정리한다. */
@@ -194,9 +223,15 @@ export class TrainingCohortService {
     });
   }
 
-  private async nextOrdinal(churchId: number, courseId: number): Promise<number> {
-    const last = await this.repo().findOne({ where: { churchId, courseId }, order: { ordinal: 'DESC' } });
-    return (last?.ordinal ?? 0) + 1;
+  /**
+   * 같은 과정 안에서 기수 이름이 겹치는지. DB 에도 부분 유니크 인덱스가 있지만
+   * 그대로 터뜨리면 사용자에게 Postgres 오류가 그대로 보인다.
+   */
+  private async assertNameFree(churchId: number, courseId: number, name: string, exceptId?: number): Promise<void> {
+    const existing = await this.repo().findOne({ where: { churchId, courseId, name } });
+    if (existing && existing.id !== exceptId) {
+      throw new ConflictException(`이 과정에 "${name}" 기수가 이미 있습니다.`);
+    }
   }
 
   private async courseNameMap(churchId: number): Promise<Map<number, string>> {

@@ -51,7 +51,8 @@ export class TrainingCohortController {
     description: [
       '기수를 만들면서 **회차를 함께 생성한다**(한 트랜잭션). 회차 없이 만들면 출석 체크를 할 수 없기 때문.',
       '',
-      '- `ordinal` 생략 시 해당 과정의 마지막 기수 + 1 이 자동 부여된다.',
+      '- `name` 은 담당자가 직접 적는다 — "5기" 여도 되고 "2026 봄학기" 여도 된다.',
+      '  같은 과정 안에서 이름이 겹치면 409. (예전에는 번호를 자동 채번했는데 교회가 쓰는 이름을 담을 수 없었다)',
       '- `sessionCount` 생략 시 과정의 `defaultSessionCount` 를 따른다 (믿음학교 12 등).',
       '- 회차의 날짜·주제는 비워둔 채 생성되며 `PATCH /training/cohorts/sessions/{sessionId}` 로 채운다.',
     ].join('\n'),

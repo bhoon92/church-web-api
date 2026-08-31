@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { GraduationCap, Plus, Settings2, Trash2, X } from 'lucide-react';
-import { useState } from 'react';
+import { GraduationCap, Pencil, Plus, Settings2, Trash2, X } from 'lucide-react';
+import { useRef, useState } from 'react';
 
 import { listMembers, type Member } from '@/api/members';
 import {
@@ -152,6 +152,7 @@ function CohortForm({
 }) {
   const queryClient = useQueryClient();
   const [courseId, setCourseId] = useState<number | null>(courses[0]?.id ?? null);
+  const [name, setName] = useState('');
   const [startDate, setStartDate] = useState(todayString());
   const [sessionCount, setSessionCount] = useState<string>('');
 
@@ -159,6 +160,7 @@ function CohortForm({
     mutationFn: () =>
       createCohort({
         courseId: courseId!,
+        name: name.trim(),
         startDate,
         sessionCount: sessionCount ? Number(sessionCount) : undefined,
       }),
@@ -166,6 +168,8 @@ function CohortForm({
       queryClient.invalidateQueries({ queryKey: ['training', 'cohorts'] });
       onClose();
     },
+    // 같은 과정에 같은 이름이면 서버가 409 로 이유를 준다.
+    onError: (error: Error) => window.alert(`기수 개설 실패: ${error.message}`),
   });
 
   const selected = courses.find(course => course.id === courseId);
@@ -194,6 +198,14 @@ function CohortForm({
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <Input
+            placeholder="기수 이름 (예: 5기 · 2026 봄학기)"
+            value={name}
+            onChange={event => setName(event.target.value)}
+            maxLength={40}
+            className="w-56"
+            autoFocus
+          />
           <Input type="date" value={startDate} onChange={event => setStartDate(event.target.value)} className="w-40" />
           <Input
             type="number"
@@ -206,14 +218,18 @@ function CohortForm({
         </div>
 
         <p className="text-xs text-[var(--color-muted-foreground)]">
-          기수 번호는 자동으로 매겨지고, 회차가 함께 생성됩니다. 날짜·주제는 개설 후 채우면 됩니다.
+          기수 이름은 직접 적습니다 — 목록에는{' '}
+          <strong>
+            {selected?.name ?? '과정'} {name.trim() || '…'}
+          </strong>{' '}
+          로 보입니다. 회차는 함께 생성되고 날짜·주제는 개설 후 채우면 됩니다.
         </p>
 
         <div className="flex justify-end gap-2">
           <Button size="sm" variant="ghost" onClick={onClose}>
             취소
           </Button>
-          <Button size="sm" onClick={() => createMut.mutate()} disabled={!courseId || createMut.isPending}>
+          <Button size="sm" onClick={() => createMut.mutate()} disabled={!courseId || !name.trim() || createMut.isPending}>
             개설
           </Button>
         </div>
@@ -295,8 +311,8 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
         onClick={event => event.stopPropagation()}
       >
         <div className="flex items-start justify-between border-b border-[var(--color-border)] px-6 py-4">
-          <div>
-            <h2 className="text-lg font-semibold">{cohort.label}</h2>
+          <div className="min-w-0">
+            <EditableCohortName cohort={cohort} canWrite={canWrite} onSaved={invalidate} />
             <p className="text-xs text-[var(--color-muted-foreground)]">
               {cohort.startDate}
               {cohort.endDate ? ` ~ ${cohort.endDate}` : ''} · 수강 {cohort.enrolledCount}명
@@ -504,6 +520,87 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * 기수 이름 인라인 수정 — 교인 이름 수정과 같은 방식(제목을 눌러 그 자리에서 고친다).
+ * 과정명은 못 바꾸고 기수 이름만 바꾼다. 과정을 옮기는 건 성격이 달라 여기서 다루지 않는다.
+ */
+function EditableCohortName({ cohort, canWrite, onSaved }: { cohort: Cohort; canWrite: boolean; onSaved: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(cohort.name);
+  const cancelRef = useRef(false);
+
+  const saveMut = useMutation({
+    mutationFn: (name: string) => updateCohort(cohort.id, { name }),
+    onSuccess: () => {
+      setEditing(false);
+      onSaved();
+    },
+    onError: (error: Error) => {
+      window.alert(`이름 변경 실패: ${error.message}`);
+      setDraft(cohort.name);
+      setEditing(false);
+    },
+  });
+
+  // blur 한 곳에서만 커밋(Enter 는 blur 로 수렴). Escape 는 취소 — 모달이 닫히지 않게 전파도 막는다.
+  const commit = () => {
+    if (cancelRef.current) {
+      cancelRef.current = false;
+      setDraft(cohort.name);
+      setEditing(false);
+      return;
+    }
+    const name = draft.trim();
+    if (!name || name === cohort.name) {
+      setDraft(cohort.name);
+      setEditing(false);
+      return;
+    }
+    saveMut.mutate(name);
+  };
+
+  if (!canWrite) return <h2 className="truncate text-lg font-semibold">{cohort.label}</h2>;
+
+  if (editing) {
+    return (
+      <div className="flex items-baseline gap-1.5">
+        <span className="shrink-0 text-lg font-semibold text-[var(--color-muted-foreground)]">{cohort.courseName}</span>
+        <input
+          autoFocus
+          value={draft}
+          maxLength={40}
+          onChange={event => setDraft(event.target.value)}
+          onBlur={commit}
+          onKeyDown={event => {
+            if (event.key === 'Enter') event.currentTarget.blur();
+            if (event.key === 'Escape') {
+              event.stopPropagation();
+              cancelRef.current = true;
+              event.currentTarget.blur();
+            }
+          }}
+          className="w-44 rounded-md bg-[var(--color-background)] px-2 py-0.5 text-lg font-semibold shadow-[var(--shadow-input)] outline-none focus-visible:shadow-[var(--shadow-input-focus)]"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        setDraft(cohort.name);
+        setEditing(true);
+      }}
+      className="group inline-flex max-w-full items-center gap-1.5"
+      title="기수 이름 수정"
+    >
+      <h2 className="truncate text-lg font-semibold">{cohort.label}</h2>
+      <Pencil className="size-3.5 shrink-0 text-[var(--color-muted-foreground)] opacity-0 transition-opacity group-hover:opacity-100" />
+    </button>
   );
 }
 

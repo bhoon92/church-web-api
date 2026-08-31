@@ -7,12 +7,18 @@ export enum CohortStatus {
   CLOSED = 'closed',
 }
 
-/** 훈련 기수 — "믿음학교 5기". 실제 사람이 붙는 단위. */
+/**
+ * 훈련 기수 — "믿음학교 5기". 실제 사람이 붙는 단위.
+ *
+ * 이름은 담당자가 직접 적는다. 예전에는 `ordinal`(숫자)을 시스템이 자동 채번했는데,
+ * 교회가 "2026 봄학기" 나 "청년부 집중과정" 처럼 부르는 경우를 담을 수 없었다.
+ */
 @Entity('training_cohort')
 @Index(['churchId'])
 @Index(['churchId', 'status'])
 @Index(['courseId'])
-@Index(['courseId', 'ordinal'], { unique: true, where: 'deleted_at IS NULL' })
+// 같은 과정 안에서 이름이 겹치면 목록에서 구분이 안 된다.
+@Index(['courseId', 'name'], { unique: true, where: 'deleted_at IS NULL' })
 export class TrainingCohortEntity extends BaseDateEntityWithDeletedAt {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -23,8 +29,8 @@ export class TrainingCohortEntity extends BaseDateEntityWithDeletedAt {
   @Column()
   courseId!: number;
 
-  @Column({ comment: '기수 번호 (5기 → 5)', type: 'smallint' })
-  ordinal!: number;
+  @Column({ comment: '기수 이름 (5기 / 2026 봄학기 …). 담당자가 직접 적는다' })
+  name!: string;
 
   @Column({ type: 'date' })
   startDate!: string;
