@@ -1,20 +1,11 @@
-export type CareNoteType = 'visit' | 'meeting' | 'nurture' | 'counsel' | 'field_report' | 'etc';
-
-/** 화면에 나오는 순서이자 새 기록의 기본값(첫 항목). */
-export const CARE_NOTE_TYPES: CareNoteType[] = ['visit', 'meeting', 'nurture', 'counsel', 'field_report', 'etc'];
-
-export const CARE_NOTE_TYPE_LABEL: Record<CareNoteType, string> = {
-  visit: '심방',
-  meeting: '면담',
-  nurture: '양육',
-  counsel: '상담',
-  field_report: '파송보고',
-  etc: '기타',
-};
-
+/**
+ * 기록 종류는 이제 기준정보다 — `listReferences('careNoteType')` 로 읽는다.
+ * 예전 enum(CareNoteType)과 하드코딩 라벨·색은 제거했다. 색은 종류 id 로 정한다(TagChip).
+ */
 export type CareNote = {
   id: number;
-  type: CareNoteType;
+  typeId: number;
+  typeName: string | null;
   date: string;
   location: string | null;
   content: string;
@@ -26,7 +17,7 @@ export type CareNote = {
 };
 
 export type CreateCareNotePayload = {
-  type?: CareNoteType;
+  typeId?: number;
   date?: string;
   location?: string;
   content: string;

@@ -1,7 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Mail, Trash2 } from 'lucide-react'
-import { useState } from 'react'
-import { Link } from 'react-router'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, Mail, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { Link } from 'react-router';
 
 import {
   ASSIGNABLE_ROLES,
@@ -12,17 +12,17 @@ import {
   updateMemberRole,
   type Role,
   type TeamMember,
-} from '@/api/team'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { PageHeader } from '@/components/page-header'
-import { usePermissions } from '@/lib/permissions'
+} from '@/api/team';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { PageHeader } from '@/components/page-header';
+import { usePermissions } from '@/lib/permissions';
 
 export function TeamPage() {
-  const { can } = usePermissions()
-  const canManage = can('team:manage')
+  const { can } = usePermissions();
+  const canManage = can('team:manage');
 
   return (
     <div className="space-y-6">
@@ -45,13 +45,13 @@ export function TeamPage() {
         </Card>
       )}
     </div>
-  )
+  );
 }
 
 function TeamManager() {
-  const queryClient = useQueryClient()
-  const { data: members = [], isLoading } = useQuery({ queryKey: ['team'], queryFn: listTeam })
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['team'] })
+  const queryClient = useQueryClient();
+  const { data: members = [], isLoading } = useQuery({ queryKey: ['team'], queryFn: listTeam });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['team'] });
 
   return (
     <div className="space-y-4">
@@ -63,7 +63,7 @@ function TeamManager() {
             <div className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">불러오는 중…</div>
           ) : (
             <ul className="divide-y divide-[var(--color-border)]">
-              {members.map((member) => (
+              {members.map(member => (
                 <MemberRow key={member.membershipId} member={member} onChanged={invalidate} />
               ))}
             </ul>
@@ -71,23 +71,23 @@ function TeamManager() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 function InviteForm({ onDone }: { onDone: () => void }) {
-  const [email, setEmail] = useState('')
-  const [role, setRole] = useState<Role>('staff')
-  const [error, setError] = useState<string | null>(null)
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState<Role>('staff');
+  const [error, setError] = useState<string | null>(null);
 
   const inviteMut = useMutation({
     mutationFn: () => inviteMember(email.trim(), role),
     onMutate: () => setError(null),
     onSuccess: () => {
-      setEmail('')
-      onDone()
+      setEmail('');
+      onDone();
     },
     onError: (error: Error) => setError(error.message),
-  })
+  });
 
   return (
     <Card>
@@ -99,7 +99,7 @@ function InviteForm({ onDone }: { onDone: () => void }) {
               type="email"
               placeholder="초대할 이메일"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={event => setEmail(event.target.value)}
               className="pl-9"
             />
           </div>
@@ -109,25 +109,23 @@ function InviteForm({ onDone }: { onDone: () => void }) {
           </Button>
         </div>
         {error && <p className="text-xs text-rose-600">{error}</p>}
-        <p className="text-xs text-[var(--color-muted-foreground)]">
-          미가입자는 해당 이메일로 Google 로그인 시 자동으로 합류합니다.
-        </p>
+        <p className="text-xs text-[var(--color-muted-foreground)]">미가입자는 해당 이메일로 Google 로그인 시 자동으로 합류합니다.</p>
       </CardContent>
     </Card>
-  )
+  );
 }
 
 function MemberRow({ member, onChanged }: { member: TeamMember; onChanged: () => void }) {
-  const isOwner = member.role === 'owner'
+  const isOwner = member.role === 'owner';
 
   const roleMut = useMutation({
     mutationFn: (role: Role) => updateMemberRole(member.membershipId, role),
     onSuccess: onChanged,
-  })
+  });
   const removeMut = useMutation({
     mutationFn: () => removeMember(member.membershipId),
     onSuccess: onChanged,
-  })
+  });
 
   return (
     <li className="flex flex-wrap items-center gap-3 px-5 py-3">
@@ -143,13 +141,13 @@ function MemberRow({ member, onChanged }: { member: TeamMember; onChanged: () =>
         <Badge tone="neutral">{ROLE_LABEL.owner}</Badge>
       ) : (
         <>
-          <RoleSelect value={member.role} onChange={(role) => roleMut.mutate(role)} disabled={roleMut.isPending} />
+          <RoleSelect value={member.role} onChange={role => roleMut.mutate(role)} disabled={roleMut.isPending} />
           <Button
             size="icon"
             variant="ghost"
             aria-label="제거"
             onClick={() => {
-              if (window.confirm(`${member.name} 님을 제거할까요?`)) removeMut.mutate()
+              if (window.confirm(`${member.name} 님을 제거할까요?`)) removeMut.mutate();
             }}
           >
             <Trash2 className="size-4" />
@@ -157,30 +155,22 @@ function MemberRow({ member, onChanged }: { member: TeamMember; onChanged: () =>
         </>
       )}
     </li>
-  )
+  );
 }
 
-function RoleSelect({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: Role
-  onChange: (role: Role) => void
-  disabled?: boolean
-}) {
+function RoleSelect({ value, onChange, disabled }: { value: Role; onChange: (role: Role) => void; disabled?: boolean }) {
   return (
     <select
       value={value}
-      onChange={(event) => onChange(event.target.value as Role)}
+      onChange={event => onChange(event.target.value as Role)}
       disabled={disabled}
       className="h-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-sm outline-none focus:border-[var(--color-foreground)] disabled:opacity-50"
     >
-      {ASSIGNABLE_ROLES.map((role) => (
+      {ASSIGNABLE_ROLES.map(role => (
         <option key={role} value={role}>
           {ROLE_LABEL[role]}
         </option>
       ))}
     </select>
-  )
+  );
 }

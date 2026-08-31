@@ -1,4 +1,4 @@
-export type ReferenceKind = 'department' | 'ministry' | 'smallGroup' | 'position' | 'worshipService' | 'memberStatus';
+export type ReferenceKind = 'department' | 'ministry' | 'smallGroup' | 'position' | 'worshipService' | 'memberStatus' | 'careNoteType';
 
 export const REFERENCE_PATH: Record<ReferenceKind, string> = {
   department: 'departments',
@@ -7,6 +7,7 @@ export const REFERENCE_PATH: Record<ReferenceKind, string> = {
   position: 'positions',
   worshipService: 'worship-services',
   memberStatus: 'member-statuses',
+  careNoteType: 'care-note-types',
 };
 
 export const REFERENCE_LABEL: Record<ReferenceKind, string> = {
@@ -16,6 +17,7 @@ export const REFERENCE_LABEL: Record<ReferenceKind, string> = {
   position: '사역 역할',
   worshipService: '예배',
   memberStatus: '재적상태',
+  careNoteType: '기록 종류',
 };
 
 // 연도별로 편성하는 reference (해마다 재편성). 나머지(사역 역할·예배)는 연도 무관 공통.

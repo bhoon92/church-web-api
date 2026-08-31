@@ -1,22 +1,22 @@
-import { createBrowserRouter } from 'react-router'
+import { createBrowserRouter } from 'react-router';
 
-import { RequireAuth } from '@/auth/require-auth'
-import { AppLayout } from '@/routes/app-layout'
-import { AttendancePage } from '@/routes/app/attendance'
-import { CalendarPage } from '@/routes/app/calendar'
-import { DashboardPage } from '@/routes/app/dashboard'
-import { FinancePage } from '@/routes/app/finance'
-import { GalleryPage } from '@/routes/app/gallery'
-import { MembersPage } from '@/routes/app/members'
-import { MissionariesPage } from '@/routes/app/missionaries'
-import { OrganizationChartPage } from '@/routes/app/organization-chart'
-import { SettingsPage } from '@/routes/app/settings'
-import { TrainingPage } from '@/routes/app/training'
-import { TeamPage } from '@/routes/app/settings/team'
-import { ChurchSelectPage } from '@/routes/church-select'
-import { HomePage } from '@/routes/home'
-import { LoginPage } from '@/routes/login'
-import { OnboardingPage } from '@/routes/onboarding'
+import { RequireAuth } from '@/auth/require-auth';
+import { AppLayout } from '@/routes/app-layout';
+import { AttendancePage } from '@/routes/app/attendance';
+import { CalendarPage } from '@/routes/app/calendar';
+import { DashboardPage } from '@/routes/app/dashboard';
+import { FinancePage } from '@/routes/app/finance';
+import { GalleryPage } from '@/routes/app/gallery';
+import { MembersPage } from '@/routes/app/members';
+import { MissionariesPage } from '@/routes/app/missionaries';
+import { OrganizationChartPage } from '@/routes/app/organization-chart';
+import { SettingsPage } from '@/routes/app/settings';
+import { TrainingPage } from '@/routes/app/training';
+import { TeamPage } from '@/routes/app/settings/team';
+import { ChurchSelectPage } from '@/routes/church-select';
+import { HomePage } from '@/routes/home';
+import { LoginPage } from '@/routes/login';
+import { OnboardingPage } from '@/routes/onboarding';
 
 export const router = createBrowserRouter([
   { path: '/', element: <HomePage /> },
@@ -46,4 +46,4 @@ export const router = createBrowserRouter([
     ],
   },
   { path: '*', element: <HomePage /> },
-])
+]);

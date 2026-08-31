@@ -119,7 +119,11 @@ export function MembersPage() {
       />
 
       {managing && (
-        <ReferenceManagerModal title="재적상태·사역 역할 관리" kinds={['memberStatus', 'position']} onClose={() => setManaging(false)} />
+        <ReferenceManagerModal
+          title="재적상태·사역 역할·기록 종류 관리"
+          kinds={['memberStatus', 'position', 'careNoteType']}
+          onClose={() => setManaging(false)}
+        />
       )}
 
       {importing && <MemberImportModal onClose={() => setImporting(false)} />}

@@ -1,11 +1,13 @@
-import { IsEnum, IsOptional, IsString, Length, Matches } from 'class-validator';
-import { CareNoteType } from '@src/database/entities/care-note.entity';
+import { Type } from 'class-transformer';
+import { IsInt, IsOptional, IsString, Length, Matches, Min } from 'class-validator';
 
 export class CreateCareNoteDto {
-  /** 기록 종류. 미지정 시 면담(meeting). */
+  /** 기록 종류 id (care-note-types). 생략하면 활성 종류 중 첫 번째. */
   @IsOptional()
-  @IsEnum(CareNoteType)
-  type?: CareNoteType;
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  typeId?: number;
 
   /** 기록일 (YYYY-MM-DD). 미지정 시 오늘. */
   @IsOptional()

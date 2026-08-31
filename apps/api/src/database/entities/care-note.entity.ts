@@ -1,25 +1,11 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { BaseDateEntityWithDeletedAt } from './base-date.entity';
 
-export enum CareNoteType {
-  /** 심방 — 집·직장 등으로 찾아가 만난 기록. */
-  VISIT = 'visit',
-  /** 일대일 면담. */
-  MEETING = 'meeting',
-  /** 새가족 양육/제자훈련 노트. */
-  NURTURE = 'nurture',
-  /** 상담. */
-  COUNSEL = 'counsel',
-  /** 파송 선교사의 현지 보고. */
-  FIELD_REPORT = 'field_report',
-  ETC = 'etc',
-}
-
 /**
  * 양육기록 — 심방·면담·양육·상담·파송보고 노트 (구 pastoral_record).
  *
- * 청년 양성 맥락으로 재정의하면서 심방을 뺐었는데(planning 00.5), 실제로 심방을 하고
- * 기록할 자리가 없어서 되살렸다. 나머지 종류는 그대로다.
+ * 종류(`typeId`)는 **교회가 편집하는 기준정보**다(care_note_type). 예전엔 enum 이었는데
+ * 코드가 그 값으로 분기하는 곳이 하나도 없어서, 교회 용어만 막고 있었다.
  */
 @Entity('care_note')
 @Index(['churchId'])
@@ -38,8 +24,8 @@ export class CareNoteEntity extends BaseDateEntityWithDeletedAt {
   @Column({ comment: '작성자 account' })
   recorderAccountId!: number;
 
-  @Column({ type: 'enum', enum: CareNoteType, default: CareNoteType.MEETING })
-  type!: CareNoteType;
+  @Column({ comment: '기록 종류 (care_note_type)' })
+  typeId!: number;
 
   @Column({ type: 'date' })
   date!: string;

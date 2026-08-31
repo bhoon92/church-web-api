@@ -2,31 +2,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { useState } from 'react';
 
-import {
-  CARE_NOTE_TYPE_LABEL,
-  CARE_NOTE_TYPES,
-  createCareNote,
-  deleteCareNote,
-  listCareNotes,
-  type CareNoteType,
-  type CreateCareNotePayload,
-} from '@/api/care-notes';
-import { Badge } from '@/components/ui/badge';
+import { createCareNote, deleteCareNote, listCareNotes, type CreateCareNotePayload } from '@/api/care-notes';
+import { listReferences } from '@/api/references';
 import { Button } from '@/components/ui/button';
 import { PanelToggle } from '@/components/ui/panel-toggle';
+import { TagChip, TagChipButton } from '@/components/ui/tag-chip';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/lib/permissions';
 import { todayString } from '@/lib/date';
 
-const TYPE_TONE: Record<CareNoteType, 'neutral' | 'muted' | 'success' | 'warn' | 'info'> = {
-  visit: 'info',
-  meeting: 'success',
-  nurture: 'warn',
-  counsel: 'muted',
-  field_report: 'success',
-  etc: 'neutral',
-};
+/** 기록 종류는 교회가 편집하는 기준정보다. 색은 종류 id 로 정해져 상세·목록 어디서든 같다. */
+function useCareNoteTypes() {
+  return useQuery({ queryKey: ['references', 'careNoteType'], queryFn: () => listReferences('careNoteType') });
+}
 
 export function CareNoteSection({ memberId }: { memberId: number }) {
   const queryClient = useQueryClient();
@@ -74,7 +63,7 @@ export function CareNoteSection({ memberId }: { memberId: number }) {
             <li key={note.id} className="rounded-xl border border-[var(--color-border)] p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone={TYPE_TONE[note.type]}>{CARE_NOTE_TYPE_LABEL[note.type]}</Badge>
+                  <TagChip name={note.typeName ?? '(삭제된 종류)'} seed={note.typeId} />
                   <span className="text-xs tabular-nums text-[var(--color-muted-foreground)]">{note.date}</span>
                   {note.location && <span className="text-xs text-[var(--color-muted-foreground)]">· {note.location}</span>}
                 </div>
@@ -117,7 +106,11 @@ export function CareNoteSection({ memberId }: { memberId: number }) {
 
 function NoteForm({ memberId, onDone, onCancel }: { memberId: number; onDone: () => void; onCancel: () => void }) {
   const today = todayString();
-  const [type, setType] = useState<CareNoteType>(CARE_NOTE_TYPES[0]);
+  const { data: types = [] } = useCareNoteTypes();
+  const selectable = types.filter(item => item.isActive);
+  const [typeId, setTypeId] = useState<number | null>(null);
+  // 첫 렌더에는 종류 목록이 아직 없다 — 도착하면 첫 항목을 기본값으로.
+  const activeTypeId = typeId ?? selectable[0]?.id ?? null;
   const [date, setDate] = useState(today);
   const [location, setLocation] = useState('');
   const [content, setContent] = useState('');
@@ -132,7 +125,7 @@ function NoteForm({ memberId, onDone, onCancel }: { memberId: number; onDone: ()
   const submit = () => {
     if (!content.trim()) return;
     createMut.mutate({
-      type,
+      typeId: activeTypeId ?? undefined,
       date,
       location: location.trim() || undefined,
       content: content.trim(),
@@ -144,20 +137,21 @@ function NoteForm({ memberId, onDone, onCancel }: { memberId: number; onDone: ()
   return (
     <div className="mb-3 space-y-3 rounded-xl border border-dashed border-[var(--color-border)] p-3">
       <div className="flex flex-wrap gap-1.5">
-        {CARE_NOTE_TYPES.map(noteType => (
-          <button
-            key={noteType}
-            onClick={() => setType(noteType)}
-            className={cn(
-              'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-              type === noteType
-                ? 'border-[var(--color-foreground)] bg-[var(--color-foreground)] text-[var(--color-background)]'
-                : 'border-[var(--color-border)] hover:bg-[var(--color-muted)]'
-            )}
-          >
-            {CARE_NOTE_TYPE_LABEL[noteType]}
-          </button>
-        ))}
+        {selectable.length === 0 ? (
+          <p className="text-xs text-[var(--color-muted-foreground)]">
+            기록 종류가 없습니다. 교인 화면의 “재적상태·사역 역할·기록 종류 관리”에서 먼저 등록하세요.
+          </p>
+        ) : (
+          selectable.map(item => (
+            <TagChipButton
+              key={item.id}
+              name={item.name}
+              seed={item.id}
+              onClick={() => setTypeId(item.id)}
+              className={cn(item.id === activeTypeId && 'ring-1 ring-[var(--color-foreground)] ring-inset')}
+            />
+          ))
+        )}
       </div>
 
       <div className="flex gap-2">

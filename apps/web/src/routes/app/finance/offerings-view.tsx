@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 
 import {
   createOffering,
@@ -13,51 +13,51 @@ import {
   updateOfferingCategory,
   type Category,
   type Offering,
-} from '@/api/finance'
-import { exportOfferings } from '@/api/exports'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Check, Download, Pencil, Trash2 } from 'lucide-react'
-import { usePermissions } from '@/lib/permissions'
-import { todayString } from '@/lib/date'
-import { CategorySelect } from './category-select'
-import { MemberPicker } from './member-picker'
+} from '@/api/finance';
+import { exportOfferings } from '@/api/exports';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Check, Download, Pencil, Trash2 } from 'lucide-react';
+import { usePermissions } from '@/lib/permissions';
+import { todayString } from '@/lib/date';
+import { CategorySelect } from './category-select';
+import { MemberPicker } from './member-picker';
 
 export function OfferingsView() {
-  const queryClient = useQueryClient()
-  const { can } = usePermissions()
-  const canWrite = can('finance:write')
-  const today = todayString()
-  const [date, setDate] = useState(today)
+  const queryClient = useQueryClient();
+  const { can } = usePermissions();
+  const canWrite = can('finance:write');
+  const today = todayString();
+  const [date, setDate] = useState(today);
 
   const { data: list } = useQuery({
     queryKey: ['finance', 'offerings', date],
     queryFn: () => listOfferings({ date }),
-  })
+  });
 
   const { data: categories = [] } = useQuery({
     queryKey: ['finance', 'offering-categories'],
     queryFn: listOfferingCategories,
-  })
+  });
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['finance', 'offerings', date] })
-    queryClient.invalidateQueries({ queryKey: ['finance', 'dashboard'] })
-  }
+    queryClient.invalidateQueries({ queryKey: ['finance', 'offerings', date] });
+    queryClient.invalidateQueries({ queryKey: ['finance', 'dashboard'] });
+  };
 
   const updateMut = useMutation({
     mutationFn: ({ id, body }: { id: number; body: { offeringCategoryId: number; amount: number } }) => updateOffering(id, body),
     onSuccess: invalidate,
     onError: (error: Error) => alert(`수정 실패: ${error.message}`),
-  })
+  });
 
   const deleteMut = useMutation({
     mutationFn: deleteOffering,
     onSuccess: invalidate,
     onError: (error: Error) => alert(`삭제 실패: ${error.message}`),
-  })
+  });
 
   return (
     <div className="space-y-4">
@@ -107,7 +107,7 @@ export function OfferingsView() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 function OfferingRow({
@@ -118,29 +118,29 @@ function OfferingRow({
   onSave,
   onDelete,
 }: {
-  offering: Offering
-  categories: Category[]
-  canWrite: boolean
-  saving: boolean
-  onSave: (id: number, body: { offeringCategoryId: number; amount: number }) => void
-  onDelete: (id: number) => void
+  offering: Offering;
+  categories: Category[];
+  canWrite: boolean;
+  saving: boolean;
+  onSave: (id: number, body: { offeringCategoryId: number; amount: number }) => void;
+  onDelete: (id: number) => void;
 }) {
-  const [editing, setEditing] = useState(false)
-  const [categoryId, setCategoryId] = useState(offering.offeringCategoryId)
-  const [amount, setAmount] = useState(String(offering.amount))
+  const [editing, setEditing] = useState(false);
+  const [categoryId, setCategoryId] = useState(offering.offeringCategoryId);
+  const [amount, setAmount] = useState(String(offering.amount));
 
   const startEdit = () => {
-    setCategoryId(offering.offeringCategoryId)
-    setAmount(String(offering.amount))
-    setEditing(true)
-  }
+    setCategoryId(offering.offeringCategoryId);
+    setAmount(String(offering.amount));
+    setEditing(true);
+  };
 
   const save = () => {
-    const value = Number(amount.replace(/[^0-9]/g, ''))
-    if (!categoryId || !value) return
-    onSave(offering.id, { offeringCategoryId: categoryId, amount: value })
-    setEditing(false)
-  }
+    const value = Number(amount.replace(/[^0-9]/g, ''));
+    if (!categoryId || !value) return;
+    onSave(offering.id, { offeringCategoryId: categoryId, amount: value });
+    setEditing(false);
+  };
 
   if (editing) {
     return (
@@ -153,8 +153,8 @@ function OfferingRow({
             value={amount}
             onChange={event => setAmount(event.target.value)}
             onKeyDown={event => {
-              if (event.key === 'Enter') save()
-              if (event.key === 'Escape') setEditing(false)
+              if (event.key === 'Enter') save();
+              if (event.key === 'Escape') setEditing(false);
             }}
             className="w-40 text-right tabular-nums"
             autoFocus
@@ -168,7 +168,7 @@ function OfferingRow({
           </Button>
         </div>
       </li>
-    )
+    );
   }
 
   return (
@@ -190,7 +190,7 @@ function OfferingRow({
             </button>
             <button
               onClick={() => {
-                if (window.confirm('이 헌금 기록을 삭제할까요?')) onDelete(offering.id)
+                if (window.confirm('이 헌금 기록을 삭제할까요?')) onDelete(offering.id);
               }}
               className="rounded-full p-1 text-[var(--color-muted-foreground)] transition-colors hover:bg-[var(--color-muted)] hover:text-[var(--color-destructive)]"
               aria-label="삭제"
@@ -201,60 +201,60 @@ function OfferingRow({
         )}
       </div>
     </li>
-  )
+  );
 }
 
 function OfferingForm({ date, onCreated }: { date: string; onCreated: () => void }) {
-  const queryClient = useQueryClient()
-  const [member, setMember] = useState<{ id: number; name: string } | null>(null)
-  const [categoryId, setCategoryId] = useState<number | null>(null)
-  const [amount, setAmount] = useState('')
+  const queryClient = useQueryClient();
+  const [member, setMember] = useState<{ id: number; name: string } | null>(null);
+  const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [amount, setAmount] = useState('');
 
   const { data: categories = [] } = useQuery({
     queryKey: ['finance', 'offering-categories'],
     queryFn: listOfferingCategories,
-  })
+  });
 
-  const invalidateCategories = () => queryClient.invalidateQueries({ queryKey: ['finance', 'offering-categories'] })
+  const invalidateCategories = () => queryClient.invalidateQueries({ queryKey: ['finance', 'offering-categories'] });
 
   const createCategoryMut = useMutation({
     mutationFn: createOfferingCategory,
     onSuccess: created => {
-      invalidateCategories()
-      setCategoryId(created.id)
+      invalidateCategories();
+      setCategoryId(created.id);
     },
-  })
+  });
 
   const updateCategoryMut = useMutation({
     mutationFn: ({ id, name }: { id: number; name: string }) => updateOfferingCategory(id, name),
     onSuccess: invalidateCategories,
     onError: (error: Error) => alert(`분류 수정 실패: ${error.message}`),
-  })
+  });
 
   const deleteCategoryMut = useMutation({
     mutationFn: deleteOfferingCategory,
     onSuccess: (_data, id) => {
-      invalidateCategories()
-      if (categoryId === id) setCategoryId(null)
+      invalidateCategories();
+      if (categoryId === id) setCategoryId(null);
     },
     onError: (error: Error) => alert(`분류 삭제 실패: ${error.message}`),
-  })
+  });
 
   const createMut = useMutation({
     mutationFn: createOffering,
     onSuccess: () => {
-      setMember(null)
-      setAmount('')
-      onCreated()
+      setMember(null);
+      setAmount('');
+      onCreated();
     },
     onError: (error: Error) => alert(`추가 실패: ${error.message}`),
-  })
+  });
 
   const submit = () => {
-    const value = Number(amount.replace(/[^0-9]/g, ''))
-    if (!member || !categoryId || !value) return
-    createMut.mutate({ memberId: member.id, offeringCategoryId: categoryId, amount: value, date })
-  }
+    const value = Number(amount.replace(/[^0-9]/g, ''));
+    if (!member || !categoryId || !value) return;
+    createMut.mutate({ memberId: member.id, offeringCategoryId: categoryId, amount: value, date });
+  };
 
   return (
     <div className="space-y-3">
@@ -268,7 +268,7 @@ function OfferingForm({ date, onCreated }: { date: string; onCreated: () => void
           value={amount}
           onChange={event => setAmount(event.target.value)}
           onKeyDown={event => {
-            if (event.key === 'Enter') submit()
+            if (event.key === 'Enter') submit();
           }}
           className="w-40 text-right tabular-nums"
         />
@@ -289,5 +289,5 @@ function OfferingForm({ date, onCreated }: { date: string; onCreated: () => void
         />
       </div>
     </div>
-  )
+  );
 }

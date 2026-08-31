@@ -6,6 +6,7 @@ import { MemberStatusEntity } from '@src/database/entities/member-status.entity'
 import { MinistryEntity } from '@src/database/entities/ministry.entity';
 import { MissionaryStageEntity } from '@src/database/entities/missionary-stage.entity';
 import { OfferingCategoryEntity } from '@src/database/entities/offering-category.entity';
+import { CareNoteTypeEntity } from '@src/database/entities/care-note-type.entity';
 import { PositionEntity } from '@src/database/entities/position.entity';
 import { SmallGroupEntity } from '@src/database/entities/small-group.entity';
 import { TrainingCourseEntity, TrainingFormat } from '@src/database/entities/training-course.entity';
@@ -48,6 +49,19 @@ const MEMBER_STATUSES: {
   { name: '이명', sortOrder: 7, countsInRoster: false },
   { name: '별세', sortOrder: 8, countsInRoster: false },
   { name: '익명', sortOrder: 9, systemKey: 'anonymous', countsInRoster: false, isActive: false },
+];
+
+/**
+ * 양육기록 종류. systemKey 가 있는 항목은 나중에 코드가 지목할 수 있게 남겨둔 것이고,
+ * 이름·순서는 교회가 자유롭게 바꾼다.
+ */
+const CARE_NOTE_TYPES: { name: string; systemKey?: string }[] = [
+  { name: '심방' },
+  { name: '면담' },
+  { name: '양육' },
+  { name: '상담' },
+  { name: '파송보고', systemKey: 'field_report' },
+  { name: '기타' },
 ];
 
 /** 사역 역할 (구 직분). 청년 공동체라 장로·권사 대신 사역 중심으로 둔다. */
@@ -124,6 +138,13 @@ export async function seedChurchReferences(manager: EntityManager, churchId: num
         isActive: status.isActive ?? true,
         stallsAfterDays: status.stallsAfterDays ?? null,
       })
+    )
+  );
+
+  const careNoteTypeRepo = manager.getRepository(CareNoteTypeEntity);
+  await careNoteTypeRepo.save(
+    CARE_NOTE_TYPES.map((type, index) =>
+      careNoteTypeRepo.create({ churchId, name: type.name, sortOrder: index, systemKey: type.systemKey ?? null })
     )
   );
 

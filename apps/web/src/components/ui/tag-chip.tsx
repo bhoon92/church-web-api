@@ -59,6 +59,7 @@ export function TagChipButton({
   disabled,
   onClick,
   title,
+  className,
 }: {
   name: string;
   seed?: string | number;
@@ -66,6 +67,8 @@ export function TagChipButton({
   disabled?: boolean;
   onClick: () => void;
   title?: string;
+  /** 선택 표시(ring) 등 호출부에서 얹는 것 */
+  className?: string;
 }) {
   const tone = tileTone(seed ?? name);
   return (
@@ -74,7 +77,10 @@ export function TagChipButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap transition-[filter,opacity] hover:brightness-95 disabled:opacity-50"
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold whitespace-nowrap transition-[filter,opacity] hover:brightness-95 disabled:opacity-50',
+        className
+      )}
       style={{ backgroundColor: tone.bg, color: tone.ink }}
     >
       {prefix}

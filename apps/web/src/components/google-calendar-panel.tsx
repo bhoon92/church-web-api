@@ -126,7 +126,9 @@ export function GoogleCalendarPanel({ canWrite }: { canWrite: boolean }) {
           )
         )}
 
-        {!canWrite && <p className="text-sm text-[var(--color-muted-foreground)]">연동 설정은 달력 쓰기 권한이 있는 사용자만 가능합니다.</p>}
+        {!canWrite && (
+          <p className="text-sm text-[var(--color-muted-foreground)]">연동 설정은 달력 쓰기 권한이 있는 사용자만 가능합니다.</p>
+        )}
       </CardContent>
     </Card>
   );

@@ -500,5 +500,7 @@ function exampleFor(kind: ReferenceKind): string {
       return '주일예배 / 수요예배 / 금요기도회 / 새벽기도회';
     case 'memberStatus':
       return '방문 / 새가족 / 정착 / 훈련생 / 사역자 / 파송';
+    case 'careNoteType':
+      return '심방 / 면담 / 양육 / 상담';
   }
 }
