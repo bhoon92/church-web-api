@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, Phone, Plus, Search, Settings2, UserPlus, X } from 'lucide-react';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ChevronLeft, ChevronRight, Download, Phone, Plus, Search, Settings2, Upload, UserPlus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router';
 
 import { createMember, listMembers, type AffiliationKind, type Member, type MemberCounts } from '@/api/members';
 import { listReferences, type Reference } from '@/api/references';
@@ -8,6 +9,7 @@ import { exportMembers } from '@/api/exports';
 import { usePermissions } from '@/lib/permissions';
 import { ReferenceManagerModal } from '@/components/reference-manager';
 import { MemberDetailModal } from '@/routes/app/member-detail-modal';
+import { MemberImportModal } from '@/routes/app/member-import-modal';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -35,21 +37,49 @@ export function MembersPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [openMemberId, setOpenMemberId] = useState<number | null>(null);
   const [managing, setManaging] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [page, setPage] = useState(1);
+  // 대시보드 "정체된 사람" 카드에서 ?stalled=true 로 넘어온다.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const stalledOnly = searchParams.get('stalled') === 'true';
 
   const { can } = usePermissions();
   const queryClient = useQueryClient();
 
   const debouncedQuery = useDebouncedValue(searchQuery.trim(), 300);
 
+  // 조건이 바뀌면 1페이지로 — 3페이지를 보다 검색하면 빈 화면이 뜬다.
+  // effect 로 동기화하지 않고 바꾸는 지점에서 함께 되돌린다(연쇄 렌더 방지).
+  const changeQuery = (value: string) => {
+    setSearchQuery(value);
+    setPage(1);
+  };
+  const changeStatus = (value: number | null) => {
+    setStatusId(value);
+    setPage(1);
+  };
+  const changeAffiliation = (value: AffiliationSelection | null) => {
+    setAffiliation(value);
+    setPage(1);
+  };
+  const clearStalled = () => {
+    searchParams.delete('stalled');
+    setSearchParams(searchParams, { replace: true });
+    setPage(1);
+  };
+
   const { data, isLoading } = useQuery({
-    queryKey: ['members', { q: debouncedQuery, statusId, affiliation }],
+    queryKey: ['members', { q: debouncedQuery, statusId, affiliation, stalledOnly, page }],
     queryFn: () =>
       listMembers({
         q: debouncedQuery || undefined,
         statusId: statusId ?? undefined,
         affiliationKind: affiliation?.kind,
         affiliationId: affiliation?.id,
+        stalled: stalledOnly || undefined,
+        page,
       }),
+    placeholderData: keepPreviousData,
   });
 
   return (
@@ -71,6 +101,12 @@ export function MembersPage() {
               내보내기
             </Button>
             {can('member:write') && (
+              <Button variant="outline" onClick={() => setImporting(true)}>
+                <Upload />
+                가져오기
+              </Button>
+            )}
+            {can('member:write') && (
               <Button onClick={() => setShowCreate(true)}>
                 <Plus />
                 교인 추가
@@ -84,22 +120,44 @@ export function MembersPage() {
         <ReferenceManagerModal title="재적상태·사역 역할 관리" kinds={['memberStatus', 'position']} onClose={() => setManaging(false)} />
       )}
 
+      {importing && <MemberImportModal onClose={() => setImporting(false)} />}
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
           <Input
             placeholder="이름·전화번호로 검색"
             value={searchQuery}
-            onChange={event => setSearchQuery(event.target.value)}
+            onChange={event => changeQuery(event.target.value)}
             className="pl-10"
           />
         </div>
-        <AffiliationFilter value={affiliation} onChange={setAffiliation} />
+        <AffiliationFilter value={affiliation} onChange={changeAffiliation} />
       </div>
 
-      <FilterChips active={statusId} onChange={setStatusId} counts={data?.counts} />
+      <FilterChips active={statusId} onChange={changeStatus} counts={data?.counts} />
 
-      <MemberList members={data?.items ?? []} total={data?.total ?? 0} loading={isLoading} onSelect={setOpenMemberId} />
+      {stalledOnly && (
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-[#f7ecd6] px-3.5 py-2.5">
+          <p className="text-xs text-[#8a5700]">
+            현재 단계에 기준 일수 이상 머물러 있는 교인만 보고 있습니다. 기준은 재적상태별 설정값입니다.
+          </p>
+          <Button size="sm" variant="ghost" className="shrink-0" onClick={clearStalled}>
+            <X className="size-3.5" />
+            해제
+          </Button>
+        </div>
+      )}
+
+      <MemberList
+        members={data?.items ?? []}
+        total={data?.total ?? 0}
+        page={data?.page ?? page}
+        pageSize={data?.pageSize ?? 20}
+        loading={isLoading}
+        onSelect={setOpenMemberId}
+        onPageChange={setPage}
+      />
 
       {showCreate && (
         <CreateMemberModal
@@ -210,14 +268,24 @@ function FilterChips({
 function MemberList({
   members,
   total,
+  page,
+  pageSize,
   loading,
   onSelect,
+  onPageChange,
 }: {
   members: Member[];
   total: number;
+  page: number;
+  pageSize: number;
   loading: boolean;
   onSelect: (id: number) => void;
+  onPageChange: (page: number) => void;
 }) {
+  const lastPage = Math.max(1, Math.ceil(total / pageSize));
+  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
+
   if (loading) {
     return (
       <Card>
@@ -267,8 +335,29 @@ function MemberList({
           </li>
         ))}
       </ul>
-      <CardContent className="border-t border-[var(--color-border)] py-3 text-xs text-[var(--color-muted-foreground)]">
-        총 {total}명
+      {/*
+       * 페이지 이동 — 서버는 처음부터 페이징해서 주고 있었는데 화면에 컨트롤이 없어서
+       * 첫 20명 말고는 볼 방법이 자체가 없었다(교인 9명일 땐 드러나지 않던 문제).
+       */}
+      <CardContent className="flex items-center justify-between gap-3 border-t border-[var(--color-border)] py-3">
+        <span className="text-xs tabular-nums text-[var(--color-muted-foreground)]">
+          {from}–{to} / 총 {total}명
+        </span>
+        {lastPage > 1 && (
+          <div className="flex items-center gap-1">
+            <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+              <ChevronLeft className="size-3.5" />
+              이전
+            </Button>
+            <span className="px-2 text-xs tabular-nums text-[var(--color-muted-foreground)]">
+              {page} / {lastPage}
+            </span>
+            <Button size="sm" variant="outline" disabled={page >= lastPage} onClick={() => onPageChange(page + 1)}>
+              다음
+              <ChevronRight className="size-3.5" />
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

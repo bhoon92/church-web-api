@@ -367,13 +367,21 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
           ) : detail.roster.length === 0 ? (
             <p className="text-sm text-[var(--color-muted-foreground)]">아직 수강생이 없습니다.</p>
           ) : (
-            <div className="overflow-x-auto">
+            /*
+             * 60명 × 12회차면 가로·세로로 다 넘친다. 스크롤하면 "누구의 몇 회차인지"를 잃어버려서
+             * 체크박스를 잘못 누르기 쉽다 — 머리글 행과 이름 열을 고정한다.
+             * 두 축을 한 컨테이너에서 스크롤해야 sticky 기준이 하나로 잡힌다(overflow-x 만 주면 어긋난다).
+             */
+            <div className="max-h-[58vh] overflow-auto">
               <table className="w-full min-w-[560px] border-collapse text-sm">
                 <thead>
                   <tr className="border-b border-[var(--color-border)]">
-                    <th className="py-2 pr-3 text-left font-medium">수강생</th>
+                    <th className="sticky top-0 left-0 z-20 bg-[var(--color-background)] py-2 pr-3 text-left font-medium">수강생</th>
                     {detail.sessions.map(session => (
-                      <th key={session.id} className="group px-1 py-2 text-center font-medium">
+                      <th
+                        key={session.id}
+                        className="group sticky top-0 z-10 bg-[var(--color-background)] px-1 py-2 text-center font-medium"
+                      >
                         <div className="flex items-center justify-center gap-0.5">
                           <span className="tabular-nums">{session.sequence}</span>
                           {canWrite && (
@@ -408,15 +416,15 @@ function CohortDetailModal({ cohort, onClose }: { cohort: Cohort; onClose: () =>
                         )}
                       </th>
                     ))}
-                    <th className="px-2 py-2 text-right font-medium">출석률</th>
-                    <th className="py-2 pl-2 text-right font-medium">상태</th>
-                    {canWrite && <th className="w-8 py-2" aria-label="수강 취소" />}
+                    <th className="sticky top-0 z-10 bg-[var(--color-background)] px-2 py-2 text-right font-medium">출석률</th>
+                    <th className="sticky top-0 z-10 bg-[var(--color-background)] py-2 pl-2 text-right font-medium">상태</th>
+                    {canWrite && <th className="sticky top-0 z-10 w-8 bg-[var(--color-background)] py-2" aria-label="수강 취소" />}
                   </tr>
                 </thead>
                 <tbody>
                   {detail.roster.map(row => (
                     <tr key={row.enrollmentId} className="border-b border-[var(--color-border)] last:border-0">
-                      <td className="py-2 pr-3 whitespace-nowrap">
+                      <td className="sticky left-0 z-10 bg-[var(--color-background)] py-2 pr-3 whitespace-nowrap">
                         <span className="inline-flex items-center gap-2">
                           <Avatar name={row.memberName} size="xs" />
                           {row.memberName}
