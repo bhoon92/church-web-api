@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { DataSources } from '@src/database/data-sources';
 import { AccountCategoryEntity } from '@src/database/entities/account-category.entity';
 import { FinanceTransactionEntity, TransactionFlow } from '@src/database/entities/finance-transaction.entity';
+import { todayString } from '@src/common/date';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 
 export type TransactionItem = {
@@ -101,6 +102,6 @@ export class TransactionService {
   }
 
   private today(): string {
-    return new Date().toISOString().slice(0, 10);
+    return todayString();
   }
 }

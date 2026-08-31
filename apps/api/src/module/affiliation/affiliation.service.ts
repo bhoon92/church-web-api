@@ -8,9 +8,18 @@ import { MemberSmallGroupEntity } from '@src/database/entities/member-small-grou
 import { MemberEntity } from '@src/database/entities/member.entity';
 import { MinistryEntity } from '@src/database/entities/ministry.entity';
 import { SmallGroupEntity } from '@src/database/entities/small-group.entity';
+import { todayString } from '@src/common/date';
 import { AssignAffiliationDto } from './dto/assign.dto';
 
 export type AffiliationKind = 'department' | 'ministry' | 'smallGroup';
+
+/** 목록에 붙일 소속 태그. `id` 는 reference id — 화면에서 색을 정하는 값으로도 쓴다. */
+export type AffiliationTag = { id: number; name: string | null; isLeader: boolean };
+export type AffiliationTagSet = {
+  departments: AffiliationTag[];
+  ministries: AffiliationTag[];
+  smallGroups: AffiliationTag[];
+};
 
 type JoinRow = ObjectLiteral & {
   id: number;
@@ -136,6 +145,51 @@ export class AffiliationService {
     return Array.from(new Set(rows.map(joinRow => joinRow.memberId)));
   }
 
+  /**
+   * 여러 성도의 **현재** 소속을 한 번에 — 교인 목록 화면용.
+   * 성도마다 listForMember 를 부르면 20행에 60번 질의가 나간다(N+1). 종류별로 한 번씩만 읽는다.
+   */
+  async currentForMembers(churchId: number, memberIds: number[]): Promise<Map<number, AffiliationTagSet>> {
+    const result = new Map<number, AffiliationTagSet>();
+    if (memberIds.length === 0) return result;
+    for (const memberId of memberIds) result.set(memberId, { departments: [], ministries: [], smallGroups: [] });
+
+    const BUCKET: Record<AffiliationKind, keyof AffiliationTagSet> = {
+      department: 'departments',
+      ministry: 'ministries',
+      smallGroup: 'smallGroups',
+    };
+
+    await Promise.all(
+      (Object.keys(CONFIGS) as AffiliationKind[]).map(async kind => {
+        const config = CONFIGS[kind] as Config<JoinRow, ObjectLiteral>;
+        const joinRepo = DataSources.instance.getRepository(config.joinEntity) as Repository<JoinRow>;
+        const joins = await joinRepo.find({
+          where: { churchId, memberId: In(memberIds), endDate: IsNull() } as never,
+          order: { createdAt: 'ASC' } as never,
+        });
+        if (joins.length === 0) return;
+
+        const referenceIds = Array.from(new Set(joins.map(joinRow => joinRow[config.referenceKey] as number)));
+        const references = (await DataSources.instance
+          .getRepository(config.referenceEntity)
+          .find({ where: { id: In(referenceIds) } as never })) as { id: number; name: string }[];
+        const nameById = new Map(references.map(reference => [reference.id, reference.name]));
+
+        for (const joinRow of joins) {
+          const referenceId = joinRow[config.referenceKey] as number;
+          result.get(joinRow.memberId)?.[BUCKET[kind]].push({
+            id: referenceId,
+            name: nameById.get(referenceId) ?? null,
+            isLeader: joinRow.isLeader,
+          });
+        }
+      })
+    );
+
+    return result;
+  }
+
   async listForMember(churchId: number, memberId: number) {
     const [departments, ministries, smallGroups] = await Promise.all([
       this.currentJoins('department', churchId, memberId),
@@ -186,6 +240,6 @@ export class AffiliationService {
   }
 
   private today(): string {
-    return new Date().toISOString().slice(0, 10);
+    return todayString();
   }
 }

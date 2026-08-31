@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Download, Phone, Plus, Search, Settings2, Up
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
-import { createMember, listMembers, type AffiliationKind, type Member, type MemberCounts } from '@/api/members';
+import { createMember, listMembers, type AffiliationKind, type Member, type MemberAffiliationTag, type MemberCounts } from '@/api/members';
 import { listReferences, type Reference } from '@/api/references';
 import { exportMembers } from '@/api/exports';
 import { usePermissions } from '@/lib/permissions';
@@ -12,10 +12,12 @@ import { MemberDetailModal } from '@/routes/app/member-detail-modal';
 import { MemberImportModal } from '@/routes/app/member-import-modal';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { TagChip } from '@/components/ui/tag-chip';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { PageHeader } from '@/components/page-header';
+import { useOrgLabels } from '@/lib/org-labels';
 import { cn } from '@/lib/utils';
 
 type AffiliationSelection = { kind: AffiliationKind; id: number };
@@ -265,6 +267,55 @@ function FilterChips({
   );
 }
 
+/**
+ * 목록 한 행의 역할·소속 태그 — 상세에서 넣은 것이 여기서도 보이게.
+ *
+ * 색은 상세 모달과 같은 기준(기준정보 id)이라 같은 조직이면 같은 색이다.
+ * 종류를 색으로는 구분할 수 없으니 순서를 고정하고(역할 → 기관 → 사역팀 → 공동체)
+ * 어느 종류인지는 hover 로 알려준다. 리더는 테두리로 표시한다.
+ */
+function MemberTags({ member }: { member: Member }) {
+  const orgLabels = useOrgLabels();
+  const tags: { key: string; name: string; seed: number; kind: string; leader?: boolean }[] = [];
+
+  if (member.position?.name) {
+    tags.push({ key: `p${member.position.id}`, name: member.position.name, seed: member.position.id, kind: '사역 역할' });
+  }
+  const groups: [MemberAffiliationTag[], string, string][] = [
+    [member.departments, orgLabels.department, 'd'],
+    [member.ministries, orgLabels.ministry, 'm'],
+    [member.smallGroups, orgLabels.smallGroup, 's'],
+  ];
+  for (const [items, kind, prefix] of groups) {
+    for (const item of items) {
+      if (!item.name) continue;
+      tags.push({ key: `${prefix}${item.id}`, name: item.name, seed: item.id, kind, leader: item.isLeader });
+    }
+  }
+
+  if (tags.length === 0) return null;
+
+  // 한 행이 태그로 넘치지 않게 자른다 — 자세한 건 상세에서 본다.
+  const shown = tags.slice(0, 5);
+  const rest = tags.length - shown.length;
+
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-1">
+      {shown.map(tag => (
+        <TagChip
+          key={tag.key}
+          name={tag.name}
+          seed={tag.seed}
+          title={tag.leader ? `${tag.kind} · 리더` : tag.kind}
+          className={cn('px-2 py-0.5', tag.leader && 'ring-1 ring-[var(--color-foreground)] ring-inset')}
+          prefix={tag.leader ? <span className="text-[10px] leading-none">★</span> : undefined}
+        />
+      ))}
+      {rest > 0 && <span className="text-[11px] text-[var(--color-muted-foreground)]">+{rest}</span>}
+    </div>
+  );
+}
+
 function MemberList({
   members,
   total,
@@ -330,6 +381,7 @@ function MemberList({
                   )}
                   {member.previousChurch && <span>· 이전: {member.previousChurch}</span>}
                 </div>
+                <MemberTags member={member} />
               </div>
             </button>
           </li>

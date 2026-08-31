@@ -18,7 +18,19 @@ export type Member = {
   rawDonorName: string | null;
   createdAt: string;
   updatedAt: string;
+  /** 현재 사역 역할. 목록에서도 보여주려고 상세와 별개로 함께 내려온다. */
+  position: MemberTag | null;
+  departments: MemberAffiliationTag[];
+  ministries: MemberAffiliationTag[];
+  smallGroups: MemberAffiliationTag[];
 };
+
+/** `id` 는 기준정보 id — 태그 색을 정하는 값으로도 쓴다(상세와 같은 색이 되도록). */
+export type MemberTag = { id: number; name: string | null };
+export type MemberAffiliationTag = MemberTag & { isLeader: boolean };
+
+/** 목록 전용 필드를 뺀 교인 한 건 — 생성 응답은 태그를 담지 않는다. */
+export type MemberRow = Omit<Member, 'position' | 'departments' | 'ministries' | 'smallGroups'>;
 
 export type MemberStatusCount = { id: number; name: string; count: number };
 export type MemberCounts = { all: number; byStatus: MemberStatusCount[] };
@@ -74,7 +86,7 @@ export type CreateMemberPayload = {
   address?: string;
 };
 
-export async function createMember(payload: CreateMemberPayload): Promise<Member> {
+export async function createMember(payload: CreateMemberPayload): Promise<MemberRow> {
   const res = await fetch('/api/members', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -90,7 +102,8 @@ export async function createMember(payload: CreateMemberPayload): Promise<Member
 
 export type UpdateMemberPayload = Partial<Omit<CreateMemberPayload, 'phone'>> & { phone?: string | null };
 
-export async function updateMember(id: number, payload: UpdateMemberPayload): Promise<Member> {
+// 수정 응답은 상세 조회와 같은 모양이다(서버가 findById 를 돌려준다).
+export async function updateMember(id: number, payload: UpdateMemberPayload): Promise<MemberDetail> {
   const res = await fetch(`/api/members/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -112,7 +125,11 @@ export async function deleteMember(id: number): Promise<void> {
   if (!res.ok) throw new Error(`delete member ${res.status}`);
 }
 
-export type MemberDetail = Member & {
+/**
+ * 상세는 목록과 모양이 다르다 — 소속을 `affiliations` 로 묶고 `position` 은 이력까지 담는다.
+ * 그래서 목록 전용 필드를 빼고 다시 붙인다(그냥 & 하면 position 타입이 충돌한다).
+ */
+export type MemberDetail = Omit<Member, 'position' | 'departments' | 'ministries' | 'smallGroups'> & {
   affiliations: {
     departments: AffiliationSummary[];
     ministries: AffiliationSummary[];

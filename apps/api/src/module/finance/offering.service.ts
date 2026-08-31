@@ -3,6 +3,7 @@ import { DataSources } from '@src/database/data-sources';
 import { MemberEntity } from '@src/database/entities/member.entity';
 import { OfferingCategoryEntity } from '@src/database/entities/offering-category.entity';
 import { OfferingEntity } from '@src/database/entities/offering.entity';
+import { todayString } from '@src/common/date';
 import { CreateOfferingDto } from './dto/create-offering.dto';
 import { UpdateOfferingDto } from './dto/update-offering.dto';
 import { ListOfferingQueryDto } from './dto/list-offering.dto';
@@ -158,6 +159,6 @@ export class OfferingService {
   }
 
   private today(): string {
-    return new Date().toISOString().slice(0, 10);
+    return todayString();
   }
 }

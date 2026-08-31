@@ -3,7 +3,7 @@ import { Brackets, SelectQueryBuilder } from 'typeorm';
 import { DataSources } from '@src/database/data-sources';
 import { MemberEntity } from '@src/database/entities/member.entity';
 import { MemberStatusEntity } from '@src/database/entities/member-status.entity';
-import { AffiliationService } from '@src/module/affiliation/affiliation.service';
+import { AffiliationService, type AffiliationTagSet } from '@src/module/affiliation/affiliation.service';
 import { MemberPositionService } from '@src/module/position/member-position.service';
 import { MemberStatusHistoryService } from './member-status-history.service';
 import { CreateMemberDto } from './dto/create-member.dto';
@@ -12,7 +12,13 @@ import { UpdateMemberDto } from './dto/update-member.dto';
 
 export type MemberStatusCount = { id: number; name: string; count: number };
 export type MemberListCounts = { all: number; byStatus: MemberStatusCount[] };
-export type MemberView = MemberEntity & { statusName: string | null };
+/** 목록 한 행 — 상세에서 넣은 역할·소속이 목록에서도 보이도록 함께 내린다. */
+export type MemberView = MemberEntity &
+  AffiliationTagSet & {
+    statusName: string | null;
+    /** 현재 사역 역할. 없으면 null */
+    position: { id: number; name: string | null } | null;
+  };
 
 @Injectable()
 export class MemberService {
@@ -79,8 +85,21 @@ export class MemberService {
       .take(pageSize);
 
     const [items, total] = await qb.getManyAndCount();
-    const statusMap = await this.statusMap(churchId);
-    const view = items.map(member => ({ ...member, statusName: statusMap.get(member.statusId)?.name ?? null }));
+    const memberIds = items.map(member => member.id);
+
+    // 역할·소속은 성도별로 부르면 20행에 60번 질의가 나간다 → 배치 조회로 한 번씩만.
+    const [statusMap, positionByMember, affiliationsByMember] = await Promise.all([
+      this.statusMap(churchId),
+      this.positions.currentForMembers(churchId, memberIds),
+      this.affiliations.currentForMembers(churchId, memberIds),
+    ]);
+
+    const view: MemberView[] = items.map(member => ({
+      ...member,
+      statusName: statusMap.get(member.statusId)?.name ?? null,
+      position: positionByMember.get(member.id) ?? null,
+      ...(affiliationsByMember.get(member.id) ?? { departments: [], ministries: [], smallGroups: [] }),
+    }));
     const counts = await this.countByStatus(churchId, query.q, affiliationMemberIds, statusMap);
 
     return { items: view, total, page, pageSize, counts };

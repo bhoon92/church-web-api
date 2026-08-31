@@ -1,9 +1,10 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { IsNull } from 'typeorm';
+import { In, IsNull } from 'typeorm';
 import { DataSources } from '@src/database/data-sources';
 import { MemberPositionEntity } from '@src/database/entities/member-position.entity';
 import { MemberEntity } from '@src/database/entities/member.entity';
 import { PositionEntity } from '@src/database/entities/position.entity';
+import { todayString } from '@src/common/date';
 import { PromotePositionDto } from './dto/promote.dto';
 
 export type PositionHistoryItem = {
@@ -20,7 +21,7 @@ export type PositionHistoryItem = {
 export class MemberPositionService {
   /** 승직: 트랜잭션으로 현재 직분 종료 + 새 직분 row 생성. */
   async promote(churchId: number, memberId: number, dto: PromotePositionDto): Promise<MemberPositionEntity> {
-    const today = dto.startDate ?? new Date().toISOString().slice(0, 10);
+    const today = dto.startDate ?? todayString();
 
     await this.assertMember(churchId, memberId);
     await this.assertPosition(churchId, dto.positionId);
@@ -51,7 +52,7 @@ export class MemberPositionService {
   }
 
   async endCurrent(churchId: number, memberId: number): Promise<void> {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayString();
     const repo = DataSources.instance.getRepository(MemberPositionEntity);
     const current = await repo.findOne({
       where: { churchId, memberId, endDate: IsNull() },
@@ -60,6 +61,32 @@ export class MemberPositionService {
       throw new NotFoundException('활성 직분이 없습니다.');
     }
     await repo.update(current.id, { endDate: today });
+  }
+
+  /**
+   * 여러 성도의 **현재** 사역 역할을 한 번에 — 교인 목록 화면용(N+1 방지).
+   * 종료되지 않은(endDate IS NULL) 한 건씩만 담는다.
+   */
+  async currentForMembers(churchId: number, memberIds: number[]): Promise<Map<number, { id: number; name: string | null }>> {
+    const result = new Map<number, { id: number; name: string | null }>();
+    if (memberIds.length === 0) return result;
+
+    const rows = await DataSources.instance
+      .getRepository(MemberPositionEntity)
+      .find({ where: { churchId, memberId: In(memberIds), endDate: IsNull() }, order: { startDate: 'DESC', id: 'DESC' } });
+    if (rows.length === 0) return result;
+
+    const positionIds = Array.from(new Set(rows.map(row => row.positionId)));
+    const positions = await DataSources.instance.getRepository(PositionEntity).find({ where: { id: In(positionIds), churchId } });
+    const nameById = new Map(positions.map(position => [position.id, position.name]));
+
+    for (const row of rows) {
+      // 같은 사람에게 열린 역할이 둘일 수는 없지만, 있어도 최신 것만 남긴다.
+      if (!result.has(row.memberId)) {
+        result.set(row.memberId, { id: row.positionId, name: nameById.get(row.positionId) ?? null });
+      }
+    }
+    return result;
   }
 
   /** 현재 직분 + 이력 모두 (시작일 내림차순). */

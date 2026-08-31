@@ -7,6 +7,7 @@ import { TrainingCohortEntity } from '@src/database/entities/training-cohort.ent
 import { TrainingCourseEntity } from '@src/database/entities/training-course.entity';
 import { EnrollmentStatus, TrainingEnrollmentEntity } from '@src/database/entities/training-enrollment.entity';
 import { TrainingSessionEntity } from '@src/database/entities/training-session.entity';
+import { todayString } from '@src/common/date';
 import { EnrollMembersDto, MarkTrainingAttendanceDto, UpdateEnrollmentDto } from './dto/cohort.dto';
 
 /** 기수 상세 — 회차 × 수강생 출석 매트릭스. 화면 하나를 그대로 채우는 형태로 내려준다. */
@@ -206,6 +207,6 @@ export class TrainingEnrollmentService {
   }
 
   private today(): string {
-    return new Date().toISOString().slice(0, 10);
+    return todayString();
   }
 }
