@@ -2,6 +2,8 @@ import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { BaseDateEntityWithDeletedAt } from './base-date.entity';
 
 export enum CareNoteType {
+  /** 심방 — 집·직장 등으로 찾아가 만난 기록. */
+  VISIT = 'visit',
   /** 일대일 면담. */
   MEETING = 'meeting',
   /** 새가족 양육/제자훈련 노트. */
@@ -14,8 +16,10 @@ export enum CareNoteType {
 }
 
 /**
- * 양육기록 — 면담·양육·상담·파송보고 노트 (구 pastoral_record).
- * 심방 중심이던 것을 청년 양성 맥락으로 재정의했다 (planning 00.5).
+ * 양육기록 — 심방·면담·양육·상담·파송보고 노트 (구 pastoral_record).
+ *
+ * 청년 양성 맥락으로 재정의하면서 심방을 뺐었는데(planning 00.5), 실제로 심방을 하고
+ * 기록할 자리가 없어서 되살렸다. 나머지 종류는 그대로다.
  */
 @Entity('care_note')
 @Index(['churchId'])

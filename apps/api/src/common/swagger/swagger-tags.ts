@@ -95,7 +95,7 @@ export const SWAGGER_TAG_DESCRIPTIONS: ReadonlyArray<{ name: string; description
   },
   {
     name: SwaggerTag.CARE_NOTE,
-    description: '면담·양육·상담·파송보고 기록. 민감 정보이므로 viewer 역할은 읽기도 불가 (care:read 는 staff 이상).',
+    description: '심방·면담·양육·상담·파송보고 기록. 민감 정보이므로 viewer 역할은 읽기도 불가 (care:read 는 staff 이상).',
   },
   {
     name: SwaggerTag.ATTENDANCE,

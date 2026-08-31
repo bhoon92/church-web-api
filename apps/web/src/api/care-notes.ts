@@ -1,8 +1,10 @@
-export type CareNoteType = 'meeting' | 'nurture' | 'counsel' | 'field_report' | 'etc';
+export type CareNoteType = 'visit' | 'meeting' | 'nurture' | 'counsel' | 'field_report' | 'etc';
 
-export const CARE_NOTE_TYPES: CareNoteType[] = ['meeting', 'nurture', 'counsel', 'field_report', 'etc'];
+/** 화면에 나오는 순서이자 새 기록의 기본값(첫 항목). */
+export const CARE_NOTE_TYPES: CareNoteType[] = ['visit', 'meeting', 'nurture', 'counsel', 'field_report', 'etc'];
 
 export const CARE_NOTE_TYPE_LABEL: Record<CareNoteType, string> = {
+  visit: '심방',
   meeting: '면담',
   nurture: '양육',
   counsel: '상담',

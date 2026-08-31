@@ -19,7 +19,8 @@ import { cn } from '@/lib/utils';
 import { usePermissions } from '@/lib/permissions';
 import { todayString } from '@/lib/date';
 
-const TYPE_TONE: Record<CareNoteType, 'neutral' | 'muted' | 'success' | 'warn'> = {
+const TYPE_TONE: Record<CareNoteType, 'neutral' | 'muted' | 'success' | 'warn' | 'info'> = {
+  visit: 'info',
   meeting: 'success',
   nurture: 'warn',
   counsel: 'muted',
@@ -48,7 +49,7 @@ export function CareNoteSection({ memberId }: { memberId: number }) {
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-semibold">양육 기록</h3>
+        <h3 className="text-sm font-semibold">심방·양육 기록</h3>
         {canWrite && <PanelToggle open={adding} onToggle={() => setAdding(!adding)} label="기록" />}
       </div>
 
@@ -66,7 +67,7 @@ export function CareNoteSection({ memberId }: { memberId: number }) {
       {isLoading ? (
         <p className="text-xs text-[var(--color-muted-foreground)]">불러오는 중…</p>
       ) : notes.length === 0 && !adding ? (
-        <p className="text-xs text-[var(--color-muted-foreground)]">양육 기록 없음</p>
+        <p className="text-xs text-[var(--color-muted-foreground)]">아직 기록이 없습니다. 심방·면담 내용을 남겨보세요.</p>
       ) : (
         <ul className="mt-1 space-y-3">
           {notes.map(note => (
@@ -116,7 +117,7 @@ export function CareNoteSection({ memberId }: { memberId: number }) {
 
 function NoteForm({ memberId, onDone, onCancel }: { memberId: number; onDone: () => void; onCancel: () => void }) {
   const today = todayString();
-  const [type, setType] = useState<CareNoteType>('meeting');
+  const [type, setType] = useState<CareNoteType>(CARE_NOTE_TYPES[0]);
   const [date, setDate] = useState(today);
   const [location, setLocation] = useState('');
   const [content, setContent] = useState('');
