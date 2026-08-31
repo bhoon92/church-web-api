@@ -6,11 +6,13 @@ import { MemberController } from './member.controller';
 import { MemberService } from './member.service';
 import { MemberStatusController } from './member-status.controller';
 import { MemberStatusService } from './member-status.service';
+import { MemberStatusHistoryService } from './member-status-history.service';
 
 @Module({
   imports: [AuthModule, AffiliationModule, MemberPositionModule],
   controllers: [MemberController, MemberStatusController],
-  providers: [MemberService, MemberStatusService],
-  exports: [MemberService],
+  providers: [MemberService, MemberStatusService, MemberStatusHistoryService],
+  // 상태 이력은 파송 연동·가져오기에서도 적립해야 해서 밖으로 내보낸다.
+  exports: [MemberService, MemberStatusHistoryService],
 })
 export class MemberModule {}

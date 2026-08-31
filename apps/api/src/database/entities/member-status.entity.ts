@@ -35,4 +35,14 @@ export class MemberStatusEntity extends BaseDateEntityWithDeletedAt {
   /** 출석 명단 포함 여부 (별세·이명·익명·파송은 false — 파송자는 현지에 있어 주일 출석 대상이 아니다). */
   @Column({ default: true })
   countsInRoster!: boolean;
+
+  /**
+   * 이 상태에 며칠 이상 머무르면 "정체"로 볼지. null 이면 정체 판정에서 제외한다.
+   *
+   * 단계마다 자연스러운 체류 기간이 다르다(방문 한 달 ↔ 훈련생 여덟 달). 그래서 전역 기준
+   * 하나가 아니라 상태별 값으로 둔다. 파송·이명·별세처럼 **도착점인 상태는 null** 이다 —
+   * 오래 머무르는 게 정상이라 정체가 아니다.
+   */
+  @Column({ comment: '정체 판정 기준 일수. null 이면 판정하지 않음', type: 'smallint', nullable: true })
+  stallsAfterDays?: number | null;
 }

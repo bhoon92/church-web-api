@@ -8,6 +8,8 @@ import { MissionaryNoteEntity } from '@src/database/entities/missionary-note.ent
 import { MissionaryProfileEntity } from '@src/database/entities/missionary-profile.entity';
 import { MissionaryStageEntity } from '@src/database/entities/missionary-stage.entity';
 import { AccountEntity } from '@src/database/entities/account.entity';
+import { MemberStatusHistoryService } from '@src/module/member/member-status-history.service';
+import { todayString } from '@src/common/date';
 import { CreateMissionaryDto, CreateNoteDto, ListMissionaryQueryDto, UpdateMissionaryDto } from './dto/missionary.dto';
 
 export type MissionaryItem = {
@@ -52,6 +54,8 @@ const STATUS_KEY_WORKER = 'worker';
 
 @Injectable()
 export class MissionaryService {
+  constructor(private readonly statusHistory: MemberStatusHistoryService) {}
+
   private repo() {
     return DataSources.instance.getRepository(MissionaryProfileEntity);
   }
@@ -287,6 +291,7 @@ export class MissionaryService {
     const member = await manager
       .getRepository(MemberEntity)
       .save(manager.getRepository(MemberEntity).create({ churchId, name: newMember.name, phone: newMember.phone, statusId: status.id }));
+    await this.statusHistory.record(manager, churchId, member.id, status.id, { reason: '선교사 등록 시 함께 생성' });
     return member.id;
   }
 
@@ -327,6 +332,10 @@ export class MissionaryService {
     const status = await manager.getRepository(MemberStatusEntity).findOne({ where: { churchId, systemKey } });
     if (!status) return;
     await manager.getRepository(MemberEntity).update({ id: memberId, churchId }, { statusId: status.id });
+    // 자동 전환도 이력에 남긴다. 사람이 바꾼 게 아니라는 걸 사유로 구분해 둔다.
+    await this.statusHistory.record(manager, churchId, memberId, status.id, {
+      reason: commissioned ? '파송 단계 진입 (자동)' : '파송 단계 이탈 (자동)',
+    });
   }
 
   private async enrich(
@@ -384,6 +393,7 @@ export class MissionaryService {
   }
 
   private today(): string {
-    return new Date().toISOString().slice(0, 10);
+    // toISOString 은 UTC 라 TZ=Asia/Seoul 에서 새벽 0~9시에 어제로 찍힌다 → 파송 확정일이 하루 밀린다.
+    return todayString();
   }
 }

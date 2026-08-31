@@ -3,6 +3,7 @@ import { DataSources } from '@src/database/data-sources';
 import { AccountEntity } from '@src/database/entities/account.entity';
 import { CareNoteEntity, CareNoteType } from '@src/database/entities/care-note.entity';
 import { MemberEntity } from '@src/database/entities/member.entity';
+import { todayString } from '@src/common/date';
 import { CreateCareNoteDto } from './dto/create-care-note.dto';
 import { UpdateCareNoteDto } from './dto/update-care-note.dto';
 
@@ -87,6 +88,7 @@ export class CareNoteService {
   }
 
   private today(): string {
-    return new Date().toISOString().slice(0, 10);
+    // toISOString 은 UTC 라 TZ=Asia/Seoul 에서 새벽 0~9시에 어제 날짜가 된다.
+    return todayString();
   }
 }

@@ -5,6 +5,7 @@ import { MemberEntity } from '@src/database/entities/member.entity';
 import { MemberStatusEntity } from '@src/database/entities/member-status.entity';
 import { AffiliationService } from '@src/module/affiliation/affiliation.service';
 import { MemberPositionService } from '@src/module/position/member-position.service';
+import { MemberStatusHistoryService } from './member-status-history.service';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { ListMemberQueryDto } from './dto/list-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
@@ -17,7 +18,8 @@ export type MemberView = MemberEntity & { statusName: string | null };
 export class MemberService {
   constructor(
     private readonly affiliations: AffiliationService,
-    private readonly positions: MemberPositionService
+    private readonly positions: MemberPositionService,
+    private readonly statusHistory: MemberStatusHistoryService
   ) {}
 
   private repo() {
@@ -30,8 +32,13 @@ export class MemberService {
 
   async create(churchId: number, dto: CreateMemberDto): Promise<MemberEntity> {
     const statusId = dto.statusId ?? (await this.defaultStatusId(churchId));
-    const member = this.repo().create({ ...dto, statusId, churchId });
-    return this.repo().save(member);
+    return DataSources.instance.transaction(async manager => {
+      const repo = manager.getRepository(MemberEntity);
+      const member = await repo.save(repo.create({ ...dto, statusId, churchId }));
+      // 첫 구간도 이력이다 — 없으면 "언제 방문으로 들어왔나"를 나중에 알 수 없다.
+      await this.statusHistory.record(manager, churchId, member.id, statusId, { date: dto.registeredAt });
+      return member;
+    });
   }
 
   async list(
@@ -48,6 +55,23 @@ export class MemberService {
 
     if (query.statusId) {
       qb.andWhere('m.statusId = :statusId', { statusId: query.statusId });
+    }
+
+    // 정체 필터 — 대시보드 카드의 189명을 실제로 훑을 수 있어야 한다.
+    // 판정 기준은 MemberStatusHistoryService.listStalled 와 동일하게 유지할 것.
+    if (query.stalled) {
+      qb.andWhere(
+        `EXISTS (
+           SELECT 1 FROM member_status_history h
+           JOIN member_status s ON s.id = h.status_id
+           WHERE h.member_id = m.id
+             AND h.church_id = m.church_id
+             AND h.deleted_at IS NULL
+             AND h.end_date IS NULL
+             AND s.stalls_after_days IS NOT NULL
+             AND h.start_date <= CURRENT_DATE - (s.stalls_after_days || ' days')::interval
+         )`
+      );
     }
 
     qb.orderBy('m.createdAt', 'DESC')
@@ -100,8 +124,15 @@ export class MemberService {
   }
 
   async update(churchId: number, id: number, dto: UpdateMemberDto) {
-    await this.findById(churchId, id);
-    await this.repo().update({ id, churchId }, dto);
+    const before = await this.repo().findOne({ where: { id, churchId } });
+    if (!before) throw new NotFoundException('Member not found');
+
+    await DataSources.instance.transaction(async manager => {
+      await manager.getRepository(MemberEntity).update({ id, churchId }, dto);
+      if (dto.statusId !== undefined && dto.statusId !== before.statusId) {
+        await this.statusHistory.record(manager, churchId, id, dto.statusId);
+      }
+    });
     return this.findById(churchId, id);
   }
 

@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { CalendarDays, ChevronRight, GraduationCap, Globe2, PlaneTakeoff, Sprout } from 'lucide-react';
 import { motion } from 'motion/react';
-import type { ComponentType, ReactNode } from 'react';
+import { useState, type ComponentType, type ReactNode } from 'react';
 import { Link } from 'react-router';
 
 import { fetchHomeDashboard, type HomeActivityItem, type HomeScheduleItem } from '@/api/dashboard';
+import { fetchStalledMembers } from '@/api/members';
+import { MemberDetailModal } from './member-detail-modal';
 import { useAuth } from '@/auth/auth-context';
 import { useChurchBranding } from '@/branding/church-branding';
 import { PageHeader } from '@/components/page-header';
@@ -52,6 +54,7 @@ export function DashboardPage() {
   const { state } = useAuth();
   const today = formatToday(new Date());
   const firstName = state.status === 'authenticated' ? state.account.name : '';
+  const [openMemberId, setOpenMemberId] = useState<number | null>(null);
 
   const { data } = useQuery({
     queryKey: ['home', 'dashboard'],
@@ -111,6 +114,12 @@ export function DashboardPage() {
               </ul>
             )}
           </SectionCard>
+
+          {/*
+           * 분포 바로 아래에 둔다 — 분포는 "지금 어디에 있나", 이건 "누가 안 움직이나"다.
+           * 담당자가 이번 주에 실제로 할 일이 나오는 곳이라 파이프라인과 짝으로 붙인다.
+           */}
+          <StalledCard onOpenMember={setOpenMemberId} />
 
           <SectionCard title="오늘의 일정" hint={`${schedule.length}건`} actionLabel="달력 열기" actionTo="/app/calendar">
             {schedule.length === 0 ? (
@@ -215,7 +224,66 @@ export function DashboardPage() {
           </Card>
         </div>
       </div>
+
+      {openMemberId !== null && <MemberDetailModal memberId={openMemberId} onClose={() => setOpenMemberId(null)} />}
     </div>
+  );
+}
+
+/**
+ * 정체된 사람 — 현재 단계에 그 단계의 기준 일수 이상 머물러 있는 교인.
+ * 기준은 재적상태별 설정값(방문 30일 / 새가족 90일 …)이라 화면이 숫자를 정하지 않는다.
+ */
+function StalledCard({ onOpenMember }: { onOpenMember: (id: number) => void }) {
+  const { data: stalled, isLoading } = useQuery({
+    queryKey: ['members', 'stalled'],
+    queryFn: () => fetchStalledMembers(),
+  });
+
+  const rows = stalled ?? [];
+  const shown = rows.slice(0, 5);
+
+  return (
+    <SectionCard
+      title="정체된 사람"
+      hint={isLoading ? undefined : `${rows.length}명`}
+      actionLabel="전체 보기"
+      actionTo="/app/members?stalled=true"
+    >
+      {isLoading ? (
+        <EmptyRow>불러오는 중…</EmptyRow>
+      ) : rows.length === 0 ? (
+        <EmptyRow>단계별 기준 일수를 넘긴 사람이 없습니다.</EmptyRow>
+      ) : (
+        <>
+          <ul className="divide-y divide-[var(--color-border)]">
+            {shown.map(person => (
+              <li key={person.memberId}>
+                <button
+                  onClick={() => onOpenMember(person.memberId)}
+                  className="flex w-full items-center gap-3 py-2.5 text-left transition-colors hover:bg-[var(--color-muted)]"
+                >
+                  <Avatar name={person.memberName} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">{person.memberName}</div>
+                    <div className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">
+                      {person.statusName} · {person.since}부터
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="text-sm font-semibold tabular-nums">{person.days}일째</div>
+                    <div className="text-[11px] tabular-nums text-[var(--color-muted-foreground)]">기준 {person.threshold}일</div>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+          {rows.length > shown.length && (
+            <p className="pt-1 text-xs text-[var(--color-muted-foreground)]">외 {rows.length - shown.length}명</p>
+          )}
+        </>
+      )}
+    </SectionCard>
   );
 }
 

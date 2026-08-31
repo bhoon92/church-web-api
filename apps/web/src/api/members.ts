@@ -38,6 +38,8 @@ export type ListMembersQuery = {
   statusId?: number;
   affiliationKind?: AffiliationKind;
   affiliationId?: number;
+  /** 현재 단계에 기준 일수 이상 머물러 있는 교인만 */
+  stalled?: boolean;
   page?: number;
   pageSize?: number;
 };
@@ -50,6 +52,7 @@ export async function listMembers(query: ListMembersQuery): Promise<ListMembersR
     params.set('affiliationKind', query.affiliationKind);
     params.set('affiliationId', String(query.affiliationId));
   }
+  if (query.stalled) params.set('stalled', 'true');
   if (query.page) params.set('page', String(query.page));
   if (query.pageSize) params.set('pageSize', String(query.pageSize));
 
@@ -143,5 +146,41 @@ export type AffiliationSummary = {
 export async function fetchMember(id: number): Promise<MemberDetail> {
   const res = await fetch(`/api/members/${id}`, { credentials: 'include' });
   if (!res.ok) throw new Error(`fetch member ${res.status}`);
+  return res.json();
+}
+
+/** 재적상태 구간 하나 — 열려 있으면 endDate 가 null 이다. */
+export type StatusPeriod = {
+  id: number;
+  statusId: number;
+  statusName: string | null;
+  startDate: string;
+  endDate: string | null;
+  /** 이 단계에 머문 일수 (열려 있으면 오늘까지) */
+  days: number;
+  reason: string | null;
+};
+
+/** 기준 일수를 넘겨 같은 단계에 머물러 있는 교인. */
+export type StalledMember = {
+  memberId: number;
+  memberName: string;
+  statusId: number;
+  statusName: string;
+  since: string;
+  days: number;
+  threshold: number;
+};
+
+export async function fetchStatusHistory(memberId: number): Promise<StatusPeriod[]> {
+  const res = await fetch(`/api/members/${memberId}/status-history`, { credentials: 'include' });
+  if (!res.ok) throw new Error(`fetch status history ${res.status}`);
+  return res.json();
+}
+
+export async function fetchStalledMembers(limit?: number): Promise<StalledMember[]> {
+  const query = limit ? `?limit=${limit}` : '';
+  const res = await fetch(`/api/members/stalled${query}`, { credentials: 'include' });
+  if (!res.ok) throw new Error(`fetch stalled members ${res.status}`);
   return res.json();
 }

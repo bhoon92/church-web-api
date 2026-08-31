@@ -1,5 +1,5 @@
-import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import type { AffiliationKind } from '@src/module/affiliation/affiliation.service';
 
 const AFFILIATION_KINDS = ['department', 'ministry', 'smallGroup'] as const;
@@ -28,6 +28,12 @@ export class ListMemberQueryDto {
   @IsInt()
   @Min(1)
   statusId?: number;
+
+  /** `true` 면 현재 단계에 기준 일수 이상 머물러 있는 교인만. 대시보드 "정체된 사람" 과 같은 기준. */
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  stalled?: boolean;
 
   @IsOptional()
   @Type(() => Number)

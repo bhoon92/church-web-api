@@ -2,11 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
+import { fetchStatusHistory } from '@/api/members';
 import { addNote, createMissionary, fetchMissionaryByMember, listStages, updateMissionary } from '@/api/missionary';
 import { ENROLLMENT_STATUS_LABEL, fetchMemberTrainingHistory, type EnrollmentStatus } from '@/api/training';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePermissions } from '@/lib/permissions';
+import { cn } from '@/lib/utils';
 
 const STATUS_TONE: Record<EnrollmentStatus, 'neutral' | 'muted' | 'success' | 'warn'> = {
   enrolled: 'warn',
@@ -21,8 +23,50 @@ const STATUS_TONE: Record<EnrollmentStatus, 'neutral' | 'muted' | 'success' | 'w
 export function MemberJourneySection({ memberId }: { memberId: number }) {
   return (
     <div className="space-y-5">
+      <StatusTimeline memberId={memberId} />
       <TrainingHistory memberId={memberId} />
       <MissionaryTrack memberId={memberId} />
+    </div>
+  );
+}
+
+/**
+ * 단계 이동 이력 — 이 사람이 파이프라인을 어떻게 통과해 왔는지.
+ * 현재 구간(endDate 없음)은 "N일째"로 보여준다. 담당자가 가장 먼저 보는 숫자다.
+ */
+function StatusTimeline({ memberId }: { memberId: number }) {
+  const { data: periods = [], isLoading } = useQuery({
+    queryKey: ['member', memberId, 'status-history'],
+    queryFn: () => fetchStatusHistory(memberId),
+  });
+
+  return (
+    <div>
+      <h3 className="mb-2 text-sm font-semibold">단계 이동</h3>
+      {isLoading ? (
+        <p className="text-xs text-[var(--color-muted-foreground)]">불러오는 중…</p>
+      ) : periods.length === 0 ? (
+        <p className="text-xs text-[var(--color-muted-foreground)]">이동 이력 없음</p>
+      ) : (
+        <ol className="space-y-1.5">
+          {periods.map(period => {
+            const current = period.endDate === null;
+            return (
+              <li key={period.id} className="flex items-center gap-2.5 text-xs">
+                <span className={cn('size-1.5 shrink-0 rounded-full', current ? 'bg-[var(--color-brand)]' : 'bg-[var(--color-border)]')} />
+                <span className={cn('w-16 shrink-0', current ? 'font-semibold' : 'font-medium')}>{period.statusName ?? '—'}</span>
+                <span className="tabular-nums text-[var(--color-muted-foreground)]">
+                  {period.startDate} → {period.endDate ?? '현재'}
+                </span>
+                <span className="tabular-nums text-[var(--color-muted-foreground)]">
+                  {current ? `${period.days}일째` : `${period.days}일`}
+                </span>
+                {period.reason && <span className="truncate text-[var(--color-muted-foreground)]">· {period.reason}</span>}
+              </li>
+            );
+          })}
+        </ol>
+      )}
     </div>
   );
 }

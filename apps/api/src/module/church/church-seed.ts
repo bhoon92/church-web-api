@@ -21,12 +21,26 @@ import { WorshipServiceEntity } from '@src/database/entities/worship-service.ent
  * 기본값은 키퍼스처치 기준(양성 파이프라인 중심)이며, 만든 뒤 설정 화면에서 자유롭게 편집할 수 있다.
  */
 
-/** 재적상태 = 양성 파이프라인 단계. systemKey 가 있는 항목은 코드가 참조하므로 삭제 불가. */
-const MEMBER_STATUSES: { name: string; sortOrder: number; systemKey?: string; countsInRoster: boolean; isActive?: boolean }[] = [
-  { name: '방문', sortOrder: 0, countsInRoster: true },
-  { name: '새가족', sortOrder: 1, systemKey: 'new', countsInRoster: true },
-  { name: '정착', sortOrder: 2, countsInRoster: true },
-  { name: '훈련생', sortOrder: 3, systemKey: 'trainee', countsInRoster: true },
+/**
+ * 재적상태 = 양성 파이프라인 단계. systemKey 가 있는 항목은 코드가 참조하므로 삭제 불가.
+ *
+ * `stallsAfterDays` 는 이 단계에 그 이상 머무르면 담당자에게 "정체"로 보여줄 기준이다.
+ * 아래 숫자는 출발점일 뿐 교회가 조정하는 값이다. 도착점(사역자·파송)과 이탈 상태
+ * (이명·별세·익명)는 오래 머무르는 게 정상이라 null 로 둔다.
+ * 장기결석은 그 자체가 이미 경보라 파이프라인 정체와 겹쳐 세지 않는다.
+ */
+const MEMBER_STATUSES: {
+  name: string;
+  sortOrder: number;
+  systemKey?: string;
+  countsInRoster: boolean;
+  isActive?: boolean;
+  stallsAfterDays?: number;
+}[] = [
+  { name: '방문', sortOrder: 0, countsInRoster: true, stallsAfterDays: 30 },
+  { name: '새가족', sortOrder: 1, systemKey: 'new', countsInRoster: true, stallsAfterDays: 90 },
+  { name: '정착', sortOrder: 2, countsInRoster: true, stallsAfterDays: 180 },
+  { name: '훈련생', sortOrder: 3, systemKey: 'trainee', countsInRoster: true, stallsAfterDays: 365 },
   { name: '사역자', sortOrder: 4, systemKey: 'worker', countsInRoster: true },
   // 파송자는 현지에 있으므로 주일 출석 명단에서 제외한다.
   { name: '파송', sortOrder: 5, systemKey: 'commissioned', countsInRoster: false },
@@ -108,6 +122,7 @@ export async function seedChurchReferences(manager: EntityManager, churchId: num
         systemKey: status.systemKey,
         countsInRoster: status.countsInRoster,
         isActive: status.isActive ?? true,
+        stallsAfterDays: status.stallsAfterDays ?? null,
       })
     )
   );
