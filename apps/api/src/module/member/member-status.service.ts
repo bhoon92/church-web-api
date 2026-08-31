@@ -3,7 +3,13 @@ import { DataSources } from '@src/database/data-sources';
 import { MemberEntity } from '@src/database/entities/member.entity';
 import { MemberStatusEntity } from '@src/database/entities/member-status.entity';
 
-export type UpsertMemberStatusInput = { name?: string; sortOrder?: number; isActive?: boolean };
+export type UpsertMemberStatusInput = {
+  name?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  /** 정체 판정 기준 일수. null 이면 이 단계는 정체로 보지 않는다. */
+  stallsAfterDays?: number | null;
+};
 
 /** 재적상태 reference CRUD. 익명(systemKey='anonymous')은 내부용이라 목록에서 제외. */
 @Injectable()
@@ -31,6 +37,7 @@ export class MemberStatusService {
       name,
       sortOrder: input.sortOrder ?? 0,
       isActive: input.isActive ?? true,
+      stallsAfterDays: input.stallsAfterDays ?? null,
     });
     return this.repo().save(row);
   }
@@ -42,6 +49,8 @@ export class MemberStatusService {
     if (input.name !== undefined) patch.name = input.name.trim();
     if (input.sortOrder !== undefined) patch.sortOrder = input.sortOrder;
     if (input.isActive !== undefined) patch.isActive = input.isActive;
+    // null 을 명시적으로 보내면 "정체 판정 안 함" 이므로 undefined 와 구분해야 한다.
+    if (input.stallsAfterDays !== undefined) patch.stallsAfterDays = input.stallsAfterDays;
     await this.repo().update({ id, churchId }, patch);
     return (await this.repo().findOne({ where: { id, churchId } }))!;
   }

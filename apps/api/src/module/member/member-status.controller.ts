@@ -7,8 +7,7 @@ import { JwtAuthGuard } from '@src/module/auth/guards/jwt-auth.guard';
 import { Permissions } from '@src/module/auth/decorators/permissions.decorator';
 import { PermissionsGuard } from '@src/module/auth/guards/permissions.guard';
 import type { AuthContext } from '@src/module/auth/types/auth-context';
-import { UpsertReferenceDto } from '@src/module/reference/dto/upsert-reference.dto';
-import { UpdateReferenceDto } from '@src/module/reference/dto/update-reference.dto';
+import { CreateMemberStatusDto, UpdateMemberStatusDto } from './dto/member-status.dto';
 import { MemberStatusService } from './member-status.service';
 
 @ApiTags(SwaggerTag.MEMBER)
@@ -30,7 +29,7 @@ export class MemberStatusController {
   @Post()
   @Permissions('settings:write')
   @ApiOperation({ summary: '재적상태 추가', description: '`sortOrder` 가 가장 앞인 활성 상태가 신규 교인의 기본값이 된다.' })
-  create(@RequireChurch() auth: AuthContext & { churchId: number }, @Body() dto: UpsertReferenceDto) {
+  create(@RequireChurch() auth: AuthContext & { churchId: number }, @Body() dto: CreateMemberStatusDto) {
     return this.statuses.create(auth.churchId, dto);
   }
 
@@ -38,12 +37,17 @@ export class MemberStatusController {
   @Permissions('settings:write')
   @ApiOperation({
     summary: '재적상태 수정',
-    description: '이름·정렬순서·활성여부 변경. 이 상태를 쓰던 교인의 statusId 는 그대로 유지된다.',
+    description: [
+      '이름·정렬순서·활성여부 변경. 이 상태를 쓰던 교인의 statusId 는 그대로 유지된다.',
+      '',
+      '`stallsAfterDays` 는 이 단계에 며칠 이상 머무르면 "정체"로 볼지의 기준이다. 대시보드 카드와',
+      '`GET /members?stalled=true` 가 같은 값을 쓴다. `null` 을 보내면 이 단계는 정체 판정에서 빠진다.',
+    ].join('\n'),
   })
   update(
     @RequireChurch() auth: AuthContext & { churchId: number },
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateReferenceDto
+    @Body() dto: UpdateMemberStatusDto
   ) {
     return this.statuses.update(auth.churchId, id, dto);
   }

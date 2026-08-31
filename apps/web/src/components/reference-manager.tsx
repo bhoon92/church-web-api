@@ -293,10 +293,17 @@ function ReferenceRow({
   const [grabbed, setGrabbed] = useState(false);
   const [nameDraft, setNameDraft] = useState(item.name);
   const [descriptionDraft, setDescriptionDraft] = useState(item.description ?? '');
+  // 재적상태만 정체 기준을 갖는다. 빈 문자열 = 판정 안 함(null).
+  const isStage = kind === 'memberStatus';
+  const [stallsDraft, setStallsDraft] = useState(item.stallsAfterDays == null ? '' : String(item.stallsAfterDays));
 
   const saveMut = useMutation({
-    mutationFn: (payload: { name: string; description: string }) =>
-      updateReference(kind, item.id, { name: payload.name, description: payload.description }),
+    mutationFn: (payload: { name: string; description: string; stallsAfterDays?: number | null }) =>
+      updateReference(kind, item.id, {
+        name: payload.name,
+        description: payload.description,
+        ...(isStage ? { stallsAfterDays: payload.stallsAfterDays } : {}),
+      }),
     onSuccess: () => {
       setEditing(false);
       onChanged();
@@ -312,6 +319,7 @@ function ReferenceRow({
   const startEditing = () => {
     setNameDraft(item.name);
     setDescriptionDraft(item.description ?? '');
+    setStallsDraft(item.stallsAfterDays == null ? '' : String(item.stallsAfterDays));
     setEditing(true);
   };
 
@@ -319,6 +327,7 @@ function ReferenceRow({
     setEditing(false);
     setNameDraft(item.name);
     setDescriptionDraft(item.description ?? '');
+    setStallsDraft(item.stallsAfterDays == null ? '' : String(item.stallsAfterDays));
   };
 
   const submit = () => {
@@ -328,11 +337,13 @@ function ReferenceRow({
       cancelEditing();
       return;
     }
-    if (name === item.name && description === (item.description ?? '')) {
+    const stalls = stallsDraft.trim() === '' ? null : Number(stallsDraft);
+    const stallsUnchanged = !isStage || stalls === (item.stallsAfterDays ?? null);
+    if (name === item.name && description === (item.description ?? '') && stallsUnchanged) {
       cancelEditing();
       return;
     }
-    saveMut.mutate({ name, description });
+    saveMut.mutate({ name, description, stallsAfterDays: stalls });
   };
 
   if (editing) {
@@ -350,6 +361,27 @@ function ReferenceRow({
           }}
           className="h-9"
         />
+        {isStage && (
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              min={1}
+              max={3650}
+              value={stallsDraft}
+              onChange={event => setStallsDraft(event.target.value)}
+              placeholder="정체 기준"
+              onKeyDown={event => {
+                if (event.key === 'Enter') submit();
+                if (event.key === 'Escape') cancelEditing();
+              }}
+              className="h-9 w-28"
+            />
+            <p className="text-xs text-[var(--color-muted-foreground)]">
+              이 단계에 이 일수 이상 머무르면 홈의 &ldquo;정체된 사람&rdquo;에 뜹니다. 비우면 판정하지 않습니다 — 파송·이명처럼 도착점인
+              단계.
+            </p>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           <Input
             value={descriptionDraft}
@@ -420,6 +452,7 @@ function ReferenceRow({
         {item.description && <p className="truncate text-xs text-[var(--color-muted-foreground)]">{item.description}</p>}
       </div>
 
+      {isStage && item.stallsAfterDays != null && <Badge tone="warn">정체 {item.stallsAfterDays}일</Badge>}
       {!item.isActive && <Badge tone="muted">비활성</Badge>}
 
       {canWrite && (

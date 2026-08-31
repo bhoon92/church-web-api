@@ -29,6 +29,8 @@ export type Reference = {
   description: string | null;
   sortOrder: number;
   isActive: boolean;
+  /** 재적상태 전용 — 이 단계에 며칠 이상 머무르면 정체로 볼지. null 이면 판정 안 함. */
+  stallsAfterDays?: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -38,6 +40,8 @@ export type UpsertReferencePayload = {
   description?: string;
   sortOrder?: number;
   isActive?: boolean;
+  /** 재적상태 전용. null 을 보내면 정체 판정에서 제외한다. */
+  stallsAfterDays?: number | null;
 };
 
 export async function listReferences(kind: ReferenceKind, year?: number): Promise<Reference[]> {
