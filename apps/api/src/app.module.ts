@@ -10,6 +10,7 @@ import { CalendarModule } from './module/calendar/calendar.module';
 import { CareNoteModule } from './module/care-note/care-note.module';
 import { ChurchModule } from './module/church/church.module';
 import { ExportModule } from './module/export/export.module';
+import { ImportModule } from './module/import/import.module';
 import { FinanceModule } from './module/finance/finance.module';
 import { GalleryModule } from './module/gallery/gallery.module';
 import { GoogleCalendarModule } from './module/google-calendar/google-calendar.module';
@@ -48,6 +49,7 @@ const isProduction = process.env.NODE_ENV === 'production';
     AttendanceModule,
     FinanceModule,
     ExportModule,
+    ImportModule,
     GalleryModule,
     CalendarModule,
     GoogleCalendarModule,

@@ -21,6 +21,7 @@ export const SwaggerTag = {
   GOOGLE_CALENDAR: 'google-calendar',
   GALLERY: 'gallery',
   EXPORT: 'export',
+  IMPORT: 'import',
   TEAM: 'team',
   REFERENCE: 'reference',
 } as const;
@@ -141,6 +142,17 @@ export const SWAGGER_TAG_DESCRIPTIONS: ReadonlyArray<{ name: string; description
   {
     name: SwaggerTag.EXPORT,
     description: '헌금·수입지출·예산·교인 명부를 XLSX 파일로 내려준다. 응답은 JSON 이 아니라 바이너리.',
+  },
+  {
+    name: SwaggerTag.IMPORT,
+    description: [
+      '엑셀(XLSX)로 기존 명부를 한 번에 들여온다. 도입 첫날 수백 명을 손으로 입력하지 않기 위한 경로.',
+      '',
+      '- `GET /import/members/template` 로 서식을 받는다. 열 구성은 **교인 명부 내보내기와 동일**해서',
+      '  내보내기 → 수정 → 가져오기 왕복이 된다.',
+      '- `POST /import/members` 는 `dryRun` 을 먼저 태워 무엇이 생성·수정·거절되는지 확인한 뒤 실제 반영한다.',
+      '- 같은 이름+연락처가 이미 있으면 **수정**, 없으면 생성. 재적상태 이력도 함께 적립된다.',
+    ].join('\n'),
   },
   {
     name: SwaggerTag.TEAM,
