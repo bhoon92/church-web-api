@@ -61,12 +61,14 @@ export function MemberDetailModal({ memberId, onClose }: { memberId: number; onC
         <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
           {member && (
             <>
-              {/* 양성 경로(훈련·파송)를 가장 위에 — 이 교회에서 가장 자주 보는 정보다. */}
-              <MemberJourneySection memberId={memberId} />
-
-              <div className="border-t border-[var(--color-border)] pt-5">
-                <PositionSection memberId={memberId} current={member.position.current} history={member.position.history} />
-              </div>
+              {/*
+               * 순서 = 이 사람을 볼 때 실제로 보는 순서.
+               * 교인 대부분은 훈련도 파송도 없는 평신도라서, 예전처럼 양성 경로를 맨 위에 두면
+               * 카드를 열 때마다 "파송 트랙에 등록되지 않은 교인입니다" 부터 보였다.
+               * 지금은 "무엇을 섬기는가 → 무슨 이야기를 나눴나" 가 먼저 오고,
+               * 훈련·파송은 해당되는 사람에게만 아래에서 보인다.
+               */}
+              <PositionSection memberId={memberId} current={member.position.current} history={member.position.history} />
 
               {KINDS.map(kind => (
                 <AffiliationSection key={kind} kind={kind} memberId={memberId} items={affiliationsByKind(member.affiliations, kind)} />
@@ -74,6 +76,10 @@ export function MemberDetailModal({ memberId, onClose }: { memberId: number; onC
 
               <div className="border-t border-[var(--color-border)] pt-5">
                 <CareNoteSection memberId={memberId} />
+              </div>
+
+              <div className="border-t border-[var(--color-border)] pt-5">
+                <MemberJourneySection memberId={memberId} />
               </div>
 
               <div className="border-t border-[var(--color-border)] pt-5">

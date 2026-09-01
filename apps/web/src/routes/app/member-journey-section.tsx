@@ -17,8 +17,11 @@ const STATUS_TONE: Record<EnrollmentStatus, 'neutral' | 'muted' | 'success' | 'w
 };
 
 /**
- * 교인 한 명의 양성 경로 — 무엇을 통과했고(훈련 이력) 지금 어디까지 갔는지(파송 단계).
- * 이 교회의 핵심 화면이라 교인 상세의 맨 위에 둔다.
+ * 교인 한 명의 양성 경로 — 단계 이동, (있으면) 훈련 이력, (있으면) 파송 트랙.
+ *
+ * 예전에는 이 묶음을 교인 상세 맨 위에 통째로 뒀는데, 교인 대부분은 훈련도 파송도 없는
+ * 평신도라서 카드를 열 때마다 "파송 트랙에 등록되지 않은 교인입니다" 가 먼저 보였다.
+ * 해당되는 사람에게만 보이도록 바꾸고 위치도 기록·사역 아래로 내렸다.
  */
 export function MemberJourneySection({ memberId }: { memberId: number }) {
   return (
@@ -77,32 +80,29 @@ function TrainingHistory({ memberId }: { memberId: number }) {
     queryFn: () => fetchMemberTrainingHistory(memberId),
   });
 
+  // 훈련을 한 번도 안 받은 교인이 대부분이다 — 빈 섹션을 띄우지 않는다.
+  if (isLoading || history.length === 0) return null;
+
   return (
     <div>
       <h3 className="mb-2 text-sm font-semibold">훈련 이력</h3>
-      {isLoading ? (
-        <p className="text-xs text-[var(--color-muted-foreground)]">불러오는 중…</p>
-      ) : history.length === 0 ? (
-        <p className="text-xs text-[var(--color-muted-foreground)]">수강 이력 없음</p>
-      ) : (
-        <ul className="space-y-2">
-          {history.map(item => (
-            <li
-              key={item.enrollmentId}
-              className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] px-3 py-2"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{item.label}</p>
-                <p className="text-xs text-[var(--color-muted-foreground)]">
-                  {item.enrolledAt}
-                  {item.closedAt ? ` → ${item.closedAt}` : ''} · 출석 {item.attendanceRate}%
-                </p>
-              </div>
-              <Badge tone={STATUS_TONE[item.status]}>{ENROLLMENT_STATUS_LABEL[item.status]}</Badge>
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul className="space-y-2">
+        {history.map(item => (
+          <li
+            key={item.enrollmentId}
+            className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] px-3 py-2"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{item.label}</p>
+              <p className="text-xs text-[var(--color-muted-foreground)]">
+                {item.enrolledAt}
+                {item.closedAt ? ` → ${item.closedAt}` : ''} · 출석 {item.attendanceRate}%
+              </p>
+            </div>
+            <Badge tone={STATUS_TONE[item.status]}>{ENROLLMENT_STATUS_LABEL[item.status]}</Badge>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -149,29 +149,25 @@ function MissionaryTrack({ memberId }: { memberId: number }) {
     onError: (error: Error) => window.alert(`기록 실패: ${error.message}`),
   });
 
-  if (isLoading) {
-    return (
-      <div>
-        <h3 className="mb-2 text-sm font-semibold">파송 트랙</h3>
-        <p className="text-xs text-[var(--color-muted-foreground)]">불러오는 중…</p>
-      </div>
-    );
-  }
+  if (isLoading) return null;
 
+  /*
+   * 파송 트랙에 없는 교인이 대부분이다(평신도). 예전에는 모두에게 "등록되지 않은 교인입니다"
+   * 라는 섹션을 띄워서, 그냥 섬기는 성도의 카드까지 파송 이야기로 시작했다.
+   * 이제는 등록 버튼만 한 줄로 남기고, 트랙에 실제로 올라간 사람에게만 내용을 보여준다.
+   */
   if (!missionary) {
+    if (!canWrite) return null;
     return (
-      <div>
-        <div className="mb-2 flex items-center justify-between">
-          <h3 className="text-sm font-semibold">파송 트랙</h3>
-          {canWrite && (
-            <Button size="sm" variant="ghost" onClick={() => registerMut.mutate()} disabled={registerMut.isPending}>
-              <Plus className="size-3.5" />
-              트랙 등록
-            </Button>
-          )}
-        </div>
-        <p className="text-xs text-[var(--color-muted-foreground)]">파송 트랙에 등록되지 않은 교인입니다.</p>
-      </div>
+      <button
+        type="button"
+        onClick={() => registerMut.mutate()}
+        disabled={registerMut.isPending}
+        className="inline-flex items-center gap-1 text-xs text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)] disabled:opacity-50"
+      >
+        <Plus className="size-3" />
+        파송 트랙에 등록
+      </button>
     );
   }
 
